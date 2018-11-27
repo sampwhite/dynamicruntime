@@ -1,10 +1,8 @@
-package dynamicruntime.org.context;
+package org.dynamicruntime.context;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static dynamicruntime.org.util.DnCollectionUtil.*;
 
 public class InstanceConfig {
     public final AtomicInteger loggingIdCount = new AtomicInteger(0);

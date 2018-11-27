@@ -1,4 +1,4 @@
-package dynamicruntime.org.context;
+package org.dynamicruntime.context;
 
 public class DnCxtConstants {
     /* Note the lack of usage of enums. In dynamic runtime, an enum list is a compiler time enforced mechanism on
@@ -23,5 +23,10 @@ public class DnCxtConstants {
     public static final String PREVIEW_TYPE = "previewType";
     /** System is running in prod. */
     public static final String PROD_TYPE = "prodType";
+
+    /** The default shard name. Only if actual sharding is being
+     * done is the value anything else. Generally, there has to be a some top level data storage
+     * that is not sharded that knows about all the possible shards, except for unit tests. */
+    public static final String PRIMARY = "primary";
 
 }
