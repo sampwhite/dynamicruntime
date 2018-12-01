@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@SuppressWarnings("WeakerAccess")
 public class InstanceConfig {
     public final AtomicInteger loggingIdCount = new AtomicInteger(0);
     public final String instanceName;
@@ -21,8 +22,15 @@ public class InstanceConfig {
         return config;
     }
 
-    public void set(String key, Object val) {
+    public Object get(String key) {
+        return config.get(key);
+    }
+
+    public void put(String key, Object val) {
         config.put(key, val);
+    }
+    public void putAll(Map<String,Object> configs) {
+        config.putAll(configs);
     }
 
     public int getNextLoggingId() {

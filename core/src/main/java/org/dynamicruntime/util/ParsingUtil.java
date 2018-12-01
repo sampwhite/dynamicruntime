@@ -15,6 +15,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 
+@SuppressWarnings("WeakerAccess")
 public class ParsingUtil {
     public static String INDENT_STRING = "    ";
 
@@ -32,13 +33,14 @@ public class ParsingUtil {
                 var m = (JSONObject)o;
                 return (Map<String,Object>)m;
             }
-            throw DnException.mkParsing("String holding JSON did not convert to a map.", null);
+            throw DnException.mkConv("String holding JSON did not convert to a map.", null);
         } catch (ParseException pe) {
-            throw DnException.mkParsing("Unable to parse JSON map from string.", pe);
+            throw DnException.mkConv("Unable to parse JSON map from string.", pe);
         }
     }
 
     /** Parsed a JSON list from a string. */
+    @SuppressWarnings("unchecked")
     public static List<Object> toJsonList(String str) throws DnException {
         if (str == null || str.indexOf('[') < 0) {
             return mList();
@@ -51,9 +53,9 @@ public class ParsingUtil {
                 var a = (JSONArray)o;
                 return (List<Object>)a;
             }
-            throw DnException.mkParsing("String holding JSON did not convert to a list.", null);
+            throw DnException.mkConv("String holding JSON did not convert to a list.", null);
         } catch (ParseException pe) {
-            throw DnException.mkParsing("Unable to parse JSON list from string.", pe);
+            throw DnException.mkConv("Unable to parse JSON list from string.", pe);
         }
     }
 
@@ -190,7 +192,7 @@ public class ParsingUtil {
                     break;
                 default:
                     //Reference: http://www.unicode.org/versions/Unicode5.1.0/
-                    if((ch>='\u0000' && ch<='\u001F') || (ch>='\u007F' && ch<='\u009F') || (ch>='\u2000' && ch<='\u20FF')){
+                    if((ch <= '\u001F') || (ch >= '\u007F' && ch <= '\u009F') || (ch >= '\u2000' && ch <= '\u20FF')){
                         String ss=Integer.toHexString(ch);
                         sb.append("\\u");
                         for(int k=0;k<4-ss.length();k++){

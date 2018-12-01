@@ -64,7 +64,7 @@ public class DnDateUtil {
     public static Date parseDate(String inputStr) throws DnException {
         String str = inputStr != null ? inputStr.trim() : "";
         if (str.isEmpty()) {
-            throw DnException.mkParsing("Date string to be parsed was null or empty.", null);
+            throw DnException.mkConv("Date string to be parsed was null or empty.", null);
         }
 
         // Inspect the string for different possible formats.
@@ -74,7 +74,7 @@ public class DnDateUtil {
             secondDash = str.indexOf('-', 5);
         }
         if (secondDash != 7 || str.length() < 10) {
-            throw DnException.mkParsing(
+            throw DnException.mkConv(
                     String.format("Date string '%s' does not follow a recognizable date format.", inputStr), null);
         }
         try {
@@ -97,7 +97,7 @@ public class DnDateUtil {
             }
             return Date.from(zdt.toInstant());
         } catch (DateTimeException dte) {
-            throw DnException.mkParsing(String.format("Date string '%s' failed to parse.", inputStr), dte);
+            throw DnException.mkConv(String.format("Date string '%s' failed to parse.", inputStr), dte);
         }
     }
 

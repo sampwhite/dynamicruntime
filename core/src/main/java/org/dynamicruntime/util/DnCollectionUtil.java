@@ -8,7 +8,9 @@ import java.util.function.Function;
 
 @SuppressWarnings("WeakerAccess")
 public class DnCollectionUtil {
-    /** Groovy envy method for creating maps. Creates a mutable map and drops nulls. */
+    /** Groovy envy method for creating maps. Creates a mutable map and drops nulls. We have a version
+     * locked to storing *Object* types because it is the main data class of this application and
+     * it means you can declare the variable that receives the results of the call with *var*. */
     public static Map<String,Object> mMap(Object... args) {
         if (args.length % 2 != 0) {
             throw new RuntimeException("Number of arguments to map creation but be even.");
@@ -61,8 +63,12 @@ public class DnCollectionUtil {
         return new ArrayList<>(inList);
     }
 
+    public static <U,V> Map<U,V> cloneMap(Map<U,V> inMap) {
+        return new HashMap<>(inMap);
+    }
+
     /** Performs 'map' style call (called *collect* in Groovy) but drops nulls. The letter
-     * n at the beginning of the method name indicates nulls are dropped. */
+     * 'n' at the beginning of the method name indicates nulls are dropped. */
     @SuppressWarnings("Duplicates") // Removing duplicates creates awkward code for just a few lines saved.
     public static <U,V> List<V> nMap(Collection<U> inList, DnFunction<U,V> function) throws DnException {
         var outList = new ArrayList<V>();
@@ -113,5 +119,4 @@ public class DnCollectionUtil {
         }
         return count;
     }
-
 }

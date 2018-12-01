@@ -7,21 +7,19 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import static org.dynamicruntime.servlet.LogServlet.*;
 
-import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
+@SuppressWarnings("WeakerAccess")
 public class DnServer extends ContextHandler {
-    ServletConfig servletConfig;
-
     public DnServer(Server server) {
         super(server, "/");
     }
 
-    public static void launch() throws DnException {
+    public static void launch(DnCxt cxt) throws DnException {
         Server server = new Server(7070);
-        DnCxt cxt = DnCxt.mkSimpleCxt("ServerStartup");
+        log.info(cxt, "Testing logging.");
         //ServletContextHandler handler = new ServletContextHandler(server, "/");
         //handler.addServlet(DnServer.class, "/");
         new DnServer(server);
@@ -37,17 +35,17 @@ public class DnServer extends ContextHandler {
 
     @Override
     public void doHandle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
-            throws IOException, ServletException {
+            throws IOException {
         var output = response.getOutputStream();
         var bytes = "Hello".getBytes();
-        HttpServletResponse httpRes = (HttpServletResponse)response;
-        httpRes.setStatus(201);
-        httpRes.setContentLength(bytes.length);
-        httpRes.setContentType("text/plain");
+
+        response.setStatus(201);
+        response.setContentLength(bytes.length);
+        response.setContentType("text/plain");
         log.debug(null, baseRequest.getHttpURI().toString());
 
         output.write(bytes);
-        httpRes.flushBuffer();
+        response.flushBuffer();
     }
 
 

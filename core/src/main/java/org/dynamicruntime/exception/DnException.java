@@ -30,7 +30,7 @@ public class DnException extends Exception {
     // Thread interruption.
     public static final String INTERRUPTED = "interrupted";
     // Indicates that parsing or conversion was taking place.
-    public static final String PARSING = "parsing";
+    public static final String CONVERSION = "conversion";
     // Indicates that code threw a deliberate exception based on internal logic and
     // wants the exception to be handled as significant.
     public static final String CODE = "code";
@@ -83,11 +83,11 @@ public class DnException extends Exception {
     }
 
 
-    /** Creates exception on parsing or conversion activities. Many times parsing or conversion
+    /** Creates exception on conversion or parsing activities. Many times conversion or parsing
      * exceptions can be turned into bad input exceptions if there is a requesting agent who might
      * have provided bad data. */
-    public static DnException mkParsing(String msg, Throwable t) {
-        return new DnException(msg, t, INTERNAL_ERROR, SYSTEM, PARSING);
+    public static DnException mkConv(String msg, Throwable t) {
+        return new DnException(msg, t, INTERNAL_ERROR, SYSTEM, CONVERSION);
     }
 
     /** Used for logging and reporting. */

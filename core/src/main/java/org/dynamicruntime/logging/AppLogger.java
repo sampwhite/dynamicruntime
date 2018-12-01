@@ -8,9 +8,10 @@ import org.apache.logging.log4j.LogManager;
 
 import org.apache.logging.log4j.Logger;
 
+@SuppressWarnings("WeakerAccess")
 public class AppLogger {
-    public final Class topic;
-    public final Logger logger;
+    final Class topic;
+    final Logger logger;
 
     public AppLogger(Class topic) {
         this.topic = topic;
@@ -30,7 +31,8 @@ public class AppLogger {
     }
 
     public void reportMessage(DnCxt cxt, Level level, Throwable t, String message, Map<String,Object> data) {
-        String msg = cxt != null ? "[" + cxt.loggingId + "] " + message : message;
+        String msg = cxt != null ? "[" + cxt.instanceConfig.instanceName + ":"  + cxt.loggingId + "] " + message :
+                message;
         logger.log(level, msg, t);
     }
 }

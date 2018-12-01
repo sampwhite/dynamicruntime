@@ -1,0 +1,113 @@
+package org.dynamicruntime.schemadef;
+
+import java.util.Set;
+
+/** Holds the static strings for schema. */
+@SuppressWarnings({"WeakerAccess", "unused"})
+public class DnSchemaDefConstants {
+    public static final String DN_NAMESPACE = "namespace";
+
+    //
+    // Primitive types.
+    //
+
+    public static final String DN_STRING = "String";
+    public static final String DN_BOOLEAN = "Boolean";
+    public static final String DN_INTEGER = "Integer";
+    public static final String DN_DATE = "Date";
+    public static final String DN_FLOAT = "Float";
+    public static final String DN_ANY = "Any";
+    public static final String DN_MAP = "Map";
+    public static final String DN_GENERIC = "Generic";
+
+    public static final Set<String> PRIMITIVE_TYPES = Set.of(DN_STRING, DN_BOOLEAN, DN_INTEGER,
+            DN_DATE, DN_FLOAT, DN_ANY, DN_MAP, DN_GENERIC);
+
+    public static boolean isPrimitive(String dnTypeName) {
+        return PRIMITIVE_TYPES.contains(dnTypeName);
+    }
+
+
+    //
+    // DnType
+    //
+
+    /** Name of a DnType or DnField. */
+    public static final String DN_NAME = "name";
+    /** Label of DnType or DnField. */
+    public static final String DN_LABEL = "label";
+    /** Description of DnType or DnField */
+    public static final String DN_DESCRIPTION = "description";
+    /** The name of a post processor builder to expand and refactor type for a specific purpose. */
+    public static final String DN_BUILDER = "dnBuilder";
+    /** Reference to a base DnType by a DnType. Used for one type to extend another. */
+    public static final String DN_BASE_TYPE = "baseType";
+    /** Attribute that holds the fields of the DnType. */
+    public static final String DN_FIELDS = "dnFields";
+    /** Whether trimming should not be done on strings. */
+    public static final String DN_NO_TRIMMING = "noTrimming";
+    /** Whether type represents an endpoint. */
+    public static final String DN_IS_ENDPOINT = "isEndpoint";
+    /** Whether type represents the definition of a table. */
+    public static final String DN_IS_TABLE = "isTable";
+    /** Whether values for type do not allow a comma. If true, then values can be put into a
+     * comma separated list when there are more than one of them and if a string value has commas in
+     * it, it can be broken up into a list of values (assuming *isList* is set). */
+    public static final String DN_NO_COMMAS = "noCommas";
+    /** The maximum possible value (value is strictly less than max). */
+    public static final String DN_MAX = "max";
+    /** The smallest possible value (value is greater or equal to min). */
+    public static final String DN_MIN = "min";
+
+    //
+    // DnField
+    //
+
+    /** Attribute of DnField a reference to a DnType for the field. */
+    public static final String DN_TYPE_REF = "dnTypeRef";
+    /** Attribute holding an anonymous implementation of a DnType for the field. */
+    public static final String DN_TYPE_DEF = "dnTypeDef";
+    /** Whether DnType is a list (or collection of the DnType) instead of a single instance of the DnType. */
+    public static final String DN_IS_LIST = "isList";
+    /** Whether the fields in the DnType are treated as a choice list. */
+    public static final String DN_TYPE_IS_CHOICES = "typeIsChoices";
+    /** Whether the validation is strict allowing no variation from expected values. */
+    public static final String DN_IS_STRICT = "isStrict";
+    /** The DnType of the values of the choices if *typeIsChoices is enabled. */
+    public static final String DN_CHOICE_TYPE_REF = "dnChoiceTypeRef";
+    /** The value to use if the field is being treated as a choice list value. If value is not present
+     * the field name is used instead. */
+    public static final String DN_CHOICE_VALUE = "choiceValue";
+    /** Whether the DnField represents a field value that is required. */
+    public static final String DN_REQUIRED = "required";
+    /** Whether the DnField is implicitly deleted. */
+    public static final String DN_DISABLED = "disabled";
+
+    //
+    // Endpoint fields.
+    //
+
+    /** Endpoint path. */
+    public static final String EP_PATH = "path";
+    /** Name of function to execute. */
+    public static final String EP_FUNCTION = "function";
+    /** Reference to schema to apply to input data. */
+    public static final String EP_INPUT_TYPE_REF = "inputTypeRef";
+    /** Reference to schema that defines output data. */
+    public static final String EP_OUTPUT_TYPE_REF = "outputTypeRef";
+    /** Indicates whether response data is put into a list of items. */
+    public static final String EP_IS_LIST_RESPONSE = "isListResponse";
+    /** The maximum number of items to return. */
+    public static final String EP_LIMIT = "limit";
+    /** The number of items returned. */
+    public static final String EP_NUM_ITEMS = "numItems";
+    /** The original Request URI of the request. */
+    public static final String EP_REQUEST_URI = "requestUri";
+    /** A security nonce to prevent attackers from seeing the exact same data being returned again and again. */
+    public static final String EP_NONCE = "nonce";
+    /** The duration of the request (as computed internally). */
+    public static final String EP_DURATION = "duration";
+    /** The items to be returned. */
+    public static final String EP_ITEMS = "items";
+
+}

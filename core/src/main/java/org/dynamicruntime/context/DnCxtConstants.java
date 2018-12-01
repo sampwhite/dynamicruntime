@@ -1,5 +1,6 @@
 package org.dynamicruntime.context;
 
+@SuppressWarnings({"WeakerAccess", "unused"})
 public class DnCxtConstants {
     /* Note the lack of usage of enums. In dynamic runtime, an enum list is a compiler time enforced mechanism on
      * choice values, not consistent with the goals of dynamic modification of model at runtime. */
@@ -15,6 +16,8 @@ public class DnCxtConstants {
     public static final String DEPLOYED = "deployed";
 
     /* Environment types. The type of system that is running the instance. */
+    /** System is for general activities, such as scripts or in start up phase. */
+    public static final String GENERAL_TYPE = "generalType";
     /** System is for performing QA. */
     public static final String TEST_TYPE = "testType";
     /** System is for staging to prod. */
