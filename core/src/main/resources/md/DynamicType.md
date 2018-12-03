@@ -27,6 +27,9 @@ be reused when naming types. The primitive types are following.
  approach is to have a *name* attribute in the data, and then the *name* is used to find a type
  to replace the *Generic* type. This type can be useful for web form survey implementations where there can
  be a lot of variation in the questions asked.
+* *None* - Means schema does not define a Json like data object. For endpoint requests, it means
+the requests do not take ordinary parameters. As another example, *None* can represent either file uploads or file
+downloads.
 
 Before we go on we call a type *simple* if it has no fields and a recursive chase up the *base* types
 leads to a primitive type. A type is *anonymous* if it is not captured into the DnSchemaStore. The data 
@@ -80,8 +83,7 @@ structure of the DnType is as follows.
  * *dnTypeDef* - A full anonymous *DnType* object that is owned by this field and has no independent
   existence. Useful when interior nested types have meaning only in the context of their parent. When the DnField
   is cloned, this object is recursively cloned, cloning any referenced fields that also use a dnTypeDef to define
-  their type. In particular, it means that recursive anonymous type definitions are *not* allowed. Also,
-  this type definition is considered to be immutable, it must be cloned in order to be modified.
+  their type. This type definition is considered to be immutable, it must be cloned in order to be modified.
  * *isList* - Whether the field represents a list of values instead of single value.
  * *typeIsChoices* - Whether the DnField's type definition represents choices with each DnField entry
   representing a choice.
@@ -94,6 +96,8 @@ structure of the DnType is as follows.
   other validations, it can be used to say that the validation should be applied in the strictest way.
  * *choiceValue* - If this field is being used for an entry in a choice list, this is the value to use for
   the choice. If this entry is missing, then the *name* of the field will be used instead.
+ * *defaultValue* - If no value is supplied on input for this field, this is the value to supply instead.
+  If this attribute is set then, *required* should not be set.
  * *required* - A non-empty value is required for this field.
  * *disabled* - The field is disabled and treated as if it were not present. For example, if one type extends
   another, the extending type can redeclare a field as disabled to remove that field from the type.
@@ -172,39 +176,56 @@ function: getContent
 inputTypeRef: Category
 outputTypeRef: Content
 isListResponse: true
+hasMorePaging: true
 ruleToGetContent: byCategory
 isEndpoint: true
 dnFields: 
-   - name: inputType
+   - name: endpointInputType
      dnTypeDef:
          baseType: Category
          dnFields:
            - name: limit
              label: Limit on Results
              description: Maximum number of items that can be returned.
-             dnTypeRef: Integer
-   - name: outputType
+             defaultValue: 100
+             dnTypeDef:
+                baseType: Count
+                max: 20000
+   - name: endpointOutputType
      dynTypeDef:
          dnFields:
            - name: numItems
              label: Number of Items
              description: Number of items returned.
-             dnTypeRef: Integer
+             required: true
+             dnTypeRef: Count
+           - name: hasMore
+             label: Has More Items
+             description: The results returned are not all the results available if this value is true.
+             dnTypeRef: Boolean
            - name: requestUri
              label: Request URI
              description: The request URI that made this request.
+             required: true
            - name: nonce
              label: Security Nonce
              description: A random length string to create randomness in output.
+             required: true
            - name: duration
              label: Duration
              description: The time taken to perform request in milliseconds.
+             required: true
+             dnTypeRef: Float
            - name: items
              label: Items
              description: Items returned by endpoint.
+             required: true
              isList: true
              dnTypeRef: Content
 ```
+
+The reference to the *dnType* Count is a reference to a built in type that extends
+Integer and has a *min* value of zero.
 
 If you look at the above, there are some things to call out. The first is that the
 DnType *Category* is extended to have an additional *limit* field that can be used to

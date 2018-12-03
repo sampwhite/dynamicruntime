@@ -6,11 +6,13 @@ import org.dynamicruntime.function.DnFunction;
 import java.util.*;
 import java.util.function.Function;
 
+/** A lot of this class is driven by Groovy envy. */
 @SuppressWarnings("WeakerAccess")
 public class DnCollectionUtil {
     /** Groovy envy method for creating maps. Creates a mutable map and drops nulls. We have a version
-     * locked to storing *Object* types because it is the main data class of this application and
-     * it means you can declare the variable that receives the results of the call with *var*. */
+     * specific to storing *Object* types because it is the main data class of this application and
+     * it means you can declare the variable that receives the results of the call with *var*.
+     * Every two arguments becomes a key-value pair. */
     public static Map<String,Object> mMap(Object... args) {
         if (args.length % 2 != 0) {
             throw new RuntimeException("Number of arguments to map creation but be even.");
@@ -26,7 +28,8 @@ public class DnCollectionUtil {
         return map;
     }
 
-    /** Creates a mutable map with type parameters being arbitrary. Drops null values. */
+    /** Creates a mutable map with type parameters being arbitrary. Drops null values. This is a dangerous
+     * method in that the caller needs to make sure the argument lines up with the expected types. */
     @SuppressWarnings("unchecked")
     public static <U,V> Map<U,V> mMapT(Object... args) {
         if (args.length % 2 != 0) {
@@ -34,8 +37,8 @@ public class DnCollectionUtil {
         }
         var map = new HashMap<U,V>();
         for (int i = 0; i < args.length; i += 2) {
-            U k = (U)args[i];
-            V v = (V)args[i + 1];
+            U k = (U)args[i]; // Dependent on the carefulness of the caller, much like it would be in Groovy.
+            V v = (V)args[i + 1]; // Again, dependent on the carefulness of the caller.
             if (k != null && v != null) {
                 map.put(k, v);
             }

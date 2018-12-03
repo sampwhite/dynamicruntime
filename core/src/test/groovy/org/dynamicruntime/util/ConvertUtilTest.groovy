@@ -1,12 +1,28 @@
 package org.dynamicruntime.util
 
 import org.dynamicruntime.exception.DnException
+import spock.lang.Shared
 
 import static org.dynamicruntime.util.ConvertUtil.*;
+import static org.dynamicruntime.util.DnDateUtil.*;
 
 import spock.lang.Specification
 
 class ConvertUtilTest extends Specification {
+    @Shared dateStr = '2018-01-01T01:00:00.032Z'
+    @Shared date = parseDate(dateStr)
+
+    def "Test formatting  objects for friendly display"() {
+        expect: "Formatted result to be as expected"
+        output == fmtObject(input)
+
+        where:
+        input                                         || output
+        // Test maps, arrays dates, and putting double quotes around strings that have backslashes or commas in them.
+        [x : "\\", y: [1, date], z: ["a,b", "c"]]     || "[x:\"\\\\\",y:[1,${dateStr}],z:[\"a,b\",c]]"
+        // Test too deep nesting.
+        [x : [y : [z : [aa:1], bb:[2]]]]  || "[x:[y:[z:[.:.],bb:[...]]]]"
+    }
 
     def "Test conversion functions"() {
         Date now = new Date();

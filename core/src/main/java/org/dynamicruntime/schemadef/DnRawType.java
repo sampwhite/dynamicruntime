@@ -13,28 +13,35 @@ import java.util.Map;
 /** Holds a raw map with schema definition. Following the convention of this application, we pull out fields
  * from the map that are relevant to the operations performed using the class. This class also
  * has convenience methods designed to ease the process of creating a DnType. */
-@SuppressWarnings("WeakerAccess")
-public class DnRawType {
+@SuppressWarnings({"WeakerAccess", "unused"})
+public class DnRawType implements DnRawTypeInterface {
     public final String name;
     // This data can be mutated (following certain rules) either before it is added to a package
     // or after it has been cloned.
     public final Map<String,Object> model;
+    @SuppressWarnings("unused")
+    // Present for debug purposes.
     public final String namespace; // Can be null if a namespace has not been applied.
 
     // Temporary mutable data. Used to help construction process. If this attribute becomes
     // populated, then at the time this type is added to its package, the *dnFields* attribute
     // in the model will be replaced with this data.
-    public List<DnRawField> rawFields = mList();
+    public final List<DnRawField> rawFields = mList();
 
     public DnRawType(String name, Map<String,Object> model) {
         this.name = name;
         this.model = model;
-        this.namespace = StrUtil.getBeforeLastIndex(name, ".");
+        this.namespace = (name != null) ? StrUtil.getBeforeLastIndex(name, ".") : null;
     }
 
     public static DnRawType extract(Map<String,Object> model) throws DnException {
         String name = getReqStr(model, DN_NAME);
         return new DnRawType(name, model);
+    }
+
+    @Override
+    public DnRawType getRawType() {
+        return this;
     }
 
     /** Clones down to field data. Cloning is our main defense against data pollution across
@@ -112,11 +119,30 @@ public class DnRawType {
         return DnRawType.extract(mMap(DN_NAME, typeName)).addFields(fields);
     }
 
+    public static DnRawType mkType(List<DnRawField> fields) throws DnException {
+        return new DnRawType(null, mMap()).addFields(fields);
+    }
+
+    /** Makes a type that extends from another type. If the type is anonymous then the *typeName*
+     * can be null. */
     public static DnRawType mkSubType(String typeName, String baseTypeName) throws DnException {
-        return DnRawType.extract(mMap(DN_NAME, typeName, DN_BASE_TYPE, baseTypeName));
+        return new DnRawType(typeName, mMap(DN_NAME, typeName, DN_BASE_TYPE, baseTypeName));
+    }
+
+    public static DnRawType mkSubType(String baseTypeName) throws DnException {
+        return new DnRawType(null, mMap(DN_BASE_TYPE, baseTypeName));
+    }
+
+    @SuppressWarnings("UnusedReturnValue")
+    public DnRawType addField(DnRawField field) {
+        rawFields.add(field);
+        return this;
     }
 
     public DnRawType addFields(List<DnRawField> fields) {
+        if (fields == null) {
+            return this;
+        }
         rawFields.addAll(fields);
         return this;
     }
@@ -139,6 +165,9 @@ public class DnRawType {
                 return fld.data;
             }));
             model.put(DN_FIELDS, fields);
+        }
+        if (name != null && !model.containsKey(DN_NAME)) {
+            model.put(DN_NAME, name);
         }
     }
 

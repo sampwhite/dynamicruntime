@@ -7,7 +7,6 @@ import static org.dynamicruntime.util.DnCollectionUtil.*;
 
 import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -57,21 +56,30 @@ public class DnType {
         // So we do not use code to enforce the fact that the collections and maps should not be modified, we will
         // trust future programmers to read the comments and not do this.
         this.fields = fields;
-        this.model = Collections.unmodifiableMap(model);
+        this.model = model;
         this.isSimple = this.fields == null;
         if (!this.isSimple) {
             Map<String,DnField> fldByName = mMapT();
             for (DnField fld : fields) {
                 fldByName.put(fld.name, fld);
             }
-            this.fieldsByName = Collections.unmodifiableMap(fldByName);
+            this.fieldsByName = fldByName;
         } else {
             this.fieldsByName = null;
         }
     }
 
+    public static DnType extractAnon(Map<String,Object> model, Map<String,DnRawType> types) throws DnException {
+        String name = getOptStr(model, DN_NAME);
+        return extractNamed(name, model, types);
+    }
+
     public static DnType extract(Map<String,Object> model, Map<String,DnRawType> types) throws DnException {
         String name = getReqStr(model, DN_NAME);
+        return extractNamed(name, model, types);
+    }
+
+    public static DnType extractNamed(String name, Map<String,Object> model, Map<String,DnRawType> types) throws DnException {
         boolean noTrimming = getBoolWithDefault(model, DN_NO_TRIMMING, false);
         boolean noCommas = getBoolWithDefault(model, DN_NO_COMMAS, false);
         Long min = getOptLong(model, DN_MIN);
@@ -82,7 +90,7 @@ public class DnType {
 
         List<RawField> newRawFields = null;
 
-        // Collapse raw fields, earlier fields map data is merged with later fields of the same name.
+        // Collapse raw fields, later fields map data is merged with earlier fields of the same name.
         if (md.rawFields != null) {
             Map<String,RawField> foundFields = mMapT();
             newRawFields = mList();
@@ -90,10 +98,8 @@ public class DnType {
                 var newRawField = new RawField(rawField.name, cloneMap(rawField.data));
                 RawField existing = foundFields.get(rawField.name);
                 if (existing != null) {
-                    // Existing (which is earlier in list) overlays later field with same name.
-                    newRawField.data.putAll(existing.data);
-                    // Merged data becomes the new existing (which has already been put into array).
-                    existing.data = newRawField.data;
+                    // New data is merged into existing.
+                    existing.data.putAll(newRawField.data);
                 } else {
                     newRawFields.add(newRawField);
                     foundFields.put(newRawField.name, newRawField);
@@ -148,13 +154,13 @@ public class DnType {
 
         newModel.putAll(model);
         var newRawFields = rawFields != null && rawFields.size() > 0 ? rawFields : null;
-        if (md.rawFields != null) {
+        if (mdBase.rawFields != null) {
             if (rawFields != null) {
                 newRawFields = mList();
-                newRawFields.addAll(md.rawFields);
+                newRawFields.addAll(mdBase.rawFields);
                 newRawFields.addAll(rawFields);
             } else{
-                newRawFields = md.rawFields;
+                newRawFields = mdBase.rawFields;
             }
         }
 
@@ -172,6 +178,11 @@ public class DnType {
 
     @Override
     public String toString() {
-        return String.format("%s[fields=%s]", name, (fields != null) ? fields.toString() : "<no-fields>");
+        String n = name;
+        if (n == null && baseType != null) {
+            n = ":" + baseType;
+        }
+        n = (n != null) ? n : "anon";
+        return String.format("%s[fields=%s]", n, (fields != null) ? fields.toString() : "<no-fields>");
     }
 }

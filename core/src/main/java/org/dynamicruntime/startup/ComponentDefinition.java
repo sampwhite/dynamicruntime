@@ -1,6 +1,7 @@
 package org.dynamicruntime.startup;
 
 import org.dynamicruntime.context.DnCxt;
+import org.dynamicruntime.defs.Priority;
 import org.dynamicruntime.schemadef.DnRawSchemaStore;
 
 import java.util.ArrayList;
@@ -11,9 +12,12 @@ public interface ComponentDefinition {
     boolean isLoaded();
     boolean isActive();
 
-    void addSchemaPackages(DnCxt cxt, DnRawSchemaStore schemaStore);
+    void addSchema(DnCxt cxt, DnRawSchemaStore schemaStore);
     default Collection<Class> getStartupInitializers(DnCxt cxt) {
         return new ArrayList<>();
     }
     Collection<Class> getServiceInitializers(DnCxt cxt);
+    default int loadPriority() {
+        return Priority.STANDARD;
+    }
 }

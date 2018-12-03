@@ -30,7 +30,10 @@ public class AppLogger {
         reportMessage(cxt, Level.ERROR, t, message, null);
     }
 
-    public void reportMessage(DnCxt cxt, Level level, Throwable t, String message, Map<String,Object> data) {
+    public void reportMessage(DnCxt cxt, Level level, Throwable t, String message,
+            @SuppressWarnings("unused") Map<String,Object> data) {
+        // Eventually the logging implementation will forward logging to a Fluentd style solution which will include
+        // the data.
         String msg = cxt != null ? "[" + cxt.instanceConfig.instanceName + ":"  + cxt.loggingId + "] " + message :
                 message;
         logger.log(level, msg, t);

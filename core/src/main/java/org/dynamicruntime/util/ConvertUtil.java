@@ -13,16 +13,94 @@ public class ConvertUtil {
             ThreadLocal.withInitial(() -> new DecimalFormat("0.0##"));
     /** Creates a report version of an object. Also used to create JSON representations of primitive objects. */
     public static String fmtObject(Object o) {
-        if (o == null) {
-            return "<null>";
+        if (o instanceof CharSequence || o instanceof Integer || o instanceof Long) {
+            return o.toString();
+        }
+        StringBuilder sb = new StringBuilder();
+        fmtObject(o, sb, 0);
+        return sb.toString();
+    }
+
+    public static void fmtObject(Object o, StringBuilder sb, int nestLevel) {
+       if (o == null) {
+            sb.append("<null>");
+            return;
         }
         if (o instanceof Date) {
-            return DnDateUtil.formatDate((Date)o);
+            sb.append(DnDateUtil.formatDate((Date)o));
         }
-        if (o instanceof Float || o instanceof Double || o instanceof BigDecimal) {
-            return fmtDouble(((Number)o).doubleValue());
+        else if (o instanceof Float || o instanceof Double || o instanceof BigDecimal) {
+            sb.append(fmtDouble(((Number)o).doubleValue()));
+        } else if (o instanceof Collection) {
+            if (nestLevel > 2) {
+                // Only format to so much depth.
+                sb.append("[...]");
+                return;
+            }
+            var c = (Collection)o;
+            if (c.isEmpty()) {
+                sb.append("[]");
+                return;
+            }
+            sb.append("[");
+            StringBuilder cSb = new StringBuilder(); // Re-usable string builder.
+            boolean isFirst = true;
+            for (Object cObj :c) {
+                if (!isFirst) {
+                     sb.append(',');
+                }
+                appendFmtString(sb, cSb, cObj, nestLevel + 1);
+                isFirst = false;
+            }
+            sb.append(']');
+        } else if (o instanceof Map) {
+            if (nestLevel > 2) {
+                // Only format to so much depth.
+                sb.append("[.:.]");
+                return;
+            }
+            Map m = (Map)o;
+            if (m.isEmpty()) {
+                sb.append("[:]");
+                return;
+            }
+            StringBuilder mSb = new StringBuilder(); // Re-usable string builder.
+            sb.append('[');
+            boolean isFirst = true;
+            for (Object key : m.keySet()) {
+                if (!isFirst) {
+                    sb.append(',');
+                }
+                Object val = m.get(key);
+                appendFmtString(sb, mSb, key, nestLevel + 1);
+                sb.append(':');
+                appendFmtString(sb, mSb, val, nestLevel + 1);
+                isFirst = false;
+            }
+            sb.append(']');
         }
-        return o.toString();
+        else {
+            StrUtil.escapeLiteralString(sb, o.toString());
+        }
+    }
+
+    static void appendFmtString(StringBuilder sb, StringBuilder tempSb, Object o, int nestLevel) {
+        fmtObject(o, tempSb, nestLevel);
+        if (o instanceof Collection || o instanceof Map) {
+            sb.append(tempSb);
+        } else {
+            String s = tempSb.toString();
+            boolean hasCommasOrBackslashes = s.indexOf(',') >= 0 || s.indexOf('\\') >= 0;
+            if (hasCommasOrBackslashes) {
+                sb.append("\"");
+            }
+            sb.append(s);
+            if  (hasCommasOrBackslashes) {
+                sb.append("\"");
+            }
+        }
+        // *The *tempSb* is a reusable parameter.
+        tempSb.setLength(0);
     }
 
     public static String fmtDouble(double d) {
@@ -91,9 +169,9 @@ public class ConvertUtil {
             return true;
         }
         if (o instanceof CharSequence) {
-            return ((CharSequence)o).length() > 0;
-        } else if (o instanceof List) {
-            return ((List)o).isEmpty();
+            return ((CharSequence)o).length() == 0;
+        } else if (o instanceof Collection) {
+            return ((Collection)o).isEmpty();
         } else if (o instanceof Map) {
             return ((Map)o).isEmpty();
         }

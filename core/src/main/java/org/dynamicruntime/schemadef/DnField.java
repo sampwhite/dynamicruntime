@@ -20,19 +20,23 @@ public class DnField {
     public final String description;
     public final String typeRef;
     public final DnType anonType;
+    // How to encode the data. It is one of the primitive types. It is extracted from
+    // the other type information.
+    public final String coreType;
     public final boolean isList;
     public final boolean isChoice;
     public final List<DnChoice> choices;
     public final boolean isStrict;
     public final Map<String,Object> data;
 
-    public DnField(String name, String label, String description, String typeRef, DnType anonType,
+    public DnField(String name, String label, String description, String typeRef, DnType anonType, String coreType,
         boolean isList, boolean isChoice, List<DnChoice> choices, boolean isStrict, Map<String,Object> data) {
         this.name = name;
         this.label = label;
         this.description = description;
         this.typeRef = typeRef;
         this.anonType = anonType;
+        this.coreType = coreType;
         this.isList = isList;
         this.isChoice = isChoice;
         this.choices = choices;
@@ -79,14 +83,48 @@ public class DnField {
         if (anonType == null && typeRef == null) {
             typeRef = DN_STRING;
         }
-        DnType dnAnonType = (anonType != null) ? DnType.extract(anonType, types) : null;
-        return new DnField(name, label, description, typeRef, dnAnonType, isList, isChoice, choices, isStrict,
-                data);
+        DnType dnAnonType = (anonType != null) ? DnType.extractAnon(anonType, types) : null;
+        String curBaseRef = (dnAnonType != null) ? dnAnonType.baseType : typeRef;
+        String coreType = determineCoreType(name, curBaseRef, 0, types);
+        return new DnField(name, label, description, typeRef, dnAnonType, coreType, isList, isChoice,
+                choices, isStrict, data);
 
     }
 
+    public static String determineCoreType(String fieldName, String curRef, int nestLevel,
+            Map<String,DnRawType> types) throws DnException {
+        if (curRef == null || isPrimitive(curRef)) {
+            return (curRef != null) ? curRef : DN_STRING;
+        }
+        if (nestLevel > 5) {
+            throw DnException.mkConv("Nesting too deep or recursive for determing primitive type of a field",
+                    null);
+        }
+        var rawType = types.get(curRef);
+        if (rawType == null) {
+            throw DnException.mkConv("Field " + fieldName + " referes to type " + curRef +
+                    " that does not exist.", null);
+        }
+        var fields = getOptMap(rawType.model, DN_FIELDS);
+        if (fields != null && fields.size() > 0) {
+            return DN_MAP;
+        }
+        var baseType = getOptStr(rawType.model, DN_BASE_TYPE);
+        return determineCoreType(fieldName, baseType, nestLevel + 1, types);
+    }
+
     public String toString() {
-        String type = (typeRef != null) ? typeRef : "anonType";
-        return String.format("%s[type=%s]", name, type);
+        String type = typeRef;
+        if (type == null) {
+            if (anonType != null && anonType.baseType != null) {
+                type = ":" + anonType.baseType;
+            }
+        }
+        type = (type != null) ? type : "anon";
+        String n = name;
+        if (isList) {
+            n = n + "[]";
+        }
+        return String.format("%s[type=%s]", n, type);
     }
 }

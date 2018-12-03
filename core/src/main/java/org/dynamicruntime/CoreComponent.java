@@ -29,7 +29,7 @@ public class CoreComponent implements ComponentDefinition {
     }
 
     @Override
-    public void addSchemaPackages(DnCxt cxt, DnRawSchemaStore schemaStore) {
+    public void addSchema(DnCxt cxt, DnRawSchemaStore schemaStore) {
 
     }
 

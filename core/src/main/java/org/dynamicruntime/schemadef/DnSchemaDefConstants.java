@@ -19,9 +19,14 @@ public class DnSchemaDefConstants {
     public static final String DN_ANY = "Any";
     public static final String DN_MAP = "Map";
     public static final String DN_GENERIC = "Generic";
+    /** Represent a type that is not represented by normal JSON style data. It can represent a
+     * request that takes no parameters or represent simple string data or binary data in a response.
+     * Using a value of DN_NONE essentially says that the normal JSON oriented DnSchema logic does not
+     * interact with the entity that has this type name. */
+    public static final String DN_NONE = "none";
 
     public static final Set<String> PRIMITIVE_TYPES = Set.of(DN_STRING, DN_BOOLEAN, DN_INTEGER,
-            DN_DATE, DN_FLOAT, DN_ANY, DN_MAP, DN_GENERIC);
+            DN_DATE, DN_FLOAT, DN_ANY, DN_MAP, DN_GENERIC, DN_NONE);
 
     public static boolean isPrimitive(String dnTypeName) {
         return PRIMITIVE_TYPES.contains(dnTypeName);
@@ -78,15 +83,29 @@ public class DnSchemaDefConstants {
     /** The value to use if the field is being treated as a choice list value. If value is not present
      * the field name is used instead. */
     public static final String DN_CHOICE_VALUE = "choiceValue";
+    /** The default value to use if none is supplied for field when field is used to validate or transform
+     * input data. */
+    public static final String DN_DEFAULT_VALUE = "defaultValue";
     /** Whether the DnField represents a field value that is required. */
     public static final String DN_REQUIRED = "required";
     /** Whether the DnField is implicitly deleted. */
     public static final String DN_DISABLED = "disabled";
 
     //
+    // Core types.
+    //
+    /** Namespace for core types. */
+    public static final String DN_CORE_NAMESPACE = "core";
+    /** Type for a counting integer. An integer that starts at zero. Note that we have already
+     * applied the namespace so that it can be easily referenced as type for a field. */
+    public static final String DN_COUNT = "core.Count";
+
+    //
     // Endpoint fields.
     //
 
+    /** Name of endpoint builder. */
+    public static final String EP_ENDPOINT = "endpoint";
     /** Endpoint path. */
     public static final String EP_PATH = "path";
     /** Name of function to execute. */
@@ -109,5 +128,10 @@ public class DnSchemaDefConstants {
     public static final String EP_DURATION = "duration";
     /** The items to be returned. */
     public static final String EP_ITEMS = "items";
+    /** The name of the field that defines the input type for the endpoint. */
+    public static final String EP_INPUT_TYPE = "endpointInputType";
+    /** The name of the field that defines the output type for the endpoint. */
+    public static final String EP_OUTPUT_TYPE = "endpointOutputType";
+
 
 }

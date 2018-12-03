@@ -11,7 +11,7 @@ import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 import java.util.Map;
 
 /** Convenience class for building up a Map of data holding the definition data for a DnField. */
-@SuppressWarnings("WeakerAccess")
+@SuppressWarnings({"WeakerAccess", "unused"})
 public class DnRawField {
     public final String name;
     public final Map<String,Object> data;
@@ -34,12 +34,33 @@ public class DnRawField {
         return mkField(name, label, description).setOption(DN_REQUIRED, true);
     }
 
+    public static DnRawField mkIntField(String name, String label, String description) throws DnException {
+        return mkField(name, label, description).setTypeRef(DN_INTEGER);
+    }
+
+    public static DnRawField mkReqIntField(String name, String label, String description) throws DnException {
+        return mkField(name, label, description).setTypeRef(DN_INTEGER).setOption(DN_REQUIRED, true);
+    }
+
+    public static DnRawField mkBoolField(String name, String label, String description) throws DnException {
+        return mkField(name, label, description).setTypeRef(DN_BOOLEAN);
+    }
+
+    public static DnRawField mkDateField(String name, String label, String description) throws DnException {
+        return mkField(name, label, description).setTypeRef(DN_DATE);
+    }
+
+    public static DnRawField mkReqDateField(String name, String label, String description) throws DnException {
+        return mkField(name, label, description).setTypeRef(DN_DATE).setOption(DN_REQUIRED, true);
+    }
+
     public DnRawField setTypeRef(String typeRef) {
         data.put(DN_TYPE_REF, typeRef);
         return this;
     }
 
     public DnRawField setTypeDef(DnRawType rawType) {
+        rawType.finish();
         data.put(DN_TYPE_DEF, rawType.model);
         return this;
     }

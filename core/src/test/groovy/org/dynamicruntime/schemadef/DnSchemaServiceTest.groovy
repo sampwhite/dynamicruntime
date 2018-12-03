@@ -1,6 +1,7 @@
 package org.dynamicruntime.schemadef
 
 import org.dynamicruntime.context.DnCxt
+import org.dynamicruntime.request.DnRequestCxt
 import org.dynamicruntime.startup.ComponentDefinition
 import org.dynamicruntime.startup.InstanceRegistry
 import org.dynamicruntime.startup.LogStartup
@@ -34,8 +35,9 @@ class DnSchemaServiceTest extends Specification {
         }
 
         @Override
-        void addSchemaPackages(DnCxt cxt, DnRawSchemaStore schemaStore) {
+        void addSchema(DnCxt cxt, DnRawSchemaStore schemaStore) {
             schemaStore.addPackage(schemaPackage)
+            schemaStore.addFunction("testEndpoint", {r -> testEndpoint(r)})
         }
 
         @Override
@@ -47,6 +49,8 @@ class DnSchemaServiceTest extends Specification {
         Collection<Class> getServiceInitializers(DnCxt cxt) {
             return []
         }
+
+        static void testEndpoint(DnRequestCxt requestCxt) {}
     }
 
     def "Test loading schema"() {
@@ -74,5 +78,34 @@ class DnSchemaServiceTest extends Specification {
         dnType1b != null
         dnType1b.fieldsByName.get(fld3.name).typeRef == "${namespace}.${type1a.name}"
         LogStartup.log.debug(cxt, "Finished test loading schema")
+    }
+
+    def "Test creating endpoint"() {
+        when: "Creating a simple endpoint"
+        def fld1 = DnRawField.mkField("field1a", "Field 1 A", "The first field of first type")
+        def fld2 = DnRawField.mkField("field1b", null, null).setTypeRef(DN_INTEGER)
+        def inType1 = DnRawType.mkType("FirstInType", [fld1, fld2])
+        def fld3 = DnRawField.mkField("field1b", "Field 1 B", "The response field")
+        def outType1 = DnRawType.mkType("FirstOutType", [fld3])
+
+        def endpointType1 = DnRawEndpoint.mkListEndpoint("/test/example", "testEndpoint", "Test of endpoint definition",
+            "FirstInType", "FirstOutType")
+        def pckgName1 = "TestEndpointPackage1"
+        String namespace = "test"
+        def pkg1 = DnRawSchemaPackage.mkPackage("pckgName1", namespace,
+                [inType1, outType1, endpointType1.getRawType()])
+        def testComponent1 = new TestComponent(pkg1)
+        def config = InstanceRegistry.getOrCreateInstanceConfig(pckgName1, [:], [testComponent1])
+        def cxt = InstanceRegistry.createCxt("TestEndpointSchema1", config)
+        def schemaStore = cxt.getSchema()
+        def endpointDef = schemaStore?.endpoints.get("/test/example")
+
+        then: "Endpoint definition should be as expected"
+        endpointDef != null
+        endpointDef.inType.fields.size() == 3
+        endpointDef.outType.fields.size() == 5
+        endpointDef.inType.fieldsByName.limit != null
+        endpointDef.outType.fieldsByName.items?.isList
+
     }
 }

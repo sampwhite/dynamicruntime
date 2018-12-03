@@ -15,15 +15,19 @@ public class DnRawSchemaPackage {
         this.namespace = namespace;
     }
 
-    public DnRawSchemaPackage addTypes(List<DnRawType> types) {
+    public DnRawSchemaPackage addTypes(List<DnRawTypeInterface> types) {
+        var typesToAdd = new ArrayList<DnRawType>();
         for (var type : types) {
-            type.finish();
+            var rawType = type.getRawType();
+            rawType.finish();
+            typesToAdd.add(rawType);
         }
-        rawTypes.addAll(types);
+        rawTypes.addAll(typesToAdd);
         return this;
     }
 
-    public static DnRawSchemaPackage mkPackage(String packageName, String namespace, List<DnRawType> types) {
+    public static DnRawSchemaPackage mkPackage(String packageName, String namespace,
+            List<DnRawTypeInterface> types) {
         return new DnRawSchemaPackage(packageName, namespace).addTypes(types);
     }
 }

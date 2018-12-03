@@ -9,7 +9,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -40,6 +39,7 @@ public class ParsingUtil {
     }
 
     /** Parsed a JSON list from a string. */
+    /* Commented out until needed.
     @SuppressWarnings("unchecked")
     public static List<Object> toJsonList(String str) throws DnException {
         if (str == null || str.indexOf('[') < 0) {
@@ -49,8 +49,8 @@ public class ParsingUtil {
         try {
             JSONParser parser = new JSONParser();
             Object o = parser.parse(str);
-            if (o instanceof JSONArray) {
-                var a = (JSONArray)o;
+            if (o instanceof org.json.simple.JSONArray) {
+                var a = (org.json.simple.JSONArray)o;
                 return (List<Object>)a;
             }
             throw DnException.mkConv("String holding JSON did not convert to a list.", null);
@@ -58,6 +58,7 @@ public class ParsingUtil {
             throw DnException.mkConv("Unable to parse JSON list from string.", pe);
         }
     }
+    */
 
     public static String toJsonString(Object obj) {
         return toJsonString(obj, false);
@@ -118,7 +119,7 @@ public class ParsingUtil {
                     appendIndents(sb, nestLevel + 1);
                 }
                 sb.append("\"");
-                escapeLiteralString(sb, ks);
+                StrUtil.escapeLiteralString(sb, ks);
                 sb.append("\":");
                 appendJson(sb, v, nestLevel + 1, isCompact);
                 isFirst = false;
@@ -150,7 +151,7 @@ public class ParsingUtil {
         } else {
             String objStr = fmtObject(obj);
             sb.append('\"');
-            escapeLiteralString(sb, objStr);
+            StrUtil.escapeLiteralString(sb, objStr);
             sb.append('\"');
         }
     }
@@ -161,51 +162,6 @@ public class ParsingUtil {
         }
     }
 
-    /** Encodes a string to be used in JSON output. Taken from JSONValue. */
-    public static void escapeLiteralString(StringBuilder sb, String str) {
-        for(int i = 0; i < str.length(); i++){
-            char ch = str.charAt(i);
-            switch(ch){
-                case '"':
-                    sb.append("\\\"");
-                    break;
-                case '\\':
-                    sb.append("\\\\");
-                    break;
-                case '\b':
-                    sb.append("\\b");
-                    break;
-                case '\f':
-                    sb.append("\\f");
-                    break;
-                case '\n':
-                    sb.append("\\n");
-                    break;
-                case '\r':
-                    sb.append("\\r");
-                    break;
-                case '\t':
-                    sb.append("\\t");
-                    break;
-                case '/':
-                    sb.append("\\/");
-                    break;
-                default:
-                    //Reference: http://www.unicode.org/versions/Unicode5.1.0/
-                    if((ch <= '\u001F') || (ch >= '\u007F' && ch <= '\u009F') || (ch >= '\u2000' && ch <= '\u20FF')){
-                        String ss=Integer.toHexString(ch);
-                        sb.append("\\u");
-                        for(int k=0;k<4-ss.length();k++){
-                            sb.append('0');
-                        }
-                        sb.append(ss.toUpperCase());
-                    }
-                    else{
-                        sb.append(ch);
-                    }
-            }
-        } // end for loop
-    }
 
     public static boolean isJsonEqual(Object o1, Object o2) {
         return isJsonEqual(o1, o2, 0);

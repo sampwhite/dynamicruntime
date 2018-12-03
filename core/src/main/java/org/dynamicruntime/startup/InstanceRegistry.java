@@ -9,10 +9,7 @@ import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.context.DnCxtConstants.*;
 import static org.dynamicruntime.startup.LogStartup.*;
 
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @SuppressWarnings("WeakerAccess")
 public class InstanceRegistry {
@@ -42,7 +39,7 @@ public class InstanceRegistry {
     }
 
     public static InstanceConfig getOrCreateInstanceConfig(String instanceName, Map<String,Object> overlayConfig,
-                Collection<ComponentDefinition> compDefs) throws DnException {
+                Collection<ComponentDefinition> suppliedCompDefs) throws DnException {
         synchronized (instanceConfigs) {
             var curConfig = instanceConfigs.get(instanceName);
             if (curConfig != null) {
@@ -65,8 +62,13 @@ public class InstanceRegistry {
             var rawSchemaStore = new DnRawSchemaStore();
             config.put(DnRawSchemaStore.DN_RAW_SCHEMA_STORE, rawSchemaStore);
 
+            // Use sorted version of components.
+            var compDefs = cloneList(suppliedCompDefs);
+            compDefs.sort(Comparator.comparingInt(ComponentDefinition::loadPriority));
+
             for (var definition : compDefs) {
-                definition.addSchemaPackages(cxt, rawSchemaStore);
+                // Register DnRawSchemaPackage and DnEndpointFunction objects.
+                definition.addSchema(cxt, rawSchemaStore);
             }
 
             // Collect component service initializers.

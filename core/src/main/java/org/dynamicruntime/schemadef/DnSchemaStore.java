@@ -8,10 +8,14 @@ import java.util.Map;
 /** Read only store of DnType objects designed for consumption. */
 @SuppressWarnings("WeakerAccess")
 public class DnSchemaStore {
+    /** Types by namespaced names. */
     public final Map<String,DnType> types;
+    /** Endpoints by path. Pulled from *types*.*/
+    public final Map<String,DnEndpoint> endpoints;
 
-    public DnSchemaStore(Map<String,DnType> types) {
-        this.types = Collections.unmodifiableMap(types);
+    public DnSchemaStore(Map<String,DnType> types, Map<String,DnEndpoint> endpoints) {
+        this.types = types;
+        this.endpoints = endpoints;
     }
 
     public static DnSchemaStore get(DnCxt cxt) {
