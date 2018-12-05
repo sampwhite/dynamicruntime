@@ -1,5 +1,7 @@
 package org.dynamicruntime.util;
 
+import java.util.List;
+
 public class StrUtil {
     public static String getBeforeLastIndex(String str, String sep) {
         int index = str.lastIndexOf(sep);
@@ -88,5 +90,10 @@ public class StrUtil {
                     }
             }
         } // end for loop
+    }
+
+    public static List<String> splitString(String str, String sep) {
+        String[] values = str.split(sep);
+        return DnCollectionUtil.mListA(values);
     }
 }

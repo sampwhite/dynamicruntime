@@ -50,6 +50,9 @@ public class DnRawType implements DnRawTypeInterface {
     public DnRawType cloneType(String namespace) {
         Map<String,Object> newModel = cloneMap(model);
 
+        // See if reference to base type needs to have a namespace applied to it.
+        DnTypeUtils.updateTypeIfChanged(namespace, DN_BASE_TYPE, newModel, false);
+
         var fields = getOptListOfMaps(newModel, DN_FIELDS);
         if (fields != null) {
             var newFields = nMapSimple(fields, (fld -> {
@@ -82,6 +85,7 @@ public class DnRawType implements DnRawTypeInterface {
         if (anonData == null) {
             return null;
         }
+
         List<Map<String,Object>> fields = getOptListOfMaps(anonData, DN_FIELDS);
         if (fields == null) {
             return null;
@@ -101,6 +105,10 @@ public class DnRawType implements DnRawTypeInterface {
         }));
         if (changed[0]) {
             var newAnonData = cloneMap(anonData);
+
+            // See if reference to base type needs to have a namespace applied to it.
+            DnTypeUtils.updateTypeIfChanged(namespace, DN_BASE_TYPE, newAnonData, false);
+
             newAnonData.put(DN_FIELDS, newFields);
             if (cloneIfChanged) {
                 var newFieldData = cloneMap(fieldData);
@@ -111,6 +119,12 @@ public class DnRawType implements DnRawTypeInterface {
                 fieldData.put(DN_TYPE_DEF, newAnonData);
                 return fieldData;
             }
+        } else {
+            var newAnonData = DnTypeUtils.updateTypeIfChanged(namespace, DN_BASE_TYPE,
+                    anonData, true);
+            if (newAnonData != null) {
+                return newAnonData;
+            }
         }
         return null;
     }
@@ -119,17 +133,17 @@ public class DnRawType implements DnRawTypeInterface {
         return DnRawType.extract(mMap(DN_NAME, typeName)).addFields(fields);
     }
 
-    public static DnRawType mkType(List<DnRawField> fields) throws DnException {
+    public static DnRawType mkType(List<DnRawField> fields) {
         return new DnRawType(null, mMap()).addFields(fields);
     }
 
     /** Makes a type that extends from another type. If the type is anonymous then the *typeName*
      * can be null. */
-    public static DnRawType mkSubType(String typeName, String baseTypeName) throws DnException {
+    public static DnRawType mkSubType(String typeName, String baseTypeName) {
         return new DnRawType(typeName, mMap(DN_NAME, typeName, DN_BASE_TYPE, baseTypeName));
     }
 
-    public static DnRawType mkSubType(String baseTypeName) throws DnException {
+    public static DnRawType mkSubType(String baseTypeName) {
         return new DnRawType(null, mMap(DN_BASE_TYPE, baseTypeName));
     }
 

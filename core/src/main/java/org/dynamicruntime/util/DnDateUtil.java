@@ -64,7 +64,7 @@ public class DnDateUtil {
     public static Date parseDate(String inputStr) throws DnException {
         String str = inputStr != null ? inputStr.trim() : "";
         if (str.isEmpty()) {
-            throw DnException.mkConv("Date string to be parsed was null or empty.", null);
+            throw DnException.mkConv("Date string to be parsed was null or empty.");
         }
 
         // Inspect the string for different possible formats.
@@ -75,7 +75,7 @@ public class DnDateUtil {
         }
         if (secondDash != 7 || str.length() < 10) {
             throw DnException.mkConv(
-                    String.format("Date string '%s' does not follow a recognizable date format.", inputStr), null);
+                    String.format("Date string '%s' does not follow a recognizable date format.", inputStr));
         }
         try {
             ZonedDateTime zdt;

@@ -11,6 +11,8 @@ import java.util.*;
 public class ConvertUtil {
     public static final ThreadLocal<DecimalFormat> decimalFormatter =
             ThreadLocal.withInitial(() -> new DecimalFormat("0.0##"));
+    public static final ThreadLocal<DecimalFormat> trimmedDecimalFormatter =
+            ThreadLocal.withInitial(() -> new DecimalFormat("0.##"));
     /** Creates a report version of an object. Also used to create JSON representations of primitive objects. */
     public static String fmtObject(Object o) {
         if (o instanceof CharSequence || o instanceof Integer || o instanceof Long) {
@@ -107,6 +109,10 @@ public class ConvertUtil {
         return decimalFormatter.get().format(d);
     }
 
+    public static String fmtTrimmedDouble(double d) {
+        return trimmedDecimalFormatter.get().format(d);
+   }
+
     public static boolean areCloseNumbers(Number n1, Number n2) {
         if (n1 == null || n2 == null) {
             return n1 == null && n2 == null;
@@ -135,10 +141,19 @@ public class ConvertUtil {
         return null;
     }
 
+
+    public static String toTrimmedOptStr(Object o) {
+        String s = toOptStr(o);
+        if (s != null) {
+            s = s.trim();
+        }
+        return (s != null && !s.isEmpty()) ? s : null;
+    }
+
     public static String toReqStr(Object o) throws DnException {
         String s = toOptStr(o);
         if (s == null) {
-            throw DnException.mkConv(String.format("Could not coerce '%s' to required string", o), null);
+            throw DnException.mkConv(String.format("Could not coerce '%s' to required string", o));
         }
         return s;
     }
@@ -153,12 +168,12 @@ public class ConvertUtil {
     public static String getReqStr(Map<String,Object> map, String key) throws DnException {
         if (map == null) {
             throw DnException.mkConv(
-                    String.format("Could not get '%s' from null map.", key), null);
+                    String.format("Could not get '%s' from null map.", key));
         }
         String s = getOptStr(map, key);
         if (s == null) {
             throw DnException.mkConv(String.format("Value for '%s' in data " +
-                    "was not present, empty, or not a string.", key), null);
+                    "was not present, empty, or not a string.", key));
 
         }
         return s;
@@ -199,7 +214,7 @@ public class ConvertUtil {
     public static long toReqLong(Object o) throws DnException {
         Long l = toOptLong(o);
         if (l == null) {
-            throw DnException.mkConv(String.format("Could not convert '%s' to a long value", o), null);
+            throw DnException.mkConv(String.format("Could not convert '%s' to a long value", o));
         }
         return l;
     }
@@ -308,7 +323,7 @@ public class ConvertUtil {
     public static Date toReqDate(Object o) throws DnException {
         Date d = toOptDate(o);
         if (d == null) {
-            throw DnException.mkConv(String.format("Object '%s' could not be coerced to date.", o), null);
+            throw DnException.mkConv(String.format("Object '%s' could not be coerced to date.", o));
         }
         return d;
     }
@@ -332,9 +347,36 @@ public class ConvertUtil {
             throw DnException.mkConv(String.format("Could not extract date value using key '%s'.", key), e);
         }
         if (d == null) {
-            throw DnException.mkConv(String.format("There was no date value at key '%s'.", key), null);
+            throw DnException.mkConv(String.format("There was no date value at key '%s'.", key));
         }
         return d;
+    }
+
+    public static Double getOptDouble(Map<String,Object> map, String key) throws DnException {
+        if (map == null) {
+            return null;
+        }
+        Object o = map.get(key);
+        try {
+            return toOptDouble(o);
+        } catch (DnException e) {
+            throw DnException.mkConv(String.format("Could not extract floating point value using " +
+                    "key '%s'.", key), e);
+        }
+    }
+
+
+    public static Double toOptDouble(Object obj) throws DnException {
+        if (obj instanceof Number) {
+            return ((Number)obj).doubleValue();
+        } else if (obj instanceof CharSequence) {
+            try {
+                return Double.parseDouble(obj.toString());
+            } catch (NumberFormatException e) {
+                throw DnException.mkConv(String.format("Failed to convert %s to a double.", fmtObject(obj)), e);
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")

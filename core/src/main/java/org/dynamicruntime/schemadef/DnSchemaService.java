@@ -73,7 +73,7 @@ public class DnSchemaService implements ServiceInitializer {
                     DnBuilder builderFunction = rawSchemaStore.builders.get(builder);
                     if (builderFunction == null) {
                         throw DnException.mkConv(String.format("Unable to find implementation of builder " +
-                                "%s for type %s.", builder, rawTypeIn.name), null);
+                                "%s for type %s.", builder, rawTypeIn.name));
                     }
                     rawType = builderFunction.buildType(cxt, rawTypeIn);
                     rawType.finish();
@@ -86,7 +86,7 @@ public class DnSchemaService implements ServiceInitializer {
                     var endpointFunction = rawSchemaStore.functions.get(functionName);
                     if (endpointFunction == null) {
                         throw DnException.mkConv(String.format("Unable to find function %s " +
-                                "for dnType %s.", functionName, rawTypeIn.name), null);
+                                "for dnType %s.", functionName, rawTypeIn.name));
                     }
                     DnEndpoint endpoint = DnEndpoint.extract(dnType, endpointFunction);
                     endpoints.put(endpoint.path, endpoint);

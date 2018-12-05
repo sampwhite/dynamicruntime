@@ -32,14 +32,13 @@ public class ParsingUtil {
                 var m = (JSONObject)o;
                 return (Map<String,Object>)m;
             }
-            throw DnException.mkConv("String holding JSON did not convert to a map.", null);
+            throw DnException.mkConv("String holding JSON did not convert to a map.");
         } catch (ParseException pe) {
             throw DnException.mkConv("Unable to parse JSON map from string.", pe);
         }
     }
 
     /** Parsed a JSON list from a string. */
-    /* Commented out until needed.
     @SuppressWarnings("unchecked")
     public static List<Object> toJsonList(String str) throws DnException {
         if (str == null || str.indexOf('[') < 0) {
@@ -58,7 +57,6 @@ public class ParsingUtil {
             throw DnException.mkConv("Unable to parse JSON list from string.", pe);
         }
     }
-    */
 
     public static String toJsonString(Object obj) {
         return toJsonString(obj, false);

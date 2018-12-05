@@ -1,5 +1,6 @@
 package org.dynamicruntime.schemadef;
 
+import java.util.List;
 import java.util.Set;
 
 /** Holds the static strings for schema. */
@@ -86,10 +87,16 @@ public class DnSchemaDefConstants {
     /** The default value to use if none is supplied for field when field is used to validate or transform
      * input data. */
     public static final String DN_DEFAULT_VALUE = "defaultValue";
+    /** Sort rank of the field. Fields with lower sort rank will be put earlier into the list of fields. Fields
+     * that share sort ranks will keep their original order. */
+    public static final String DN_SORT_RANK = "sortRank";
     /** Whether the DnField represents a field value that is required. */
     public static final String DN_REQUIRED = "required";
     /** Whether the DnField is implicitly deleted. */
     public static final String DN_DISABLED = "disabled";
+
+    /** Default sort rank. */
+    public static final int DN_DEFAULT_SORT_RANK = 100;
 
     //
     // Core types.
@@ -106,6 +113,8 @@ public class DnSchemaDefConstants {
 
     /** Name of endpoint builder. */
     public static final String EP_ENDPOINT = "endpoint";
+    /** The http method (GET, POST, or PUT) for the endpoint. */
+    public static final String EP_HTTP_METHOD = "httpMethod";
     /** Endpoint path. */
     public static final String EP_PATH = "path";
     /** Name of function to execute. */
@@ -132,6 +141,13 @@ public class DnSchemaDefConstants {
     public static final String EP_INPUT_TYPE = "endpointInputType";
     /** The name of the field that defines the output type for the endpoint. */
     public static final String EP_OUTPUT_TYPE = "endpointOutputType";
+
+    /** The allowable HTTP methods. */
+    public static final String EP_GET = "GET";
+    public static final String EP_POST = "POST";
+    public static final String EP_PUT = "PUT";
+
+    public static final List<String> EP_ALLOWABLE_HTTP_METHODS = List.of(EP_GET, EP_POST, EP_PUT);
 
 
 }

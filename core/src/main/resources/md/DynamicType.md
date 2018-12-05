@@ -87,11 +87,9 @@ structure of the DnType is as follows.
  * *isList* - Whether the field represents a list of values instead of single value.
  * *typeIsChoices* - Whether the DnField's type definition represents choices with each DnField entry
   representing a choice.
-  is the value of the choice. If this entry is not present, then the choiceValue is assumed to be the
-  name of the field.
  * *dnChoiceTypeRef* - If *typeIsChoices* is enabled, then this is the value type for the values of the choices.
-  If this entry is missing then it is computed, first by looking at the type of the first DnField and if there
-  are no entries, then it is assumed to be a string.
+  If this entry is missing then it is computed, first by looking at the type of the first DnField in the
+  associated type and if there are no fields, then it is assumed to be a string.
  * *typeIsStrict* - If *typeIsChoices* is set, then it means the value must be one of the possible values. In
   other validations, it can be used to say that the validation should be applied in the strictest way.
  * *choiceValue* - If this field is being used for an entry in a choice list, this is the value to use for
@@ -101,6 +99,14 @@ structure of the DnType is as follows.
  * *required* - A non-empty value is required for this field.
  * *disabled* - The field is disabled and treated as if it were not present. For example, if one type extends
   another, the extending type can redeclare a field as disabled to remove that field from the type.
+ * *sortRank* - A value that specifies which fields should be sorted before other fields in the list of fields.
+ This is usually only explicitly set when two field lists are being merged with each other.
+ The default sort is to keep the original field order that was used when the type was created with merged in fields
+ being appended to existing fields. But sometimes it is useful to control the sort order so that certain fields
+ (particularly protocol fields) come either earlier or later in the list. Also, when the schema is used as a choice
+ list, it can be used to control how new entries get merged in with the existing entries. The *sortRank* is
+ of particular interest to *DnBuilder* functions which want to make sure that their created types have the fields
+ in the order they desire. The default sort rank of a field is 100.
  * *&lt;other&gt;* - Other attributes of the field definition, though in general, unlike with DnType, the attributes
   here should be relatively simple.
   
@@ -151,6 +157,7 @@ name: CategoryRequest
 label: Requests Content by Category
 description: Allows requests by category starting after a particular date.
 dnBuilder: endpoint
+httpMethod: GET
 path: /content/byCategory
 function: getContent
 inputTypeRef: Category
@@ -171,6 +178,7 @@ name: CategoryRequest
 label: Requests Content by Category
 description: Allows requests by category starting after a particular date.
 dnBuilder: endpoint
+httpMethod: GET
 path: /content/byCategory
 function: getContent
 inputTypeRef: Category
@@ -188,6 +196,7 @@ dnFields:
              label: Limit on Results
              description: Maximum number of items that can be returned.
              defaultValue: 100
+             sortRank: 200
              dnTypeDef:
                 baseType: Count
                 max: 20000
@@ -229,8 +238,8 @@ Integer and has a *min* value of zero.
 
 If you look at the above, there are some things to call out. The first is that the
 DnType *Category* is extended to have an additional *limit* field that can be used to
-limit the results. The second is that the DnType *Category* has been completely refactored
-so that it is the DnType for each of the objects in the *items* field. The values 
+limit the results. The second is that the DnType *Content* has been subsumed into a containing type
+so that the *items* field of the containing type has *Content* has the of one of its objects. The values 
 *duration*, *requestUri*, and *none* are all handled by generic protocol handlers and
 are invisible to the function *getContent*.
 

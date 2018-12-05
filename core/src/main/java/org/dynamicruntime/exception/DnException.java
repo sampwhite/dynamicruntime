@@ -86,6 +86,10 @@ public class DnException extends Exception {
     /** Creates exception on conversion or parsing activities. Many times conversion or parsing
      * exceptions can be turned into bad input exceptions if there is a requesting agent who might
      * have provided bad data. */
+    public static DnException mkConv(String msg) {
+        return mkConv(msg, null);
+    }
+
     public static DnException mkConv(String msg, Throwable t) {
         return new DnException(msg, t, INTERNAL_ERROR, SYSTEM, CONVERSION);
     }

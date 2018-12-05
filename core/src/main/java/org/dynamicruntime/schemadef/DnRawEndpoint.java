@@ -27,6 +27,9 @@ public class DnRawEndpoint implements DnRawTypeInterface {
             name = StrUtil.turnPathIntoName(path);
             epModel.put(DN_NAME, name);
         }
+        if (!epModel.containsKey(EP_HTTP_METHOD)) {
+            epModel.put(EP_HTTP_METHOD, EP_GET);
+        }
         epModel.put(DN_IS_ENDPOINT, true);
         epModel.put(DN_BUILDER, EP_ENDPOINT);
         return new DnRawType(name, epModel);
@@ -49,6 +52,8 @@ public class DnRawEndpoint implements DnRawTypeInterface {
                 .setOption(EP_IS_LIST_RESPONSE, true);
     }
 
-
-
+    public DnRawEndpoint setMethod(String method) {
+        epModel.put(EP_HTTP_METHOD, method);
+        return this;
+    }
 }

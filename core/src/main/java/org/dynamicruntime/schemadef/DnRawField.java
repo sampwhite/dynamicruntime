@@ -19,6 +19,7 @@ public class DnRawField {
     public DnRawField(String name, Map<String,Object> data) {
         this.name = name;
         this.data = data;
+        int sortRank = DN_DEFAULT_SORT_RANK;
     }
 
     public static DnRawField mkRawField(Map<String,Object> data) throws DnException {

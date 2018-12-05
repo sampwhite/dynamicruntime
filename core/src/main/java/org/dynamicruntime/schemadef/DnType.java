@@ -7,6 +7,7 @@ import static org.dynamicruntime.util.DnCollectionUtil.*;
 
 import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -18,31 +19,43 @@ public class DnType {
     public final String baseType;
     public final boolean noTrimming;
     public final boolean noCommas;
-    public final Long min;
-    public final Long max;
+    public final Double min;
+    public final Double max;
     public final List<DnField> fields;
     public final Map<String,DnField> fieldsByName;
     public final Map<String,Object> model;
     public final boolean isSimple;
 
-    /** Holds results from recursive merging of base types. */
-    static class MergeData {
-        Map<String,Object> model;
-        List<DnRawField> rawFields;
-        String baseType;
-    }
 
     /** DnRawField has unmodifiable fields, this class has modifiable fields. */
     static class RawField {
         String name;
         Map<String,Object> data;
-        RawField(String name, Map<String,Object> data) {
+        int nestLevel;
+        int sortRank;
+
+        RawField(String name, Map<String,Object> data, int nestLevel, int sortRank) {
             this.name = name;
             this.data = data;
+            this.nestLevel = nestLevel;
+            this.sortRank = sortRank;
+        }
+
+        static RawField mk(Map<String,Object> data, int nestLevel) throws DnException {
+            String name = getReqStr(data, DN_NAME);
+            int rank = (int) getLongWithDefault(data, DN_SORT_RANK, DN_DEFAULT_SORT_RANK);
+            return new RawField(name, data, nestLevel, rank);
         }
     }
 
-    public DnType(String name, String baseType, boolean noTrimming, boolean noCommas, Long min, Long max,
+    /** Holds results from recursive merging of base types. */
+    static class MergeData {
+        Map<String,Object> model;
+        List<RawField> rawFields;
+        String baseType;
+    }
+
+    public DnType(String name, String baseType, boolean noTrimming, boolean noCommas, Double min, Double max,
             List<DnField> fields, Map<String,Object> model) {
         this.name = name;
         this.baseType = baseType;
@@ -82,27 +95,36 @@ public class DnType {
     public static DnType extractNamed(String name, Map<String,Object> model, Map<String,DnRawType> types) throws DnException {
         boolean noTrimming = getBoolWithDefault(model, DN_NO_TRIMMING, false);
         boolean noCommas = getBoolWithDefault(model, DN_NO_COMMAS, false);
-        Long min = getOptLong(model, DN_MIN);
-        Long max = getOptLong(model, DN_MAX);
+        Double min = getOptDouble(model, DN_MIN);
+        Double max = getOptDouble(model, DN_MAX);
 
         // Merge in base types, with a particular focus on fields.
         MergeData md = mergeWithBaseType(model, types, 0);
+        var newModel = md.model;
 
         List<RawField> newRawFields = null;
 
         // Collapse raw fields, later fields map data is merged with earlier fields of the same name.
         if (md.rawFields != null) {
+            // Sort raw fields (note we are really depending on this being a stable sort.
+            md.rawFields.sort(Comparator.comparingInt(f -> f.sortRank));
             Map<String,RawField> foundFields = mMapT();
             newRawFields = mList();
             for (var rawField : md.rawFields) {
-                var newRawField = new RawField(rawField.name, cloneMap(rawField.data));
                 RawField existing = foundFields.get(rawField.name);
                 if (existing != null) {
-                    // New data is merged into existing.
-                    existing.data.putAll(newRawField.data);
+                    // Depending on nest level, we can merge in two different ways but with
+                    // lower nest level fields merging their data into higher nest level fields.
+                    if (rawField.nestLevel <= existing.nestLevel) {
+                        existing.data.putAll(rawField.data);
+                    } else {
+                        rawField.data.putAll(existing.data);
+                        // Switch in the new merged data for existing.
+                        existing.data = rawField.data;
+                    }
                 } else {
-                    newRawFields.add(newRawField);
-                    foundFields.put(newRawField.name, newRawField);
+                    newRawFields.add(rawField);
+                    foundFields.put(rawField.name, rawField);
                 }
             }
         }
@@ -111,16 +133,19 @@ public class DnType {
         List<DnField> dnFields = null;
         String baseType = null;
         if (newRawFields != null) {
-            dnFields = nMap(newRawFields, (fld -> DnField.extract(fld.data, types)));
+            dnFields = nMap(newRawFields, (rawFld ->
+                    getBoolWithDefault(rawFld.data, DN_DISABLED, false) ?
+                            null :
+                            DnField.extract(rawFld.data, types)));
         } else {
             baseType = md.baseType;
         }
 
         // Remove *dnFields* from model since they have been fully extracted and after the merging
         // with base type, they may have no correspondence with the version we extracted.
-        model.remove(DN_FIELDS);
+        newModel.remove(DN_FIELDS);
 
-        return new DnType(name, baseType, noTrimming, noCommas, min, max, dnFields, model);
+        return new DnType(name, baseType, noTrimming, noCommas, min, max, dnFields, newModel);
     }
 
     public static MergeData mergeWithBaseType(Map<String,Object> model, Map<String,DnRawType> types, int nestLevel)
@@ -129,13 +154,13 @@ public class DnType {
             throw new DnException("Nesting of types is recursive at type " + model.get(DN_NAME) + ".");
         }
         List<Map<String,Object>> fields = getOptListOfMaps(model, DN_FIELDS);
-        List<DnRawField> rawFields = null;
+        List<RawField> rawFields = null;
         if (fields != null && fields.size() > 0) {
-            rawFields = nMap(fields, DnRawField::mkRawField);
+            rawFields = nMap(fields, (fld -> RawField.mk(fld, nestLevel)));
         }
+        String baseTypeName = getOptStr(model, DN_BASE_TYPE);
 
         var md = new MergeData();
-        String baseTypeName = getOptStr(model, DN_BASE_TYPE);
         if (baseTypeName == null || isPrimitive(baseTypeName)) {
             md.model = cloneMap(model);
             md.rawFields = rawFields;
@@ -146,7 +171,7 @@ public class DnType {
         DnRawType baseType = types.get(baseTypeName);
         if (baseType == null) {
             throw DnException.mkConv("Could not find base type " + baseTypeName +
-                    " referenced by " + model.get(DN_NAME) + ".", null);
+                    " referenced by " + model.get(DN_NAME) + ".");
         }
 
         var mdBase = mergeWithBaseType(baseType.model, types, nestLevel + 1);
@@ -158,6 +183,7 @@ public class DnType {
             if (rawFields != null) {
                 newRawFields = mList();
                 newRawFields.addAll(mdBase.rawFields);
+                // New raw fields go on the end of list of fields by default. Use the *sortRank* to change this.
                 newRawFields.addAll(rawFields);
             } else{
                 newRawFields = mdBase.rawFields;
@@ -183,6 +209,6 @@ public class DnType {
             n = ":" + baseType;
         }
         n = (n != null) ? n : "anon";
-        return String.format("%s[fields=%s]", n, (fields != null) ? fields.toString() : "<no-fields>");
+        return String.format("%s{fields=%s}", n, (fields != null) ? fields.toString() : "<no-fields>");
     }
 }
