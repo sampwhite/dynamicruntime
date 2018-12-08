@@ -3,6 +3,7 @@ package org.dynamicruntime.schemadef;
 import org.dynamicruntime.exception.DnException;
 
 import static org.dynamicruntime.util.ConvertUtil.*;
+import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 
 import java.util.Map;
@@ -46,5 +47,17 @@ public class DnEndpoint {
         boolean isListResponse = getBoolWithDefault(dnType.model, EP_IS_LIST_RESPONSE, false);
         return new DnEndpoint(method, path, description, endpointFunction, inField.anonType, outField.anonType,
                 isListResponse, dnType.model);
+    }
+
+    public Map<String,Object> toMap() {
+        Map<String,Object> retVal = cloneMap(model);
+        // Remove things that we have extracted and converted.
+        retVal.remove(DN_FIELDS);
+        retVal.remove(EP_INPUT_TYPE_REF);
+        retVal.remove(EP_OUTPUT_TYPE_REF);
+        // Add back in the extracted parts under their new names.
+        retVal.put(EP_INPUT_TYPE, inType.toMap());
+        retVal.put(EP_OUTPUT_TYPE, outType.toMap());
+        return retVal;
     }
 }

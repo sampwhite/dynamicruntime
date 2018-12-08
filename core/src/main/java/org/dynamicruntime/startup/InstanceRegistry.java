@@ -10,13 +10,14 @@ import static org.dynamicruntime.context.DnCxtConstants.*;
 import static org.dynamicruntime.startup.LogStartup.*;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @SuppressWarnings("WeakerAccess")
 public class InstanceRegistry {
     // This is global to the VM. However, different instances can choose which of these components are loaded or
     // active.
     static private final Map<String,ComponentDefinition> componentDefinitions = new LinkedHashMap<>();
-    static private final Map<String, InstanceConfig> instanceConfigs = mMapT();
+    static private final Map<String, InstanceConfig> instanceConfigs = new ConcurrentHashMap<>();
     // These will get changed during initialization process. But once the first instance has been created,
     // these values should not change and will be global to all instances.
     static public String envName = DEV;
@@ -27,6 +28,11 @@ public class InstanceRegistry {
         for (ComponentDefinition definition : definitions) {
             componentDefinitions.put(definition.getComponentName(), definition);
         }
+    }
+
+    public static DnCxt createCxt(String cxtName, String instanceName) throws DnException {
+        InstanceConfig config = getOrCreateInstanceConfig(instanceName, mMap());
+        return createCxt(cxtName, config);
     }
 
     public static DnCxt createCxt(String cxtName, InstanceConfig config) {
@@ -40,6 +46,12 @@ public class InstanceRegistry {
 
     public static InstanceConfig getOrCreateInstanceConfig(String instanceName, Map<String,Object> overlayConfig,
                 Collection<ComponentDefinition> suppliedCompDefs) throws DnException {
+        // Do a quick test to see if it exists (outside synchronization lock).
+        var cc = instanceConfigs.get(instanceName);
+        if (cc != null) {
+             return cc;
+        }
+
         synchronized (instanceConfigs) {
             var curConfig = instanceConfigs.get(instanceName);
             if (curConfig != null) {
@@ -82,6 +94,7 @@ public class InstanceRegistry {
 
             bindAndInitServices(cxt, startupInitializers);
             bindAndInitServices(cxt, serviceInitializers);
+            instanceConfigs.put(instanceName, config);
 
             return config;
         }
@@ -101,14 +114,18 @@ public class InstanceRegistry {
                 }
                 var serviceInitializer = (ServiceInitializer)service;
                 services.add(serviceInitializer);
+
+                // Publish the service object so other services can find it.
+                instance.put(serviceInitializer.getServiceName(), serviceInitializer);
             } catch (ReflectiveOperationException e) {
                 throw new DnException("Could not instantiate service " + initializer.getCanonicalName() + ".", e);
             }
         }
 
+        // Do the initialization sequence. We give services three passes at initialization
+        // so that the services can have complex dependency startup relationships.
         for (ServiceInitializer service : services) {
             service.onCreate(cxt);
-            instance.put(service.getServiceName(), service);
         }
         for (ServiceInitializer service : services) {
             service.checkInit(cxt);

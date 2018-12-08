@@ -18,7 +18,7 @@ public class DnEndpointFunction {
     }
 
     /** Convenience method designed to be imported statically. */
-    public static DnEndpointFunction mkEpFunction(String name, DnEndpointFunctionInterface functionInterface) {
+    public static DnEndpointFunction mkEndpoint(String name, DnEndpointFunctionInterface functionInterface) {
          return new DnEndpointFunction(name, functionInterface);
     }
 }

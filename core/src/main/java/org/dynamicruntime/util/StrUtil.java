@@ -19,6 +19,17 @@ public class StrUtil {
         return str.substring(index + sep.length());
     }
 
+    public static String getToNextIndex(String str, int offset, String sep) {
+        if (str == null || offset >= str.length()) {
+            return "";
+        }
+        int index = str.indexOf(sep, offset);
+        if (index < 0) {
+            return str.substring(offset);
+        }
+        return str.substring(offset, index);
+    }
+
     /** Capitalizes a string, but it assumes the string can be used as the name of a variable. */
     public static String capitalize(String str) {
         if (str == null || str.length() == 0) {

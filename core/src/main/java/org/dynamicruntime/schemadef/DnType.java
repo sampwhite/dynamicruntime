@@ -80,7 +80,7 @@ public class DnType {
         } else {
             this.fieldsByName = null;
         }
-    }
+   }
 
     public static DnType extractAnon(Map<String,Object> model, Map<String,DnRawType> types) throws DnException {
         String name = getOptStr(model, DN_NAME);
@@ -95,12 +95,12 @@ public class DnType {
     public static DnType extractNamed(String name, Map<String,Object> model, Map<String,DnRawType> types) throws DnException {
         boolean noTrimming = getBoolWithDefault(model, DN_NO_TRIMMING, false);
         boolean noCommas = getBoolWithDefault(model, DN_NO_COMMAS, false);
-        Double min = getOptDouble(model, DN_MIN);
-        Double max = getOptDouble(model, DN_MAX);
 
         // Merge in base types, with a particular focus on fields.
         MergeData md = mergeWithBaseType(model, types, 0);
         var newModel = md.model;
+        Double min = getOptDouble(newModel, DN_MIN);
+        Double max = getOptDouble(newModel, DN_MAX);
 
         List<RawField> newRawFields = null;
 
@@ -178,6 +178,10 @@ public class DnType {
         var newModel = mdBase.model; // Note model has been cloned, safe to change.
 
         newModel.putAll(model);
+        if (!model.containsKey(DN_NAME)) {
+            // Do not inherit names, just causes confusion.
+            newModel.remove(DN_NAME);
+        }
         var newRawFields = rawFields != null && rawFields.size() > 0 ? rawFields : null;
         if (mdBase.rawFields != null) {
             if (rawFields != null) {
@@ -190,11 +194,13 @@ public class DnType {
             }
         }
 
+        /*
         boolean promoteBaseType = (mdBase.baseType != null && newRawFields == null);
         String newBaseTypeName = promoteBaseType ? mdBase.baseType : baseTypeName;
         if (promoteBaseType) {
             newModel.put(DN_BASE_TYPE, newBaseTypeName);
-        }
+        }*/
+        String newBaseTypeName = baseTypeName;
 
         md.model = newModel;
         md.rawFields = newRawFields;
@@ -210,5 +216,16 @@ public class DnType {
         }
         n = (n != null) ? n : "anon";
         return String.format("%s{fields=%s}", n, (fields != null) ? fields.toString() : "<no-fields>");
+    }
+
+    public Map<String,Object> toMap() {
+        List<Map<String,Object>> fieldData = (fields != null) ?
+                nMapSimple(fields, (fld -> fld.toMap())) : null;
+        if (fieldData != null) {
+            Map<String,Object> retVal = cloneMap(model);
+            retVal.put(DN_FIELDS, fieldData);
+            return retVal;
+        }
+        return model;
     }
 }

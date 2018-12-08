@@ -5,7 +5,7 @@ import org.dynamicruntime.schemadef.DnEndpoint;
 
 import java.util.*;
 
-@SuppressWarnings("WeakerAccess")
+@SuppressWarnings({"WeakerAccess", "unused"})
 public class DnRequestCxt {
     public static final String DN_REQUEST_CXT = DnRequestCxt.class.getSimpleName();
     /** The DnCxt object attached to this request. This object is registered in the *locals* of the
@@ -23,7 +23,7 @@ public class DnRequestCxt {
 
     /** The raw web request. The endpoint function should allow for this being null so that one endpoint
      * can call another endpoint locally without having to make an actual HTTP request. */
-    public DnWebRequest webRequest;
+    public DnServletHandler webRequest;
 
     /** Schema validated and coerced request data. This is the *meat* of the request. */
     public final Map<String,Object> requestData;
@@ -38,12 +38,26 @@ public class DnRequestCxt {
     /** The *items* data for a list response. */
     public List<Map<String,Object>> listResponse;
 
-    /** Set to true, if response was sent directly bypassing normal behavior. */
-    public boolean responseSent;
+    /** Whether there were more items that could be sent back. This value should only be set
+     * if the schema for the response indicates that it should be. */
+    public boolean hasMore;
+
+    /** The total number of items available to be returned, even if not all were returned in *listResponse*. */
+    public int totalListSize;
+
+    /** Whether request created a new entry that can be potentially accessed or updated by another endpoint call. */
+    public boolean didCreation;
 
     public DnRequestCxt(DnCxt cxt, Map<String,Object> requestData, DnEndpoint endpoint) {
         this.cxt = cxt;
         this.requestData = requestData;
         this.endpoint = endpoint;
+        this.cxt.locals.put(DN_REQUEST_CXT, this);
+    }
+
+    /** Allows low level calls to get at request information if they need it. */
+    public static DnRequestCxt get(DnCxt cxt) {
+        Object obj = cxt.locals.get(DN_REQUEST_CXT);
+        return (obj instanceof DnRequestCxt) ? (DnRequestCxt)obj : null;
     }
 }

@@ -205,7 +205,7 @@ public class ConvertUtil {
             try {
                 retVal = Long.parseLong(s);
             } catch (NumberFormatException e) {
-                throw DnException.mkConv("Failed to convert " + o + " to a long.", e);
+                throw DnException.mkConv(String.format("Parsing failed to convert '%s' to a long value.",o), e);
             }
         }
         return retVal;
@@ -214,7 +214,7 @@ public class ConvertUtil {
     public static long toReqLong(Object o) throws DnException {
         Long l = toOptLong(o);
         if (l == null) {
-            throw DnException.mkConv(String.format("Could not convert '%s' to a long value", o));
+            throw DnException.mkConv(String.format("Could not convert '%s' to a long value.", o));
         }
         return l;
     }
@@ -373,7 +373,7 @@ public class ConvertUtil {
             try {
                 return Double.parseDouble(obj.toString());
             } catch (NumberFormatException e) {
-                throw DnException.mkConv(String.format("Failed to convert %s to a double.", fmtObject(obj)), e);
+                throw DnException.mkConv(String.format("Failed to convert '%s' to a double.", fmtObject(obj)), e);
             }
         }
         return null;

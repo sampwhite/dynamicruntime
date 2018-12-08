@@ -3,7 +3,6 @@ package org.dynamicruntime.schemadef
 import org.dynamicruntime.context.DnCxt
 import org.dynamicruntime.exception.DnException
 import org.dynamicruntime.request.DnRequestCxt
-import org.dynamicruntime.schemadef.validation.DnSchemaValidator
 import org.dynamicruntime.startup.ComponentDefinition
 import org.dynamicruntime.startup.InstanceRegistry
 import org.dynamicruntime.startup.LogStartup

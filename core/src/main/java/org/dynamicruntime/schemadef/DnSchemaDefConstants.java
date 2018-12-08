@@ -24,7 +24,7 @@ public class DnSchemaDefConstants {
      * request that takes no parameters or represent simple string data or binary data in a response.
      * Using a value of DN_NONE essentially says that the normal JSON oriented DnSchema logic does not
      * interact with the entity that has this type name. */
-    public static final String DN_NONE = "none";
+    public static final String DN_NONE = "None";
 
     public static final Set<String> PRIMITIVE_TYPES = Set.of(DN_STRING, DN_BOOLEAN, DN_INTEGER,
             DN_DATE, DN_FLOAT, DN_ANY, DN_MAP, DN_GENERIC, DN_NONE);
@@ -48,6 +48,8 @@ public class DnSchemaDefConstants {
     public static final String DN_BUILDER = "dnBuilder";
     /** Reference to a base DnType by a DnType. Used for one type to extend another. */
     public static final String DN_BASE_TYPE = "baseType";
+    /** Reference to the core type underlying all the base types. */
+    public static final String DN_CORE_TYPE = "coreType";
     /** Attribute that holds the fields of the DnType. */
     public static final String DN_FIELDS = "dnFields";
     /** Whether trimming should not be done on strings. */
@@ -129,10 +131,18 @@ public class DnSchemaDefConstants {
     public static final String EP_LIMIT = "limit";
     /** The number of items returned. */
     public static final String EP_NUM_ITEMS = "numItems";
+    /** Whether the endpoint definition supports indicating wether more items can be returned. */
+    public static final String EP_HAS_MORE_PAGING = "hasMorePaging";
+    /** Whether there are more items beyond the ones that were returned. */
+    public static final String EP_HAS_MORE = "hasMore";
+    /** Enables returning the number of available items. */
+    public static final String EP_HAS_NUM_AVAILABLE = "hasNumAvailable";
+    /** The total number of available items.  If the *limit* parameter reduced the number of items
+     * being returned, then this is the total count of what would have been available if the the number
+     * had not been reduced.*/
+    public static final String EP_NUM_AVAILABLE = "numAvailable";
     /** The original Request URI of the request. */
     public static final String EP_REQUEST_URI = "requestUri";
-    /** A security nonce to prevent attackers from seeing the exact same data being returned again and again. */
-    public static final String EP_NONCE = "nonce";
     /** The duration of the request (as computed internally). */
     public static final String EP_DURATION = "duration";
     /** The items to be returned. */

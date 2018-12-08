@@ -34,6 +34,8 @@ public class DnCxt {
     public final Map<String,Object> locals = mMap();
     /** Date the context object was created. */
     public final Date creationDate = new Date();
+    /** Nano time of start time. */
+    public final long nanoTime = System.nanoTime();
     /** Cached copy of the schema store. Allows ready access to an unchanging read only copy of the schema. We put
      * it into the DnCxt to show how fundamental it is to the application. */
     public DnSchemaStore schemaStore;
@@ -71,5 +73,11 @@ public class DnCxt {
             schemaStore = DnSchemaStore.get(this);
         }
         return schemaStore;
+    }
+
+    /** Gets duration of request so far in milliseconds. */
+    public double getDuration() {
+        long diff = System.nanoTime() - nanoTime;
+        return ((double)diff)/1000000;
     }
 }

@@ -135,4 +135,15 @@ public class DnField {
         }
         return String.format("%s{type=%s}", n, type);
     }
+
+    public Map<String,Object> toMap() {
+        var retVal = cloneMap(data);
+        var overrides = mMap(DN_LABEL, label, DN_DESCRIPTION, description, DN_TYPE_REF, typeRef,
+                DN_CORE_TYPE, coreType);
+        if (anonType != null) {
+            retVal.put(DN_TYPE_DEF, anonType.toMap());
+        }
+        retVal.putAll(overrides);
+        return retVal;
+    }
 }

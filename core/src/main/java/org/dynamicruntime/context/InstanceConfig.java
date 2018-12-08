@@ -10,6 +10,7 @@ public class InstanceConfig {
     public final String instanceName;
     public final String envName;
     public final String envType;
+
     private Map<String,Object> config = new ConcurrentHashMap<>();
 
     public InstanceConfig(String instanceName, String envName, String envType) {

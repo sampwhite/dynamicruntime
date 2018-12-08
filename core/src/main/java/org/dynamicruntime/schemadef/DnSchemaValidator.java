@@ -1,10 +1,7 @@
-package org.dynamicruntime.schemadef.validation;
+package org.dynamicruntime.schemadef;
 
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
-import org.dynamicruntime.schemadef.DnField;
-import org.dynamicruntime.schemadef.DnSchemaStore;
-import org.dynamicruntime.schemadef.DnType;
 import org.dynamicruntime.util.ParsingUtil;
 import org.dynamicruntime.util.StrUtil;
 
@@ -45,27 +42,30 @@ public class DnSchemaValidator {
             throw DnException.mkConv("Nested data structure for supplied data is too deep.");
         }
         Set<String> unconsumedKeys = new HashSet<>(data.keySet());
-        if (type.isSimple) {
-            // Bad logic in code, not problem with data being supplied.
-            throw new DnException("Validating a Map with the simple type.");
-        }
         Map<String,Object> output = mMap();
-        for (DnField field: type.fields) {
-            Object obj = data.get(field.name);
-            String fieldRefType = field.typeRef;
-            Object newObj;
-            if (fieldRefType != null && isPrimitive(fieldRefType)) {
-                newObj = validateAndCoercePrimitive(field, null, fieldRefType, field.isList, obj);
-            } else {
-                DnType fieldType = getType(field);
-                newObj = validateAndCoerce(field, fieldType, obj, nestLevel);
+        if (type.isSimple) {
+            if (type.baseType == null || !type.baseType.equals(DN_NONE)) {
+                // Bad logic in code, not problem with data being supplied.
+                throw new DnException("Validating a Map with the simple type.");
             }
-            if (newObj != null) {
-                output.put(field.name, newObj);
+        } else {
+            for (DnField field: type.fields) {
+                Object obj = data.get(field.name);
+                String fieldRefType = field.typeRef;
+                Object newObj;
+                if (fieldRefType != null && isPrimitive(fieldRefType)) {
+                    newObj = validateAndCoercePrimitive(field, null, fieldRefType, field.isList, obj);
+                } else {
+                    DnType fieldType = getType(field);
+                    newObj = validateAndCoerce(field, fieldType, obj, nestLevel);
+                }
+                if (newObj != null) {
+                    output.put(field.name, newObj);
+                }
+                unconsumedKeys.remove(field.name);
             }
-            unconsumedKeys.remove(field.name);
         }
-        if (!unconsumedKeys.isEmpty()) {
+        if (!unconsumedKeys.isEmpty() && mode.equals(REQUEST_MODE)) {
             throw DnException.mkConv(String.format("Extra fields %s were supplied that are not referenced in " +
                     "schema.", fmtObject(unconsumedKeys)));
         }
@@ -91,7 +91,7 @@ public class DnSchemaValidator {
         boolean isSimple = type.isSimple;
         Object newObj;
         if (isSimple) {
-            newObj = validateAndCoercePrimitive(field, type, type.baseType, field.isList, obj);
+            newObj = validateAndCoercePrimitive(field, type, field.coreType, field.isList, obj);
         } else {
             newObj = validateAndCoerceComplex(field, type, obj, field.isList, nestLevel);
         }
@@ -156,7 +156,7 @@ public class DnSchemaValidator {
     }
 
     /** The core part of the validation. Note that the *type* parameter can definitely be null. */
-    public Object validateAndCoercePrimitive(DnField field, DnType type, String pType,
+    public Object validateAndCoercePrimitive(DnField field, DnType type, String coreType,
             boolean isList, Object obj) throws DnException {
         String fieldName = (field != null) ? field.name : "root";
         if (obj == null && field != null) {
@@ -167,25 +167,25 @@ public class DnSchemaValidator {
         Object out = null;
 
         if (isList) {
-            List l;
+            List<Object> l;
             if (obj instanceof Collection) {
                 var c = (Collection)obj;
                 l = mList();
                 for (Object o : c) {
-                    l.add(validateAndCoercePrimitive(field, type, pType, false, o));
+                    l.add(validateAndCoercePrimitive(field, type, coreType, false, o));
                 }
             } else if (obj instanceof CharSequence) {
                 // Still have a chance to parse this.
-                if ((pType.equals(DN_STRING) && isNoCommas) || pType.equals(DN_BOOLEAN) ||
-                        pType.equals(DN_INTEGER) || pType.equals(DN_FLOAT)) {
+                if ((coreType.equals(DN_STRING) && isNoCommas) || coreType.equals(DN_BOOLEAN) ||
+                        coreType.equals(DN_INTEGER) || coreType.equals(DN_FLOAT)) {
                     var c = StrUtil.splitString(obj.toString(), ",");
                     l = mList();
                     for (Object o : c) {
-                        l.add(validateAndCoercePrimitive(field, type, pType,false, o));
+                        l.add(validateAndCoercePrimitive(field, type, coreType,false, o));
                     }
                 } else {
                     throw DnException.mkConv(String.format("Cannot convert a string into a list of objects of type " +
-                            "%s for field %s.", pType, fieldName));
+                            "%s for field %s.", coreType, fieldName));
                 }
 
             } else if (obj == null) {
@@ -198,42 +198,44 @@ public class DnSchemaValidator {
             }
             out = l;
         }  else {
-            if (pType == null ) {
-                System.out.println("Have null");
-            }
             boolean isNumber = false;
-            if (obj != null) {
-                switch (pType) {
-                    case DN_STRING:
-                        String s = isNoTrim ? toOptStr(obj) : toTrimmedOptStr(obj);
-                        if (isNoCommas && s != null && s.indexOf(',') >= 0) {
-                            throw DnException.mkConv(String.format(
-                                    "String '%s' is not allowed to have commas for field %s.", s, fieldName));
-                        }
-                        out = s;
-                        break;
-                    case DN_BOOLEAN:
-                        out = toOptBool(obj);
-                        break;
-                    case DN_INTEGER:
-                        out = toOptLong(obj);
-                        isNumber = true;
-                        break;
-                    case DN_FLOAT:
-                        out = toOptDouble(obj);
-                        isNumber = true;
-                        break;
-                    case DN_DATE:
-                        out = toOptDate(obj);
-                        break;
-                    case DN_MAP:
-                        out = toOptMap(obj);
-                        break;
-                    default:
-                        // Just let the object float through.
-                        out = obj;
-                        break;
+            try {
+                if (obj != null) {
+                    switch (coreType) {
+                        case DN_STRING:
+                            String s = isNoTrim ? toOptStr(obj) : toTrimmedOptStr(obj);
+                            if (isNoCommas && s != null && s.indexOf(',') >= 0) {
+                                throw DnException.mkConv(String.format(
+                                        "String '%s' is not allowed to have commas for field %s.", s, fieldName));
+                            }
+                            out = s;
+                            break;
+                        case DN_BOOLEAN:
+                            out = toOptBool(obj);
+                            break;
+                        case DN_INTEGER:
+                            out = toOptLong(obj);
+                            isNumber = true;
+                            break;
+                        case DN_FLOAT:
+                            out = toOptDouble(obj);
+                            isNumber = true;
+                            break;
+                        case DN_DATE:
+                            out = toOptDate(obj);
+                            break;
+                        case DN_MAP:
+                            out = toOptMap(obj);
+                            break;
+                        default:
+                            // Just let the object float through.
+                            out = obj;
+                            break;
+                    }
                 }
+            } catch (DnException e) {
+                throw DnException.mkConv(String.format("Cannot coerce field '%s' into type %s.",
+                        fieldName, coreType), e);
             }
 
             if (field != null && (field.isRequired || field.isList) && out == null) {
@@ -261,27 +263,9 @@ public class DnSchemaValidator {
             }
         }
         if (obj != null && out == null) {
-            throw DnException.mkConv(String.format("Could not convert object %s " +
-                    "using the type %s for field %s.", fmtObject(obj), pType, fieldName));
+            throw DnException.mkConv(String.format("Could not convert object '%s' " +
+                    "using the type %s for field '%s'.", fmtObject(obj), coreType, fieldName));
         }
         return out;
     }
-
-
-    public static DnException mkNewException(String msg, Exception e) {
-        boolean isConv = false;
-        if (e instanceof DnException) {
-            DnException de = (DnException)e;
-            if (de.activity.equals(DnException.CONVERSION)) {
-                isConv = true;
-            }
-        }
-        if (isConv) {
-            return DnException.mkConv(msg, e);
-        }
-        return new DnException(msg, e);
-    }
-
-
-
 }

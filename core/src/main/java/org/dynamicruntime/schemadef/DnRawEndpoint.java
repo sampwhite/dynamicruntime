@@ -41,7 +41,7 @@ public class DnRawEndpoint implements DnRawTypeInterface {
         return new DnRawEndpoint(path, model);
     }
 
-    public DnRawEndpoint setOption(String key, Object val) {
+    public DnRawEndpoint setAttribute(String key, Object val) {
         epModel.put(key, val);
         return this;
     }
@@ -49,7 +49,7 @@ public class DnRawEndpoint implements DnRawTypeInterface {
     public static DnRawEndpoint mkListEndpoint(String path, String function, String description,
             String inTypeRef, String outTypeRef) {
         return mkEndpoint(path, function, description, inTypeRef, outTypeRef)
-                .setOption(EP_IS_LIST_RESPONSE, true);
+                .setAttribute(EP_IS_LIST_RESPONSE, true);
     }
 
     public DnRawEndpoint setMethod(String method) {

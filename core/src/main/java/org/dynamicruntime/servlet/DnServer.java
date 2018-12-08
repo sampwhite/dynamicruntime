@@ -34,18 +34,10 @@ public class DnServer extends ContextHandler {
     }
 
     @Override
-    public void doHandle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
-            throws IOException {
-        var output = response.getOutputStream();
-        var bytes = "Hello".getBytes();
-
-        response.setStatus(201);
-        response.setContentLength(bytes.length);
-        response.setContentType("text/plain");
-        log.debug(null, baseRequest.getHttpURI().toString());
-
-        output.write(bytes);
-        response.flushBuffer();
+    public void doHandle(String target, Request baseRequest, HttpServletRequest request,
+            HttpServletResponse response) {
+        var handler = new DnRequestHandler(target, request, response);
+        handler.handleRequest();
     }
 
 

@@ -22,37 +22,44 @@ public class DnRawField {
         int sortRank = DN_DEFAULT_SORT_RANK;
     }
 
-    public static DnRawField mkRawField(Map<String,Object> data) throws DnException {
-        String name = getReqStr(data, DN_NAME);
+    public static DnRawField mkRawField(Map<String,Object> data) {
+        String name = getOptStr(data, DN_NAME);
+        if (name == null) {
+            return null;
+        }
         return new DnRawField(name, data);
     }
 
-    public static DnRawField mkField(String name, String label, String description) throws DnException {
+    public static DnRawField mkField(String name, String label, String description) {
         return mkRawField(mMap(DN_NAME, name, DN_LABEL, label, DN_DESCRIPTION, description));
     }
 
-    public static DnRawField mkReqField(String name, String label, String description) throws DnException {
-        return mkField(name, label, description).setOption(DN_REQUIRED, true);
+    public static DnRawField mkReqField(String name, String label, String description) {
+        return mkField(name, label, description).setRequired(true);
     }
 
-    public static DnRawField mkIntField(String name, String label, String description) throws DnException {
+    public static DnRawField mkIntField(String name, String label, String description) {
         return mkField(name, label, description).setTypeRef(DN_INTEGER);
     }
 
-    public static DnRawField mkReqIntField(String name, String label, String description) throws DnException {
-        return mkField(name, label, description).setTypeRef(DN_INTEGER).setOption(DN_REQUIRED, true);
+    public static DnRawField mkReqIntField(String name, String label, String description) {
+        return mkField(name, label, description).setTypeRef(DN_INTEGER).setRequired(true);
     }
 
-    public static DnRawField mkBoolField(String name, String label, String description) throws DnException {
+    public static DnRawField mkBoolField(String name, String label, String description) {
         return mkField(name, label, description).setTypeRef(DN_BOOLEAN);
     }
 
-    public static DnRawField mkDateField(String name, String label, String description) throws DnException {
+    public static DnRawField mkReqBoolField(String name, String label, String description) {
+        return mkField(name, label, description).setTypeRef(DN_BOOLEAN).setRequired(true);
+    }
+
+    public static DnRawField mkDateField(String name, String label, String description) {
         return mkField(name, label, description).setTypeRef(DN_DATE);
     }
 
-    public static DnRawField mkReqDateField(String name, String label, String description) throws DnException {
-        return mkField(name, label, description).setTypeRef(DN_DATE).setOption(DN_REQUIRED, true);
+    public static DnRawField mkReqDateField(String name, String label, String description) {
+        return mkField(name, label, description).setTypeRef(DN_DATE).setRequired(true);
     }
 
     public DnRawField setTypeRef(String typeRef) {
@@ -66,14 +73,19 @@ public class DnRawField {
         return this;
     }
 
-    public DnRawField setOption(String optionName, Object optionValue) {
-        data.put(optionName, optionValue);
+    public DnRawField setRequired(boolean required) {
+        data.put(DN_REQUIRED, required);
         return this;
     }
 
-    /** Only replaces the options specified. */
-    public DnRawField setOptions(Map<String,Object> options) {
-        data.putAll(options);
+    public DnRawField setAttribute(String attName, Object attValue) {
+        data.put(attName, attValue);
+        return this;
+    }
+
+    /** Only replaces the attributes specified. */
+    public DnRawField setAttributes(Map<String,Object> attributes) {
+        data.putAll(attributes);
         return this;
     }
 

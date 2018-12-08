@@ -4,6 +4,7 @@ import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.startup.ServiceInitializer;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -17,6 +18,7 @@ public class DnSchemaService implements ServiceInitializer {
     public static final String DN_SCHEMA_SERVICE = DnSchemaService.class.getSimpleName();
     public DnRawSchemaStore rawSchemaStore;
     public AtomicReference<DnSchemaStore> schemaStore = new AtomicReference<>();
+    public boolean isCreated = false;
     public boolean isInit = false;
 
     public static DnSchemaService get(DnCxt cxt) {
@@ -30,6 +32,9 @@ public class DnSchemaService implements ServiceInitializer {
     }
 
     public void onCreate(DnCxt cxt) throws DnException {
+        if (isCreated) {
+            return;
+        }
         rawSchemaStore = DnRawSchemaStore.get(cxt);
         if (rawSchemaStore == null) {
             throw new DnException("Raw schema store not create for *DnSchemaService*.");
@@ -38,10 +43,11 @@ public class DnSchemaService implements ServiceInitializer {
 
         // Add some built-in types.
         var count = DnRawType.mkSubType(DN_COUNT, DN_INTEGER)
-                .setOption(DN_MIN, 0);
+                .setAttribute(DN_MIN, 0);
         var corePckg = DnRawSchemaPackage.mkPackage("DnSchemaServiceCore", DN_CORE_NAMESPACE,
                 mList(count));
         rawSchemaStore.addPackage(corePckg);
+        isCreated = true;
     }
 
     @Override
@@ -114,8 +120,6 @@ public class DnSchemaService implements ServiceInitializer {
                 "The specification of the allowable output for this endpoint.");
         DnRawField requestUri = DnRawField.mkReqField(EP_REQUEST_URI, "Request URI",
                 "The request URI that make this request.");
-        DnRawField nonce = DnRawField.mkReqField(EP_NONCE, "Security Nonce",
-                "A random length string to create randomness in the encrypted version of the output.");
         DnRawField duration = DnRawField.mkReqField(EP_DURATION, "Duration in Milliseconds",
                 "The time taken to perform the request in milliseconds.").setTypeRef(DN_FLOAT);
 
@@ -123,11 +127,11 @@ public class DnSchemaService implements ServiceInitializer {
             int defaultLimit = 100;
             // More complex result.
             var inputType = DnRawType.mkSubType(inputTypeRef);
-            var limitType = DnRawType.mkSubType(DN_COUNT).setOption(DN_MAX, 20000);
+            var limitType = DnRawType.mkSubType(DN_COUNT).setAttribute(DN_MAX, 20000);
             DnRawField limit = DnRawField.mkField(EP_LIMIT, "Limit On Results",
                     "The maximum number of items that can be returned.")
                     .setTypeDef(limitType)
-                    .setOption(DN_DEFAULT_VALUE, defaultLimit);
+                    .setAttribute(DN_DEFAULT_VALUE, defaultLimit);
 
             inputType.addField(limit);
             inputField.setTypeDef(inputType);
@@ -136,21 +140,33 @@ public class DnSchemaService implements ServiceInitializer {
                     "Number of items returned.").setTypeRef(DN_COUNT);
             DnRawField items = DnRawField.mkReqField(EP_ITEMS, "Items",
                     "Items returned by endpoint.")
-                    .setTypeRef(outputTypeRef).setOption(DN_IS_LIST, true);
-            var outputType = DnRawType.mkType(mList(numItems, requestUri, nonce, duration, items));
+                    .setTypeRef(outputTypeRef).setAttribute(DN_IS_LIST, true);
+            List<DnRawField> fieldList = mList(numItems, requestUri, duration);
+            if (getBoolWithDefault(inModel, EP_HAS_MORE_PAGING, false)) {
+                DnRawField hasMore = DnRawField.mkReqBoolField(EP_HAS_MORE, "Has More",
+                        "Whether there are more items that could be returned.");
+                fieldList.add(hasMore);
+            }
+            if (getBoolWithDefault(inModel, EP_HAS_NUM_AVAILABLE, false)) {
+                DnRawField totalSize = DnRawField.mkReqField(EP_NUM_AVAILABLE, "Total Size",
+                        "The total number of items available to be returned.").setTypeRef(DN_COUNT);
+                fieldList.add(totalSize);
+            }
+            fieldList.add(items);
+            var outputType = DnRawType.mkType(fieldList);
             outputField.setTypeDef(outputType);
         } else {
             // Endpoints always use anonymous types at their core.
             inputField.setTypeDef(DnRawType.mkSubType(inputTypeRef));
             var outputType = DnRawType.mkSubType(outputTypeRef);
-            outputType.addFields(mList(requestUri, nonce, duration));
+            outputType.addFields(mList(requestUri, duration));
             outputField.setTypeDef(outputType);
         }
 
         DnRawType endpointType = DnRawType.mkType(epInputType.name, null);
         endpointType.model.putAll(epInputType.model);
         endpointType.addFields(mList(inputField, outputField));
-        endpointType.setOption(DN_IS_ENDPOINT, true);
+        endpointType.setAttribute(DN_IS_ENDPOINT, true);
         return endpointType;
     }
 }

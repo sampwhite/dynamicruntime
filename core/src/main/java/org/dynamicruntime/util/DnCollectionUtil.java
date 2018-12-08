@@ -6,7 +6,8 @@ import org.dynamicruntime.function.DnFunction;
 import java.util.*;
 import java.util.function.Function;
 
-/** A lot of this class is driven by Groovy envy. */
+/** A lot of this class is driven by Groovy envy (as in we envy Groovy for having certain convenience
+ * constructions). */
 @SuppressWarnings("WeakerAccess")
 public class DnCollectionUtil {
     /** Groovy envy method for creating maps. Creates a mutable map and drops nulls. We have a version

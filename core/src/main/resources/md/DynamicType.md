@@ -142,6 +142,10 @@ structure of the DnType is as follows.
   * isListResponse - Whether the *outputTypeRef* is pushed down to become the DnType of a value in an array
    of items.  If this is true, then the builder adds a field called *limit* to the inputTypeRef that allows 
    the caller to limit the number of values returned.
+  * hasMorePaging - Whether the response will set *hasMore* to true in the response data it there is more
+    data available.
+  * hasAvailableSize - Whether the response will indicate the total number of items that could be possibly returned.
+  This is usually only done when the potential totalSize value is less than 10,000.
   * supportsOffset - Whether the endpoint supports an *offset* parameter in its call to allow
     the list values returned to start at an offset index. This would be added to the *inputTypeRef*.
     
@@ -163,6 +167,7 @@ function: getContent
 inputTypeRef: Category
 outputTypeRef: Content
 isListResponse: true
+hasMorePaging: true
 ruleToGetContent: byCategory       
 ```
 
@@ -216,15 +221,16 @@ dnFields:
              label: Request URI
              description: The request URI that made this request.
              required: true
-           - name: nonce
-             label: Security Nonce
-             description: A random length string to create randomness in output.
-             required: true
            - name: duration
              label: Duration
              description: The time taken to perform request in milliseconds.
              required: true
              dnTypeRef: Float
+           - name: hasMore
+             label Has More
+             description: Set to true if list of items is incomplete
+             required: true
+             dnTypeRef: Boolean
            - name: items
              label: Items
              description: Items returned by endpoint.

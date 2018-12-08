@@ -2,6 +2,16 @@ package org.dynamicruntime.exception;
 
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 
+/**
+ * This is the universal exception for the Dynamic Runtime project. Instead of having many exceptions
+ * which handle many different specialized cases, we have chosen to have one exception that can deal with
+ * many different cases simultaneously. Over time as we analyzed error handling in the code we have written,
+ * we noticed that errors are not as different as they first appear and they tend to have similar implementations.
+ * By creating a universal exception we can take advantage of the commonality in error handling, greatly reducing
+ * the amount of boilerplate error handling code that needs to be written in the application. It also allows
+ * us to enhance the handling of errors, as the project evolves, without having to verify that the changes have been
+ * applied everywhere an error might occur.
+ */
 @SuppressWarnings({"WeakerAccess", "unused"})
 public class DnException extends Exception {
     /** HTML codes. Generally if you receive a 500 or a 504, you can retry
@@ -79,7 +89,7 @@ public class DnException extends Exception {
             source = dn.source;
             activity = dn.activity;
         }
-        return new DnException(msg, null, BAD_INPUT, source, activity);
+        return new DnException(msg, t, BAD_INPUT, source, activity);
     }
 
 
@@ -94,7 +104,12 @@ public class DnException extends Exception {
         return new DnException(msg, t, INTERNAL_ERROR, SYSTEM, CONVERSION);
     }
 
-    /** Used for logging and reporting. */
+    /** Create an exception reporting a problem with accessing a file. */
+    public static DnException mkFileIo(String msg, Throwable t, int code) {
+        return new DnException(msg, t, code, FILE, IO);
+    }
+
+    /** Used for logging and reporting. Gathers messages recursively from the *cause* attribute. */
     public String getFullMessage() {
         Throwable t = getCause();
         if (t == null || t == this) {

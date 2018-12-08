@@ -1,6 +1,5 @@
 package org.dynamicruntime.schemadef;
 
-import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.util.StrUtil;
 
 import static org.dynamicruntime.util.ConvertUtil.*;
@@ -34,8 +33,8 @@ public class DnRawType implements DnRawTypeInterface {
         this.namespace = (name != null) ? StrUtil.getBeforeLastIndex(name, ".") : null;
     }
 
-    public static DnRawType extract(Map<String,Object> model) throws DnException {
-        String name = getReqStr(model, DN_NAME);
+    public static DnRawType extract(Map<String,Object> model) {
+        String name = getOptStr(model, DN_NAME);
         return new DnRawType(name, model);
     }
 
@@ -129,7 +128,7 @@ public class DnRawType implements DnRawTypeInterface {
         return null;
     }
 
-    public static DnRawType mkType(String typeName, List<DnRawField> fields) throws DnException {
+    public static DnRawType mkType(String typeName, List<DnRawField> fields) {
         return DnRawType.extract(mMap(DN_NAME, typeName)).addFields(fields);
     }
 
@@ -161,12 +160,12 @@ public class DnRawType implements DnRawTypeInterface {
         return this;
     }
 
-    public DnRawType setOption(String optionName, Object optionValue) {
+    public DnRawType setAttribute(String optionName, Object optionValue) {
         model.put(optionName, optionValue);
         return this;
     }
 
-    public DnRawType setOptions(Map<String,Object> options) {
+    public DnRawType setAttributes(Map<String,Object> options) {
         model.putAll(options);
         return this;
     }
