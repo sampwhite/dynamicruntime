@@ -9,7 +9,6 @@ import static org.dynamicruntime.servlet.LogServlet.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 
 @SuppressWarnings("WeakerAccess")
 public class DnServer extends ContextHandler {
@@ -20,13 +19,11 @@ public class DnServer extends ContextHandler {
     public static void launch(DnCxt cxt) throws DnException {
         Server server = new Server(7070);
         log.info(cxt, "Testing logging.");
-        //ServletContextHandler handler = new ServletContextHandler(server, "/");
-        //handler.addServlet(DnServer.class, "/");
         new DnServer(server);
         try {
             server.start();
         } catch (Exception e) {
-            throw new DnException("Could not start server");
+            throw new DnException("Could not start server", e);
         }
         try {
             server.join();

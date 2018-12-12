@@ -63,7 +63,7 @@ public class DnRequestHandler implements DnServletHandler {
         DnCxt cxt = null;
         try {
             // For now default to local instance and for getting cxt objects, eventually, we will do more.
-            cxt = InstanceRegistry.createCxt("request", "local");
+            cxt = InstanceRegistry.createCxt("request", InstanceRegistry.defaultInstance);
             var requestService = DnRequestService.get(cxt);
             if (requestService == null) {
                 throw new DnException("This node cannot handle endpoint requests.", null,

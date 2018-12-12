@@ -2,6 +2,7 @@ package org.dynamicruntime;
 
 import org.dynamicruntime.content.DnContentService;
 import org.dynamicruntime.context.DnCxt;
+import org.dynamicruntime.defs.Priority;
 import org.dynamicruntime.endpoint.NodeEndpoints;
 import org.dynamicruntime.endpoint.SchemaEndpoints;
 import org.dynamicruntime.node.DnNodeService;
@@ -25,6 +26,12 @@ public class CoreComponent implements ComponentDefinition {
         return CORE_COMPONENT;
     }
 
+    @Override
+    public String getConfigFileName() {
+        return "dnCoreConfig.yaml";
+    }
+
+    /** Eventually these may allow configuration to drive whether this returns true or not, same for *isActive*. */
     @Override
     public boolean isLoaded() {
         return true;
@@ -52,4 +59,10 @@ public class CoreComponent implements ComponentDefinition {
     public Collection<Class> getServiceInitializers(DnCxt cxt) {
         return mList(DnRequestService.class, DnContentService.class, DnNodeService.class);
     }
+
+    @Override
+    public int loadPriority() {
+        return Priority.STANDARD - 1;
+    }
+
 }

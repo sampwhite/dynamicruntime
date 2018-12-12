@@ -54,7 +54,7 @@ public class DnContentService implements ServiceInitializer {
         }
         File f = new File(resourceUrl.getFile());
         String ext = StrUtil.getAfterLastIndex(resourcePath, ".");
-        byte[] bytes = IoUtil.readInFile(f);
+        byte[] bytes = IoUtil.readInBinaryFile(f);
         if ("md".equals(ext)) {
             Node node = mdParser.parse(convertToStr(bytes));
             Node child = node.getFirstChild();
@@ -104,6 +104,6 @@ public class DnContentService implements ServiceInitializer {
                     DnException.NOT_FOUND);
         }
         File f = new File(resourceUrl.getFile());
-        return convertToStr(IoUtil.readInFile(f));
+        return convertToStr(IoUtil.readInBinaryFile(f));
     }
 }

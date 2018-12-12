@@ -51,6 +51,12 @@ dependencies {
     compile group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.9.7'
     compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.7'
 
+    // We are using AWS Aurora Postgres, so we use a postgres connector.
+    compile group: 'org.postgresql', name: 'postgresql', version: '42.2.5'
+
+    // Data to be use for unit testing and when running code in simulation mode.
+    compile group: 'com.h2database', name: 'h2', version: '1.4.197'
+
     // Bring in *markdown* conversion to HTML support.
     compile 'com.atlassian.commonmark:commonmark:0.12.1'
 

@@ -110,7 +110,7 @@ class DnSchemaServiceTest extends Specification {
         endpointDef1 != null
         endpointDef1.method == "GET"
         endpointDef1.inType.fields.size() == 3
-        endpointDef1.outType.fields.size() == 5
+        endpointDef1.outType.fields.size() == 4
         endpointDef1.inType.fieldsByName.limit != null
         endpointDef1.outType.fieldsByName.items?.isList
     }

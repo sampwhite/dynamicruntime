@@ -123,4 +123,49 @@ public class DnCollectionUtil {
         }
         return count;
     }
+
+    public static void mergeMapRecursively(Map<String,Object> curMap, Map<String,Object> newData) {
+       mergeMapRecursively(curMap, newData, 0);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void mergeMapRecursively(Map<String,Object> curMap, Map<String,Object> newData, int nestLevel) {
+        if (nestLevel > 10) {
+            return;
+        }
+
+        for (var key : newData.keySet()) {
+            Object newObj = newData.get(key);
+            Object curObj = curMap.get(key);
+            if (curObj instanceof Map && newObj instanceof Map) {
+                // We clone as needed, so we do not corrupt internals of original holder of *curMap*.
+                newObj = cloneMap((Map<String,Object>)curObj);
+                mergeMapRecursively((Map<String,Object>)curObj, (Map<String,Object>)newObj, nestLevel + 1);
+            }
+            curMap.put(key, newObj);
+        }
+    }
+
+    public static Map<String,Object> collapseMaps(Map<String,Object> map) {
+        var newMap = mMap();
+        collapseMaps(newMap, map, null, 0);
+        return newMap;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void collapseMaps(Map<String,Object> newMap, Map<String,Object> subMap,
+            String prefix, int nestLevel) {
+        if (nestLevel > 10) {
+            return;
+        }
+        for (var key : subMap.keySet()) {
+            String newKey = (prefix != null) ? prefix + "." + key : key;
+            Object obj = subMap.get(key);
+            if (obj instanceof Map) {
+                collapseMaps(newMap, (Map<String,Object>)obj, newKey, nestLevel + 1);
+            } else {
+                newMap.put(newKey, obj);
+            }
+        }
+    }
 }

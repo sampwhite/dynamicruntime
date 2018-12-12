@@ -1,9 +1,12 @@
 package org.dynamicruntime.startup;
 
+import org.dynamicruntime.config.ConfigConstants;
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.context.InstanceConfig;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.schemadef.DnRawSchemaStore;
+import org.dynamicruntime.config.ConfigLoadUtil;
+import org.dynamicruntime.util.ConvertUtil;
 
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.context.DnCxtConstants.*;
@@ -14,14 +17,36 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @SuppressWarnings("WeakerAccess")
 public class InstanceRegistry {
+    // Change if want a different default instance.
+    static public String defaultInstance = "local";
+
     // This is global to the VM. However, different instances can choose which of these components are loaded or
     // active.
     static private final Map<String,ComponentDefinition> componentDefinitions = new LinkedHashMap<>();
     static private final Map<String, InstanceConfig> instanceConfigs = new ConcurrentHashMap<>();
     // These will get changed during initialization process. But once the first instance has been created,
-    // these values should not change and will be global to all instances.
-    static public String envName = DEV;
-    static public String envType = GENERAL_TYPE;
+    // these values should not change and will be global to all instances. We default to assuming
+    // code is running in-memory databases doing unit tests.
+    static public String envName = UNIT;
+    static public String envType = TEST_TYPE;
+
+    public static void setDefaultInstance(String instance) {
+        defaultInstance = instance;
+    }
+
+    public static void setEnvName(String newEnvName) {
+        envName = newEnvName;
+    }
+
+    @SuppressWarnings("unused")
+    public static void setEnvType(String newEnvType) {
+        envType = newEnvType;
+    }
+
+    public static void setDevMode() {
+        envName = DEV;
+        envType =  GENERAL_TYPE;
+    }
 
     // Call only during initialization of VM.
     public static void addComponentDefinitions(List<ComponentDefinition> definitions) {
@@ -58,16 +83,37 @@ public class InstanceRegistry {
                 return curConfig;
             }
 
-            // Into interesting case.
-            InstanceConfig config = new InstanceConfig(instanceName, envName, envType);
-            config.putAll(overlayConfig);
+            // Into interesting case. Eventually we will use system properties or AWS configuration
+            // to drive envType and envName settings.
+            String configEnvType = ConvertUtil.getOptStr(overlayConfig, ConfigConstants.ENV_TYPE);
+            configEnvType = (configEnvType != null) ? configEnvType : envType;
+            InstanceConfig config = new InstanceConfig(instanceName, envName, configEnvType);
+
+            // Overlay config is used twice. Once during the initialization of components and then
+            // applied again at the end.
+            var flattenedOverlay = collapseMaps(overlayConfig);
+            config.putAll(flattenedOverlay);
 
             // We have enough to create a DnCxt.
             var cxt = new DnCxt("startup", config, null, null);
             log.info(cxt, String.format("Initializing instance '%s'.", instanceName));
 
-            // Later, we would read in various config files and allow them to control our initialization.
-            // ... Load config ... Apply overlayConfig again ... prepare for components ...
+            if (!config.envName.equals(UNIT)) {
+                // Search for file that has secrets. This allows us to have much of our configuration
+                // stored as source code files. In particular, database passwords will be given
+                // by a lookup key that will extract it from the private data. Eventually we will
+                // also have code to pull secrets from AWS.
+                Map<String,Object> privateData = ConfigLoadUtil.findAndReadYamlFile(cxt, "private/dnConfig.yaml");
+                if (privateData != null) {
+                    cxt.instanceConfig.putAll(collapseMaps(privateData));
+                } else {
+                    LogStartup.log.info(cxt, "Application is starting up in in memory simulation mode " +
+                            "because relative path *private/dnConfig.yaml* could not be found.");
+                    cxt.instanceConfig.put(ConfigConstants.IN_MEMORY_SIMULATION, true);
+                }
+            } else {
+                cxt.instanceConfig.put(ConfigConstants.IN_MEMORY_SIMULATION, true);
+            }
 
             // Create DnRawSchemaStore and get components to load in their schema packages or modify existing
             // schemas.
@@ -78,18 +124,47 @@ public class InstanceRegistry {
             var compDefs = cloneList(suppliedCompDefs);
             compDefs.sort(Comparator.comparingInt(ComponentDefinition::loadPriority));
 
+            var configData = mMap();
+
             for (var definition : compDefs) {
                 // Register DnRawSchemaPackage and DnEndpointFunction objects.
-                definition.addSchema(cxt, rawSchemaStore);
+                if (definition.isLoaded()) {
+                    definition.addSchema(cxt, rawSchemaStore);
+                }
+                // Load config of active components. It is the config that turns
+                // on optional features in the component.
+                if (definition.isActive()) {
+                    String configFile = definition.getConfigFileName();
+                    if (configFile != null) {
+                        var compData = ConfigLoadUtil.parseYamlResource(configFile);
+                        configData.putAll(compData);
+                    }
+                }
             }
+
+            // Apply overlay config last.
+            configData.putAll(overlayConfig);
+
+            // Resolve config and set it as the instance config. Resolving performs
+            // some complicated activities, look at implementation.
+            var resolvedConfig = ConfigLoadUtil.resolveConfig(cxt, configData);
+            config.putAll(resolvedConfig);
 
             // Collect component service initializers.
             List<Class> startupInitializers = mList();
             List<Class> serviceInitializers = mList();
 
             for (var definition : compDefs) {
-                startupInitializers.addAll(definition.getStartupInitializers(cxt));
-                serviceInitializers.addAll(definition.getServiceInitializers(cxt));
+                if (definition.isLoaded()) {
+                    var defStartup = definition.getStartupInitializers(cxt);
+                    if (defStartup != null) {
+                        startupInitializers.addAll(defStartup);
+                    }
+                    var defService = definition.getServiceInitializers(cxt);
+                    if (defService != null) {
+                        serviceInitializers.addAll(definition.getServiceInitializers(cxt));
+                   }
+                }
             }
 
             bindAndInitServices(cxt, startupInitializers);

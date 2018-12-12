@@ -13,8 +13,8 @@ for the fields, entirely using a web UI. When the administrator is finished, a n
 created based on a runtime modification to the underlying schema of the the application.
 
 For me, this is not purely an academic issue. Over my three decades of programming the need to dynamically modify
-runtime schema has been a reoccurring theme. I have also found that though such solutions are initially more
-difficult to write, they end up being more efficient and adaptable as the years go by.
+runtime schema (usually at startup) has been a reoccurring theme. I have also found that though such solutions are
+initially more difficult to write, they end up being more efficient and adaptable as the years go by.
 
 At this point, the project is just getting started. The developers on this project will contribute when they
 have time.

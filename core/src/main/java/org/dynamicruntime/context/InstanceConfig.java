@@ -13,14 +13,13 @@ public class InstanceConfig {
 
     private Map<String,Object> config = new ConcurrentHashMap<>();
 
+    // A report on configuration strings retrieved.
+    public final Map<String,DnConfigReport> configAccessReport = new ConcurrentHashMap<>();
+
     public InstanceConfig(String instanceName, String envName, String envType) {
         this.instanceName = instanceName;
         this.envName = envName;
         this.envType = envType;
-    }
-
-    public Map<String,Object> getConfig() {
-        return config;
     }
 
     public Object get(String key) {

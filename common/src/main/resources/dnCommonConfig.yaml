@@ -1,0 +1,8 @@
+# Default config for databases.
+db:
+  primary:
+    user: "java_user"
+    dbType: "postgresql"
+    database: "data1"
+    hostname: "localhost"
+    passwordKey: "dbpasswords.primary"

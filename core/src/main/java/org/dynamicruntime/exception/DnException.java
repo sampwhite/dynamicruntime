@@ -22,16 +22,19 @@ public class DnException extends Exception {
     public static int AUTH_NEEDED = 401;
     public static int NOT_AUTHORIZED = 403;
     public static int NOT_FOUND = 404;
+    // The default error code.
     public static int INTERNAL_ERROR = 500;
     // We treat 501 as a version of *400* but it is not the caller's fault.
     public static int NOT_SUPPORTED = 501;
     public static int NOT_RESPONDING = 502;
+    // Error code node should return if it is in the process of shutting down.
     public static int NOT_AVAILABLE =  504;
 
     /** Source codes. What type of resource caused the issue. */
     public static final String NETWORK = "network";
     public static final String FILE = "file";
     public static final String DATABASE = "database";
+    public static final String CONFIG = "config";
     public static final String SYSTEM = "system";
 
     /** Activity codes. What type of activity caused the issue. */
