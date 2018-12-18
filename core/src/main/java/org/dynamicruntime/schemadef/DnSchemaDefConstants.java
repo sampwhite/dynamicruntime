@@ -19,6 +19,7 @@ public class DnSchemaDefConstants {
     public static final String DN_FLOAT = "Float";
     public static final String DN_ANY = "Any";
     public static final String DN_MAP = "Map";
+    public static final String DN_BINARY = "Binary";
     public static final String DN_GENERIC = "Generic";
     /** Represent a type that is not represented by normal JSON style data. It can represent a
      * request that takes no parameters or represent simple string data or binary data in a response.
@@ -27,7 +28,7 @@ public class DnSchemaDefConstants {
     public static final String DN_NONE = "None";
 
     public static final Set<String> PRIMITIVE_TYPES = Set.of(DN_STRING, DN_BOOLEAN, DN_INTEGER,
-            DN_DATE, DN_FLOAT, DN_ANY, DN_MAP, DN_GENERIC, DN_NONE);
+            DN_DATE, DN_FLOAT, DN_ANY, DN_MAP, DN_BINARY, DN_GENERIC, DN_NONE);
 
     public static boolean isPrimitive(String dnTypeName) {
         return PRIMITIVE_TYPES.contains(dnTypeName);
@@ -66,6 +67,8 @@ public class DnSchemaDefConstants {
     public static final String DN_MAX = "max";
     /** The smallest possible value (value is greater or equal to min). */
     public static final String DN_MIN = "min";
+    /** Whether the field should do auto-incrementing (used in table design). */
+    public static final String DN_IS_AUTO_INCREMENTING = "isAutoIncrementing";
 
     //
     // DnField
@@ -129,6 +132,10 @@ public class DnSchemaDefConstants {
     public static final String EP_IS_LIST_RESPONSE = "isListResponse";
     /** The maximum number of items to return. */
     public static final String EP_LIMIT = "limit";
+    /** The *from* date for a date range query. Returns everything after or equal to this date. */
+    public static final String EP_FROM = "from";
+    /** The *until* date for a date range query. Returns everything before the date, but not including the date. */
+    public static final String EP_UNTIL = "until";
     /** The number of items returned. */
     public static final String EP_NUM_ITEMS = "numItems";
     /** Whether the endpoint definition supports indicating wether more items can be returned. */
@@ -159,5 +166,55 @@ public class DnSchemaDefConstants {
 
     public static final List<String> EP_ALLOWABLE_HTTP_METHODS = List.of(EP_GET, EP_POST, EP_PUT);
 
+    //
+    // Table definition fields
+    //
+    /** Name of table builder. */
+    public static final String TB_TABLE = "table";
+    /** Root name of table, can be varied by version and context information. */
+    public static final String TB_NAME = "tableName";
+    /** The primary key. */
+    public static final String TB_PRIMARY_KEY = "primaryKey";
+    /** The secondary indexes. */
+    public static final String TB_INDEXES = "indexes";
+    /** The name of the auto-counter column. */
+    public static final String TB_COUNTER_FIELD = "counterField";
+    /** Whether *createdDate* and *modifiedDate* should be added to table. */
+    public static final String TB_HAS_ROW_DATES = "hasRowDates";
+    /** Whether the *sourceDate*, the date assigned to the data that the external systems recognize as the date
+     * of the data. */
+    public static final String RB_HAS_SOURCE_DATE = "hasSourceDate";
+    /** Whether a acting user ID tracker should be added to the table. */
+    public static final String TB_HAS_MODIFY_USER = "hasModifyUser";
+    /** Whether the *enabled* field should *not* be added to the table. */
+    public static final String TB_NO_ENABLED = "noEnabled";
+    /** Whether this is a table for storing user data and user fields should be added. */
+    public static final String TB_IS_USER_DATA = "isUserData";
+    /** Name of fields entry in index. */
+    public static final String TB_INDEX_FIELDS = "fields";
+    /** Name of properties entry in index. */
+    public static final String TB_INDEX_PROPS = "props";
+    /** Whether a column is a big string. Needed for non-postgres databases including H2. */
+    public static final String TB_IS_BIG_STRING = "isBigString";
+
+    //
+    // Protocol fields, no prefix because they are so common.
+    //
+    /** Unique identifier for consumer. */
+    public static final String USER_ID = "userId";
+    /** The group consumer belongs to, also group may be used in other contexts as well. */
+    public static final String USER_GROUP = "userGroup";
+    /** The account to which the user belongs. */
+    public static final String USER_ACCOUNT = "account";
+    /** User doing modifications. */
+    public static final String MODIFY_USER = "modifyUser";
+    /** Whether something is enabled. */
+    public static final String ENABLED = "enabled";
+    /** The date something was created. */
+    public static final String CREATED_DATE = "createdDate";
+    /** The date something was last modified. */
+    public static final String MODIFIED_DATE = "modifiedDate";
+    /** The external date for data. */
+    public static final String SOURCE_DATE = "sourceDate";
 
 }

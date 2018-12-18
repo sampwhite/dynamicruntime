@@ -179,7 +179,7 @@ public class InstanceRegistry {
     @SuppressWarnings("unchecked")
     public static void bindAndInitServices(DnCxt cxt, Collection<Class> initializersList) throws DnException {
         var instance = cxt.instanceConfig;
-        List<ServiceInitializer> services = mList();
+        List<String> initializerKeys = mList();
         for (Class initializer : initializersList) {
             try {
                 var service = initializer.getConstructor().newInstance();
@@ -188,14 +188,23 @@ public class InstanceRegistry {
                             "ServiceInitializer interface.");
                 }
                 var serviceInitializer = (ServiceInitializer)service;
-                services.add(serviceInitializer);
 
-                // Publish the service object so other services can find it.
-                instance.put(serviceInitializer.getServiceName(), serviceInitializer);
+                // Publish the service object so other services can find it and keep track of
+                // keys we used.
+                String serviceName = serviceInitializer.getServiceName();
+                if (instance.get(serviceName) == null) {
+                    initializerKeys.add(serviceName);
+                }
+                instance.put(serviceName, serviceInitializer);
             } catch (ReflectiveOperationException e) {
                 throw new DnException("Could not instantiate service " + initializer.getCanonicalName() + ".", e);
             }
         }
+
+        // Get the service initializers we ended up registering. This allows components to replace
+        // another component's service implementation. Useful for testing.
+        List<ServiceInitializer> services = nMapSimple(initializerKeys, (key ->
+                (ServiceInitializer)instance.get(key)));
 
         // Do the initialization sequence. We give services three passes at initialization
         // so that the services can have complex dependency startup relationships.

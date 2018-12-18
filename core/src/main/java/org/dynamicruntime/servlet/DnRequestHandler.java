@@ -106,8 +106,10 @@ public class DnRequestHandler implements DnServletHandler {
                 String source = DnException.SYSTEM;
                 String activity = null;
                 String msg = t.getMessage();
+                boolean canRetry = false;
                 if (t instanceof DnException) {
                     var de = (DnException)t;
+                    canRetry = de.canRetry();
                     code = de.code;
                     if (code < 400) {
                         code = DnException.INTERNAL_ERROR;
@@ -121,6 +123,11 @@ public class DnRequestHandler implements DnServletHandler {
 
                 var responseData = mMap("httpCode", code, "source", source, "activity", activity,
                         "message", msg);
+                if (canRetry) {
+                    // If in a load balancing situation, whether proxy should call another node to do the same
+                    // thing again.
+                    responseData.put("canRetry", true);
+                }
                 if (cxt != null) {
                     responseData.put("duration", durStr);
                 }

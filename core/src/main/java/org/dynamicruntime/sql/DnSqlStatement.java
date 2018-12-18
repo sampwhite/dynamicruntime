@@ -8,11 +8,13 @@ import java.util.Map;
 
 @SuppressWarnings("WeakerAccess")
 public class DnSqlStatement {
+    /** Shard */
+    public final String shard;
     /** Topic. */
     public final String topic;
     /** Unique name within topic. */
     public final String name;
-    /** Session key, combines topic and name. */
+    /** Session key, combines shard, topic and name. */
     public final String sessionKey;
     /** The original SQL before entity substitutions. */
     public final String originalSql;
@@ -22,18 +24,19 @@ public class DnSqlStatement {
     public final Map<String, DnField> fields;
     public final String[] bindFields;
 
-    public DnSqlStatement(String topic, String name, String originalSql, String sql,
+    public DnSqlStatement(String shard, String topic, String name, String originalSql, String sql,
             List<DnField> fields, List<String> bindFields) {
+        this.shard = shard;
         this.topic = topic;
         this.name = name;
-        this.sessionKey = topic + "." + name;
+        this.sessionKey = name + "@" + shard + ":" + topic;
         this.originalSql = originalSql;
         this.sql = sql;
         this.fields = new HashMap<>();
         for (var field : fields) {
              this.fields.put(field.name, field);
         }
-        this.bindFields = bindFields.toArray(new String[bindFields.size()]);
+        this.bindFields = bindFields.toArray(new String[0]);
     }
 
 }

@@ -1,7 +1,6 @@
 package org.dynamicruntime.context;
 
 import org.dynamicruntime.schemadef.DnSchemaStore;
-import org.jetbrains.annotations.NotNull;
 
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.context.DnCxtConstants.*;
@@ -40,7 +39,7 @@ public class DnCxt {
      * it into the DnCxt to show how fundamental it is to the application. */
     public DnSchemaStore schemaStore;
 
-    public DnCxt(@NotNull String cxtName, InstanceConfig instanceConfig, DnCxt parentCxt, String shard) {
+    public DnCxt(String cxtName, InstanceConfig instanceConfig, DnCxt parentCxt, String shard) {
         var ic = instanceConfig;
         if (ic == null) {
             ic = new InstanceConfig("codeTest", UNIT, TEST_TYPE);
@@ -61,7 +60,7 @@ public class DnCxt {
         return new DnCxt(cxtName, null, null, null);
     }
 
-    public DnCxt mkSubContext(@NotNull String subCxtName) {
+    public DnCxt mkSubContext(String subCxtName) {
         var subCxt = new DnCxt(subCxtName, this.instanceConfig, this, this.shard);
         subCxt.locals.putAll(this.locals);
         subCxt.schemaStore = schemaStore;

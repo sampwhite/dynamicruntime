@@ -23,6 +23,7 @@ public class DnField {
     // How to encode the data. It is one of the primitive types. It is extracted from
     // the other type information.
     public final String coreType;
+    public final boolean isPrimitiveType;
     public final boolean isList;
     public final boolean isChoice;
     public final List<DnChoice> choices;
@@ -31,14 +32,15 @@ public class DnField {
     public final Map<String,Object> data;
 
     public DnField(String name, String label, String description, String typeRef, DnType anonType, String coreType,
-        boolean isList, boolean isChoice, List<DnChoice> choices, boolean isStrict,
-            boolean isRequired, Map<String,Object> data) {
+            boolean isPrimitiveType, boolean isList, boolean isChoice, List<DnChoice> choices, boolean isStrict,
+           boolean isRequired, Map<String,Object> data) {
         this.name = name;
         this.label = label;
         this.description = description;
         this.typeRef = typeRef;
         this.anonType = anonType;
         this.coreType = coreType;
+        this.isPrimitiveType = isPrimitiveType;
         this.isList = isList;
         this.isChoice = isChoice;
         this.choices = choices;
@@ -74,6 +76,7 @@ public class DnField {
             choices = nMap(choiceFields, (cFld -> {
                 String n = getReqStr(cFld, DN_NAME);
                 String l = getOptStr(cFld, DN_LABEL);
+                @SuppressWarnings("Duplicates")
                 String d = getOptStr(cFld, DN_DESCRIPTION);
                 l = (l == null) ? StrUtil.capitalize(n) : l;
                 d = (d == null) ? "Description of " + n : d;
@@ -90,7 +93,8 @@ public class DnField {
         DnType dnAnonType = (anonType != null) ? DnType.extractAnon(anonType, types) : null;
         String curBaseRef = (dnAnonType != null) ? dnAnonType.baseType : typeRef;
         String coreType = determineCoreType(name, curBaseRef, 0, types);
-        return new DnField(name, label, description, typeRef, dnAnonType, coreType, isList, isChoice,
+        boolean isPrimitive = (anonType == null && isPrimitive(typeRef));
+        return new DnField(name, label, description, typeRef, dnAnonType, coreType, isPrimitive, isList, isChoice,
                 choices, isStrict, isRequired, data);
 
     }
@@ -105,7 +109,7 @@ public class DnField {
         }
         var rawType = types.get(curRef);
         if (rawType == null) {
-            throw DnException.mkConv("Field " + fieldName + " referes to type " + curRef +
+            throw DnException.mkConv("Field " + fieldName + " refers to type " + curRef +
                     " that does not exist.");
         }
         var fields = getOptMap(rawType.model, DN_FIELDS);
@@ -114,6 +118,15 @@ public class DnField {
         }
         var baseType = getOptStr(rawType.model, DN_BASE_TYPE);
         return determineCoreType(fieldName, baseType, nestLevel + 1, types);
+    }
+
+    /** Convenience method to create a simple field for databases and testing. */
+    public static DnField mkSimple(String fieldName, String typeRef) {
+        try {
+            return extract(mMap(DN_NAME, fieldName, DN_TYPE_REF, typeRef), mMapT());
+        } catch (DnException e) {
+           throw new RuntimeException("Should not get this exception.", e);
+        }
     }
 
     public String toString() {
@@ -129,6 +142,9 @@ public class DnField {
             }
         }
         type = (type != null) ? type : ":Map";
+        if (isRequired) {
+            type = type + "*";
+        }
         String n = name;
         if (isList) {
             n = n + "[]";

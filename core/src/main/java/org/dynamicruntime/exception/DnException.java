@@ -48,7 +48,8 @@ public class DnException extends Exception {
     // wants the exception to be handled as significant.
     public static final String CODE = "code";
     // Includes any type of failure due to a network misbehaving, not
-    // just at time of connection.
+    // just at time of connection. It also includes failed transactions that are not
+    // due to an intrinsic issue with the transaction itself.
     public static final String CONNECTION = "connection";
     // Performing a file system or database operation.
     public static final String IO = "io";
@@ -134,6 +135,12 @@ public class DnException extends Exception {
             }
         }
         return String.join(" ", nMapSimple(list, DnException::getMessage));
+    }
+
+    public boolean canRetry() {
+        return (code == INTERNAL_ERROR && (activity.equals(CONNECTION) ||
+                activity.equals(INTERRUPTED) || activity.equals(IO))) ||
+                code == NOT_AVAILABLE;
     }
 
 }

@@ -3,6 +3,7 @@ package org.dynamicruntime.schemadef;
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.startup.ServiceInitializer;
+import org.dynamicruntime.util.ConvertUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -17,7 +18,7 @@ import static org.dynamicruntime.schemadef.LogSchema.*;
 public class DnSchemaService implements ServiceInitializer {
     public static final String DN_SCHEMA_SERVICE = DnSchemaService.class.getSimpleName();
     public DnRawSchemaStore rawSchemaStore;
-    public AtomicReference<DnSchemaStore> schemaStore = new AtomicReference<>();
+    public final AtomicReference<DnSchemaStore> schemaStore = new AtomicReference<>();
     public boolean isCreated = false;
     public boolean isInit = false;
 
@@ -40,6 +41,7 @@ public class DnSchemaService implements ServiceInitializer {
             throw new DnException("Raw schema store not create for *DnSchemaService*.");
         }
         rawSchemaStore.builders.put(EP_ENDPOINT, this::buildEndpointType);
+        rawSchemaStore.builders.put(TB_TABLE, this::buildTableDefinition);
 
         // Add some built-in types.
         var count = DnRawType.mkSubType(DN_COUNT, DN_INTEGER)
@@ -72,6 +74,7 @@ public class DnSchemaService implements ServiceInitializer {
             // Eventually we will extract DnEndpoints and DnTables as well.
             Map<String,DnType> dnTypes = mMapT();
             Map<String,DnEndpoint> endpoints = mMapT();
+            Map<String,DnTable> tables = mMapT();
             for (DnRawType rawTypeIn : rawSchemaStore.rawTypes.values()) {
                 String builder = getOptStr(rawTypeIn.model, DN_BUILDER);
                 DnRawType rawType = rawTypeIn;
@@ -97,8 +100,14 @@ public class DnSchemaService implements ServiceInitializer {
                     DnEndpoint endpoint = DnEndpoint.extract(dnType, endpointFunction);
                     endpoints.put(endpoint.path, endpoint);
                 }
+                boolean isTable = getBoolWithDefault(dnType.model, DN_IS_TABLE, false);
+                if (isTable) {
+                    DnTable table = DnTable.extract(dnType);
+                    tables.put(table.tableName, table);
+                }
+
             }
-            schemaStore.set(new DnSchemaStore(dnTypes, endpoints));
+            schemaStore.set(new DnSchemaStore(dnTypes, endpoints, tables));
         }
     }
 
@@ -168,5 +177,108 @@ public class DnSchemaService implements ServiceInitializer {
         endpointType.addFields(mList(inputField, outputField));
         endpointType.setAttribute(DN_IS_ENDPOINT, true);
         return endpointType;
+    }
+
+    public DnRawType buildTableDefinition(@SuppressWarnings("unused") DnCxt cxt, DnRawType tbInputType)
+            throws DnException {
+        var inModel = tbInputType.model;
+        String tableName = getReqStr(inModel, TB_NAME);
+        List<Map<String,Object>> indexes = mList();
+        List<DnRawField> fields = mList();
+
+        String idFieldName = getOptStr(inModel, TB_COUNTER_FIELD);
+        Map<String,Object> primaryKey;
+        /* See if ID field needs to be added. */
+        if (idFieldName != null) {
+            DnRawField idField = DnRawField.mkReqIntField(idFieldName, "Auto Counter",
+                    "Auto counter field that has primary key defined on it.");
+            idField.setAttribute(DN_IS_AUTO_INCREMENTING, true);
+            fields.add(idField);
+            primaryKey = mMap(TB_INDEX_FIELDS, mList(idFieldName));
+        } else {
+            primaryKey = buildIndex(inModel.get(TB_PRIMARY_KEY));
+            if (primaryKey == null) {
+                throw DnException.mkConv(String.format("Table %s must have a primary key.", tableName));
+            }
+        }
+
+        /* See if user fields need to be added.. */
+        boolean isUserData = getBoolWithDefault(inModel, TB_IS_USER_DATA, false);
+        if (isUserData) {
+            var userField = DnRawField.mkReqIntField(USER_ID, "User ID", "Unique numeric " +
+                    "user ID for user.");
+            var groupField = DnRawField.mkReqField(USER_GROUP, "User Group",
+                    "The container group that the user belongs to that is used to determine " +
+                            "sharding, UI experience, and logic rules for the user.");
+            fields.add(userField);
+            fields.add(groupField);
+        }
+
+        /* Add the fields given to us. */
+        var existingFields = nMapSimple(getListOfMapsDefaultEmpty(inModel, DN_FIELDS), DnRawField::mkRawField);
+        fields.addAll(existingFields);
+
+        /* See if the modifyUser should be added. */
+        boolean hasModifyUser = getBoolWithDefault(inModel, TB_HAS_MODIFY_USER, false);
+        if (hasModifyUser) {
+            var modifyUserField = DnRawField.mkReqIntField(MODIFY_USER, "Modify User",
+                    "User ID of user that last edited the data.");
+            fields.add(modifyUserField);
+        }
+
+        /* See if enabled field should be suppressed. */
+        boolean noEnabled = getBoolWithDefault(inModel, TB_NO_ENABLED, false);
+        if (!noEnabled) {
+            var enabledField = DnRawField.mkReqBoolField(ENABLED, "Enabled",
+                    "Whether the row is enabled.");
+            fields.add(enabledField);
+        }
+
+        /* See if row tracking date fields should be added. */
+        boolean addRowDates = getBoolWithDefault(inModel, TB_HAS_ROW_DATES, false);
+        if (addRowDates) {
+            var createdDate = DnRawField.mkReqDateField(CREATED_DATE, "Created Date",
+                    "When this row was created.");
+            var modifiedDate = DnRawField.mkReqDateField(MODIFIED_DATE, "Modified Date",
+                    "When this row was last modified.");
+            fields.add(createdDate);
+            fields.add(modifiedDate);
+            var modifiedIndex = buildIndex(mMap(DN_NAME, "ModifiedDate",
+                    TB_INDEX_FIELDS, mList(MODIFIED_DATE)));
+            indexes.add(modifiedIndex);
+            if (isUserData) {
+                var groupModifiedIndex = buildIndex(mMap(DN_NAME, "GroupModifiedDate",
+                        TB_INDEX_FIELDS, mList(USER_GROUP, MODIFIED_DATE)));
+                indexes.add(groupModifiedIndex);
+            }
+        }
+
+        Object indexesObj = inModel.get(TB_INDEXES);
+        if (indexesObj instanceof List) {
+            List<?> indexesList = (List)indexesObj;
+            var ids = nMapSimple(indexesList, DnSchemaService::buildIndex);
+            indexes.addAll(ids);
+        }
+
+        DnRawType tableType = DnRawType.mkType(tbInputType.name, mList());
+        tableType.model.putAll(inModel);
+        tableType.addFields(fields);
+        tableType.setAttribute(TB_PRIMARY_KEY, primaryKey);
+        tableType.setAttribute(TB_INDEXES, indexes);
+        tableType.setAttribute(DN_IS_TABLE, true);
+        return tableType;
+    }
+
+    public static Map<String,Object> buildIndex(Object obj) {
+        if (obj instanceof List) {
+            List<?> l = (List<?>) obj;
+            var strs = nMapSimple(l, ConvertUtil::toOptStr);
+            if (strs.size() == 0) {
+                 return null;
+            }
+            return mMap(TB_INDEX_FIELDS, strs);
+        } else {
+            return  toOptMap(obj);
+        }
     }
 }

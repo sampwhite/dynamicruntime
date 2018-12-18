@@ -1,4 +1,4 @@
-package org.dynamicruntime.sql;
+package org.dynamicruntime.sql.topic;
 
 @FunctionalInterface
 public interface SqlTopicCreator {

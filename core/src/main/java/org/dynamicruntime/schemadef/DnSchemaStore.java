@@ -12,10 +12,14 @@ public class DnSchemaStore {
     public final Map<String,DnType> types;
     /** Endpoints by path. Pulled from *types*.*/
     public final Map<String,DnEndpoint> endpoints;
+    /** Tables by table name. Pulled from *types*. */
+    public final Map<String,DnTable> tables;
 
-    public DnSchemaStore(Map<String,DnType> types, Map<String,DnEndpoint> endpoints) {
+    public DnSchemaStore(Map<String,DnType> types, Map<String,DnEndpoint> endpoints,
+            Map<String,DnTable> tables) {
         this.types = types;
         this.endpoints = endpoints;
+        this.tables = tables;
     }
 
     public static DnSchemaStore get(DnCxt cxt) {
@@ -25,5 +29,9 @@ public class DnSchemaStore {
 
     public DnType getType(String typeName) {
         return types.get(typeName);
+    }
+
+    public DnTable getTable(String table) {
+        return tables.get(table);
     }
 }

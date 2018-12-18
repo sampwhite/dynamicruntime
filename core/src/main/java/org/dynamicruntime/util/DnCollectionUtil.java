@@ -102,6 +102,22 @@ public class DnCollectionUtil {
         return outList;
     }
 
+    /** Creates a map from a list by using a function that extracts the key for each item. */
+    public static <U,V> Map<U,V> nMkMap(Collection<V> items, Function<V,U> getKeyFunction) {
+        Map<U,V> map = mMapT();
+        if (items != null) {
+            for (var item : items) {
+                if (item != null) {
+                    var key = getKeyFunction.apply(item);
+                    if (key != null) {
+                        map.put(key, item);
+                    }
+                }
+            }
+        }
+        return map;
+    }
+
     public static <T> T findItem(Collection<T> list, Function<T,Boolean> testFunction) {
         for (T item : list) {
             if (item != null && testFunction.apply(item)) {

@@ -1,7 +1,6 @@
 package org.dynamicruntime.util;
 
 import org.dynamicruntime.exception.DnException;
-import org.jetbrains.annotations.NotNull;
 
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
@@ -21,6 +20,12 @@ public class ConvertUtil {
         StringBuilder sb = new StringBuilder();
         fmtObject(o, sb, 0);
         return sb.toString();
+    }
+
+    /** Creates a limited size report version of an object. */
+    public static String fmtLog(Object o) {
+        String s = fmtObject(o);
+        return StrUtil.limitStringSize(s, 256);
     }
 
     public static void fmtObject(Object o, StringBuilder sb, int nestLevel) {
@@ -219,7 +224,7 @@ public class ConvertUtil {
         return l;
     }
 
-    public static long coerceNumToLong(@NotNull Number num) {
+    public static long coerceNumToLong(Number num) {
         if (num instanceof Float || num instanceof Double ||
             num instanceof BigDecimal) {
             double d = num.doubleValue();

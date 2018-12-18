@@ -4,18 +4,24 @@ import org.dynamicruntime.config.ConfigConstants;
 import org.dynamicruntime.context.DnConfigUtil;
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
+import org.dynamicruntime.schemadef.DnField;
 import org.dynamicruntime.util.ConvertUtil;
 
 import static org.dynamicruntime.sql.SqlConstants.*;
+import static org.dynamicruntime.util.DnCollectionUtil.*;
+import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Properties;
 
 @SuppressWarnings("WeakerAccess")
 public class SqlDbBuilder {
     public static final String H2_IN_MEMORY_URL =  "jdbc:h2:mem:";
+    public static final List<DnField> BASE_RESERVED_FIELDS = mList(DnField.mkSimple(EP_LIMIT, DN_INTEGER),
+            DnField.mkSimple(EP_FROM, DN_STRING), DnField.mkSimple(EP_UNTIL, DN_STRING));
 
     public DnCxt cxt;
     public String dbName;
@@ -76,6 +82,10 @@ public class SqlDbBuilder {
                         "database server being targeted for database entry %s.", dbName));
 
                 connStr = "jdbc:" + dbType + "://" + host + "/" + database;
+                options.hasSerialType = true;
+                options.storesLowerCaseIdentifiersInSchema = true;
+                // Debating whether to uncomment next line.
+                // options.useTimezoneWithTz = true;
 
             }
             properties.put("user", username);
@@ -99,7 +109,9 @@ public class SqlDbBuilder {
             throw new DnException(String.format("Cannot connect to database %s using %s.", dbName, connStr), e,
                     DnException.INTERNAL_ERROR, DnException.DATABASE, DnException.CONNECTION);
         }
-        return new SqlDatabase(dbName, driver, connStr, properties, options, numConnections);
+        var reservedFields = getReservedFields();
+        var rfMap = nMkMap(reservedFields, (f -> f.name));
+        return new SqlDatabase(dbName, driver, connStr, properties, rfMap, options, numConnections);
     }
 
     public String getReqConfigString(String key, String description) throws DnException {
@@ -115,5 +127,10 @@ public class SqlDbBuilder {
     public int getConfigInt(String key, int dflt, String description) throws DnException {
         String actualKey = dbConfigPrefix + key;
         return (int)DnConfigUtil.getConfigLong(cxt, actualKey, dflt, description);
+    }
+
+    public List<DnField> getReservedFields() {
+        // For now, we do not add any ability to inject additional fields.
+        return BASE_RESERVED_FIELDS;
     }
 }

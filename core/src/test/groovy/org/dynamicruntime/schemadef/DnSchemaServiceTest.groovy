@@ -1,9 +1,7 @@
 package org.dynamicruntime.schemadef
 
-import org.dynamicruntime.context.DnCxt
 import org.dynamicruntime.exception.DnException
-import org.dynamicruntime.request.DnRequestCxt
-import org.dynamicruntime.startup.ComponentDefinition
+import org.dynamicruntime.simulation.TestComponent
 import org.dynamicruntime.startup.InstanceRegistry
 import org.dynamicruntime.startup.LogStartup
 import org.dynamicruntime.util.DnDateUtil
@@ -14,50 +12,6 @@ import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*
 
 class DnSchemaServiceTest extends Specification {
     public static String namespace = "test"
-
-    // Declaring this class seems to be adding a second or two to test time, for reasons that are not clear.
-    class TestComponent implements ComponentDefinition {
-        DnRawSchemaPackage schemaPackage
-
-        TestComponent(DnRawSchemaPackage schemaPackage) {
-            this.schemaPackage = schemaPackage
-        }
-
-        @Override
-        String getComponentName() {
-            return "TestComponent"
-        }
-
-        @Override
-        boolean isLoaded() {
-            return true
-        }
-
-        @Override
-        boolean isActive() {
-            return true
-        }
-
-        @Override
-        void addSchema(DnCxt cxt, DnRawSchemaStore schemaStore) {
-            schemaStore.addPackage(schemaPackage)
-            schemaStore.addFunction("testEndpoint", {r -> testEndpoint(r)})
-        }
-
-        @Override
-        Collection<Class> getStartupInitializers(DnCxt cxt) {
-            return [DnSchemaService.class]
-        }
-
-        @Override
-        Collection<Class> getServiceInitializers(DnCxt cxt) {
-            return []
-        }
-
-        static void testEndpoint(DnRequestCxt requestCxt) {
-            if (requestCxt == null) println("Suppress unused parameter warning.")
-        }
-    }
 
     def "Test loading schema"() {
         LogStartup.log.debug(null, "Started test loading schema")
@@ -101,7 +55,7 @@ class DnSchemaServiceTest extends Specification {
         def endpointType1 = DnRawEndpoint.mkListEndpoint("/test/example", "testEndpoint", "Test of endpoint definition",
             "FirstInType", "FirstOutType")
 
-        def cxt = createCxt("TestEndpointPackage1", [inType1, outType1, endpointType1.getRawType()])
+        def cxt = createCxt("TestEndpointPackage1", [inType1, outType1, endpointType1])
         // Retrieve the loaded types.
         def schemaStore = cxt.getSchema()
         def endpointDef1 = schemaStore?.endpoints?.get("/test/example")
@@ -203,14 +157,15 @@ class DnSchemaServiceTest extends Specification {
             recursionField: [dateField: dateVal, boolField: true, listField: [], listMapField: [[entry: "x2"]]]]
     }
 
-    /** Instantiates a mini-app and gets a DnCxt for it. */
-    def createCxt(String pckgName, List<DnRawType> types) {
+    /** Instantiates a mini-app and gets a DnCxt for it. Note the usage of the TestComponent from the simulation
+     * code. */
+    def createCxt(String pckgName, List<DnRawTypeInterface> types) {
         // Package up our types.
         def pkg1 = DnRawSchemaPackage.mkPackage(pckgName, namespace, types)
         // Create a component to load.
-        def testComponent1 = new TestComponent(pkg1)
+        def testComponent = new TestComponent(pkg1)
         // Load component, create an instance, and get its config data.
-        def config = InstanceRegistry.getOrCreateInstanceConfig(pckgName, [:], [testComponent1])
+        def config = InstanceRegistry.getOrCreateInstanceConfig(pckgName, [:], [testComponent])
         // Create an context for our instance
         return InstanceRegistry.createCxt(pckgName, config)
     }

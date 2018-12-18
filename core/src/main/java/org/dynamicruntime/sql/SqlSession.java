@@ -1,5 +1,6 @@
 package org.dynamicruntime.sql;
 
+import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
 
 import java.sql.Connection;
@@ -9,10 +10,13 @@ import java.util.Map;
 
 @SuppressWarnings("WeakerAccess")
 public class SqlSession {
+    public static final String SQL_SESSION = SqlSession.class.getSimpleName();
+
     public final SqlDatabase sqlDb;
     /** Set to not null when valid connection has been assigned to this object. */
     public Connection conn;
     public volatile long lastAccess;
+    public volatile boolean isBeingUsed;
 
     public Map<String,SqlBoundStatement> preparedStatements = new HashMap<>();
 
@@ -20,8 +24,14 @@ public class SqlSession {
         this.sqlDb = sqlDb;
     }
 
+    public static SqlSession get(DnCxt cxt) {
+        var obj = cxt.session.get(SQL_SESSION);
+        return (obj instanceof SqlSession) ? (SqlSession)obj : null;
+    }
+
     /** Should be called whenever there is connection issue when executing a query, but only when
-     * session is being released or if there is query running too long. */
+     * session is being released (for example if an exception was thrown because a query was running too long). */
+    @SuppressWarnings("unused")
     public void setInvalid() {
         synchronized (this) {
             Connection c = conn;
@@ -57,14 +67,15 @@ public class SqlSession {
             if (retVal == null) {
                 try {
                     var prepStmt = conn.prepareStatement(dnStmt.sql);
-                    prepStmt.setQueryTimeout(60); // One minute has been a good value for a long time.
+                    prepStmt.setQueryTimeout(sqlDb.queryTimeout);
                     var aliases = sqlDb.getAliases(dnStmt.topic);
                     var newBound = new SqlBoundStatement(dnStmt, aliases, conn, prepStmt);
                     preparedStatements.put(dnStmt.sessionKey, newBound);
                     retVal = newBound;
                 } catch (SQLException e) {
                     throw new DnException(String.format("Unable to prepare statement %s with sql %s.",
-                            e, DnException.INTERNAL_ERROR, DnException.DATABASE, DnException.IO));
+                            dnStmt.name, dnStmt.sql),
+                            e, DnException.INTERNAL_ERROR, DnException.DATABASE, DnException.IO);
                 }
             }
             return retVal;

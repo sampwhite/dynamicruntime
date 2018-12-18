@@ -254,11 +254,164 @@ take input parameters like *primaryKey* and *indexes*. The builder would then ad
 fields like *creationDate* and *updatedDate*. Then code that interacts with the table could look
 at the table design and automatically create based parameterized queries to query, insert, and update rows.
 
- ### Namespacing
- 
- One of the reasons when cloning is needed is so that a DnType can be put into a particular namespace, 
- which alters the name of its type. Also, any fields referring to a base type also may have that reference 
- adjusted as well. Essentially, if the name of a DnType does not have a dot ('.') in it, then the name space is 
- added a prefix separated by a dot. This allows the definition of the raw type to be done without reference
- to a namespace and the namespacing applied later.
+#### Table Definition Builder
+
+The other major data model defined by a DnType is the definition of a table. This not only includes the
+columns, but the definition of the primary key, indexes, and any special storage options for the table. The
+definition is live in that the definition is used to automatically create tables and to update the table
+if the current design of the table does not match the schema. However, there are operational issues that
+may limit the types of fixups that are performed against tables. For example, creating a new index on a table
+with a billion rows when the table is under heavy usage is not a good idea. In that case, the index would
+be applied manually by a database administrator. But the schema definition can still assist. It is easy to write
+a command line utility that uses the schema to create a report of what columns or indexes needed to be added
+by an administrator before the code can be deployed.
+
+Note: We are skipping the implementation of foreign keys for now. We will get back to them when they prove useful.
+In this application, rows are never deleted, they are only disabled. Rows get deleted (byt not copying them) when 
+the entire table is copied from one database to another during a *data* refresh process. 
+
+The builder is named *table* and it has the following inputs.
+
+* tableName - Name of table. It should be a globally unique name. Note that qualifier strings may be added to the
+ the *tableName* value to create the actual table name.
+* description - Description of table.
+* dnFields - An array of DnField definitions as described above.
+* primaryKey - An Index object as defined below. This does not need to be supplied if *counterField* is supplied.
+* indexes - An array of Index objects as defined below. These are secondary indexes.
+* counterField - If present, the attribute names the name of the field that becomes the auto-incrementing primary
+ key for the table. The column becomes the first column.
+* hasRowDates - Whether the columns *createdDate* and *modifiedDate* are added as the last fields in the table
+  definition and whether a standard b-tree index is created for the *modifiedDate*.
+* hasSourceDate - Whether the column *sourceDate* is added. It is the date assigned to the data in the row as the
+ accounting date for the row. It is the answer to "when did this happen?"
+* hasModifyUser - Whether the column *modifyUserId* is added to the database table to track the user who
+ modified the row.
+* noEnabled - Whether the column *enabled* should **not** be added to the database table. By default it is
+ added to the table at the end before the date fields added by *hasDates*.
+* isUserData - Whether the columns *userId* and *group* are added to the database and whether an index on
+ *group* (and additionally *modifiedDate* if it is present) is created. Unless, a primary key is created
+ with *userId* in it, then an index on *userId* (and *modifiedDate* if present) is created as well. The type
+ of value that populates the *group* field depends on how users are organized, but the *group* value is targeted
+ if any sharding is done on the table. The value for *group* may also vary depending on the type type of data
+ being stored.
+* <other> - Other fields that define storage options in a private communication with data storage solution.
+
+An Index object can either be:
+
+* An array of strings. Each string is either a field name by itself or a field name followed by a space followed
+ by the string *asc* or *desc*. If the field name is by itself, then the sort order is assumed to be ascending. Note
+ that specifying *asc* or *desc* is not supported for primary keys.
+* Or a structure that looks like:
+   * name - A unique name (relative to the table) to assign to the index. This is definitely optional. Note, this
+    is the *not* the actual name assigned to the index. That name will have the actual true table name prepended. 
+    But it can be used in code to find the index definition and use it to help build queries.
+   * fields - The array of strings described in the first option.
+   * props - A map of additional properties about the index. One common property is *unique* which if set to true means
+   there is an uniqueness constraint on the index. Note that a primary key has that constraint automatically. This
+   field is rarely present.
+   
+If the index is supplied using the first option, it is converted into the second.
+
+Here is an example of how this might work. First we give the inputs and again we use yaml syntax. Note that
+*TSV* stands for Two Step Verification.
+
+```$xslt
+name: TsvContactsTable
+tableName: TsvContacts
+description: Holds contact information for the user
+dnBuilder: table
+dnFields:
+  - name: contactAddress
+    label: Contact Address
+    description: The contact (phone number or email) used to make contact.
+    required: true
+    dnTypeRef: String
+  - name: contactType
+    label: Type of Contact
+    description: The type of contact (phone or email) used to make contact.
+    required: true
+    dnTypeRef: String
+  - name: verified
+    label: Verified
+    description: Whether the contact has been verified by sending a code to it.
+    dnTypeRef: Boolean
+primaryKey: ['userId', 'contactAddress']   # Note the reference to userId which will be added to the table design.
+indexes:
+    - ['contactAddress', 'enabled']  # Allow user who forgot password to use contactAddress to reconnect.
+hasRowDates: true
+isUserData: true   
+```
+
+This will be turned into the following.
+
+```$xslt
+name: TsvContactsTable
+tableName: TsvContacts
+description: Holds contact information for the user
+dnBuilder: table
+isTable: true
+hasRowDates: true
+isUserData: true   
+dnFields:
+  - name: userId
+    label: User ID
+    description: Unique identifier for the user
+    required: true
+    dnTypeRef: Integer
+  - name: userGroup
+    label: User Group
+    description: Group or organization to which the consumer belongs
+    required: true
+    dnTypeRef: String
+  - name: contactAddress
+    label: Contact Address
+    description: The contact (phone number or email) used to make contact.
+    required: true
+    dnTypeRef: String
+  - name: contactType
+    label: Type of Contact
+    description: The type of contact (phone or email) used to make contact.
+    required: true
+    dnTypeRef: String
+  - name: verified
+    label: Verified
+    description: Whether the contact has been verified by sending a code to it.
+    dnTypeRef: Boolean
+  - name: enabled
+    label: Enabled
+    description: Whether the row is enabled. If not enabled, a row is treated as if it were deleted.
+    dnTypeRef: Boolean
+    required: true
+  - name: createdDate
+    label: Created Date
+    description: Date row was created in this table
+    required: true
+    dnTypeRef: Date
+  - name: modifiedDate
+    label: Modified Date
+    description: Date row was last modified in this table
+primaryKey: 
+    fields: ['userId', 'contactAddress']   # No *props* because there are none.
+indexes:
+  - name: GroupModifiedDate
+    fields: ['userGroup', 'modifiedDate']
+  - name: ModifiedDate
+    fields: ['modifiedDate']          
+  - fields: ['contactAddress', 'enabled']
+  - name: UserIdModifiedDate
+    fields: ['userId', 'modifiedDate']
+```
+
+In addition to adding protocol fields to the table, the table definitions built this way also come with
+associated code that will automatically generate prepared SQL statements that perform the predictable
+queries against the data. There will also be code that automatically populates a new with the user fields, 
+the date fields and the *enabled* field without direct intervention by the logic using the table to do TSV.
+   
+### Namespacing
+
+One of the reasons when cloning is needed is so that a DnType can be put into a particular namespace, 
+which alters the name of its type. Also, any fields referring to a base type also may have that reference 
+adjusted as well. Essentially, if the name of a DnType does not have a dot ('.') in it, then the name space is 
+added a prefix separated by a dot. This allows the definition of the raw type to be done without reference
+to a namespace and the namespacing applied later.
  
