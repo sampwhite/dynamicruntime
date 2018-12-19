@@ -1,5 +1,9 @@
 package org.dynamicruntime.context;
 
+import org.dynamicruntime.hook.DnHook;
+import org.dynamicruntime.hook.DnHookTypeInterface;
+import org.dynamicruntime.hook.DnHooks;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -10,6 +14,9 @@ public class InstanceConfig {
     public final String instanceName;
     public final String envName;
     public final String envType;
+
+    // A place to register callable hooks and to call them.
+    public final DnHooks hooks = new DnHooks();
 
     private Map<String,Object> config = new ConcurrentHashMap<>();
 
@@ -40,4 +47,9 @@ public class InstanceConfig {
         }
         return n;
     }
+
+    public <T> DnHook<T> getHook(DnHookTypeInterface<T> key) {
+        return hooks.getHook(key);
+    }
+
 }
