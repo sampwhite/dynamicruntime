@@ -69,7 +69,7 @@ public class DnSchemaService implements ServiceInitializer {
     }
 
     public void createSchemaStore(DnCxt cxt) throws DnException {
-        log.debug(cxt, "Creating schema store from data inputs.");
+        log.debug(cxt, "Creating read only schema store from raw modifiable data inputs.");
         synchronized (this) {
             // Eventually we will extract DnEndpoints and DnTables as well.
             Map<String,DnType> dnTypes = mMapT();

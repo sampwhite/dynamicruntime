@@ -23,6 +23,7 @@ public class DnSqlStatement {
     /** Definitions of fields being used. */
     public final Map<String, DnField> fields;
     public final String[] bindFields;
+    public boolean returnGeneratedKeys;
 
     public DnSqlStatement(String shard, String topic, String name, String originalSql, String sql,
             List<DnField> fields, List<String> bindFields) {

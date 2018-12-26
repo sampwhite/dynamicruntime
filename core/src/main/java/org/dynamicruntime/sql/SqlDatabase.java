@@ -4,16 +4,11 @@ import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.context.DnCxtConstants;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.schemadef.DnField;
-import org.dynamicruntime.sql.topic.SqlTopicInterface;
 import org.dynamicruntime.util.StrUtil;
 
 import java.sql.*;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import static org.dynamicruntime.util.DnCollectionUtil.*;
@@ -26,8 +21,8 @@ public class SqlDatabase {
     public final String connectionUrl;
     public final Properties connectionProperties;
     public final Map<String,DnField> reservedFields;
+    public final Set<String> createdTables = new HashSet<>();
     public final SqlDbOptions options;
-    public final Map<String, SqlTopicInterface> topics = new ConcurrentHashMap<>();
     private final Map<String,SqlColumnAliases> topicAliases = mMapT();
 
     public final ArrayBlockingQueue<SqlSession> connections;
@@ -101,11 +96,12 @@ public class SqlDatabase {
         addAliases(topic, fldToCol);
     }
 
-    public String mkSqlTableName(DnCxt cxt, String tableName) {
+    public String mkSqlTableName(SqlCxt sqlCxt, String tableName) {
         String tbName;
+        var cxt = sqlCxt.cxt;
         if (!options.identifiersCaseSensitive) {
             tbName = StrUtil.toLowerCaseIdentifier(tableName);
-            if (options.useShardInTableNames && !cxt.shard.equals(DnCxtConstants.PRIMARY)) {
+            if (sqlCxt.shardTablesGetDifferentNames() && !cxt.shard.equals(DnCxtConstants.PRIMARY)) {
                 tbName = StrUtil.toLowerCaseIdentifier(cxt.shard) + "_" + tbName;
             }
             if (!options.storesLowerCaseIdentifiersInSchema) {
@@ -113,18 +109,18 @@ public class SqlDatabase {
             }
         } else {
             tbName = StrUtil.capitalize(tableName);
-            if (options.useShardInTableNames && !cxt.shard.equals(DnCxtConstants.PRIMARY)) {
+            if (sqlCxt.shardTablesGetDifferentNames() && !cxt.shard.equals(DnCxtConstants.PRIMARY)) {
                 tbName = StrUtil.capitalize(cxt.shard) + tbName;
             }
         }
         return tbName;
     }
 
+
     public void withSession(DnCxt cxt, SqlFunction function) throws DnException {
         var sqlSession = SqlSession.get(cxt);
-        boolean createdIt = false;
+        boolean assignedIt = false;
         if (sqlSession == null) {
-            createdIt = true;
             try {
                 sqlSession = connections.poll(pollWaitTime, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
@@ -137,20 +133,66 @@ public class SqlDatabase {
                         "database %s after waiting %d seconds.", dbName, pollWaitTime), null,
                         DnException.INTERNAL_ERROR, DnException.DATABASE, DnException.CONNECTION);
             }
+            assignedIt = true;
             cxt.session.put(SqlSession.SQL_SESSION, sqlSession);
             sqlSession.isBeingUsed = true;
         }
         try {
-            if (createdIt) {
+            if (assignedIt) {
                  // Make sure connection is initialized (and give it a chance to throw an error).
-                sqlSession.getConnection();
+                sqlSession.getSessionStartConnection();
             }
             function.execute();
+        } catch (DnException e) {
+            if (e.source.equals(DnException.DATABASE) && (e.activity.equals(DnException.IO) ||
+                    e.activity.equals(DnException.CONNECTION))) {
+                // At some point, may want to set more than this session invalid.
+                sqlSession.setInvalid();
+            }
+            throw e;
         } finally {
-            if (createdIt) {
+            if (assignedIt) {
                 cxt.session.remove(SqlSession.SQL_SESSION);
                 sqlSession.isBeingUsed = false;
                 connections.offer(sqlSession);
+            }
+        }
+    }
+
+    public void withTran(DnCxt cxt, SqlFunction function) throws DnException {
+        var sqlSession = SqlSession.get(cxt);
+        if (sqlSession != null) {
+            withTranAndSession(cxt, sqlSession, function);
+        } else {
+            withSession(cxt, () -> {
+                var ss = getMustExist(cxt);
+                withTranAndSession(cxt, ss, function);
+            });
+        }
+    }
+
+    public void withTranAndSession(DnCxt cxt, SqlSession session, SqlFunction function) throws DnException {
+        if (session.inTran) {
+            function.execute();
+            return;
+        }
+        boolean committedIt = false;
+        try {
+            session.conn.setAutoCommit(false);
+            session.inTran = true;
+            function.execute();
+            session.conn.commit();
+            session.conn.setAutoCommit(true);
+            committedIt = true;
+        } catch (SQLException e) {
+            throw SqlStmtUtil.mkDnException("Could not execute transaction.", e);
+        } finally {
+            session.inTran = false;
+            if (!committedIt) {
+                try {
+                    session.conn.setAutoCommit(true);
+                    session.conn.rollback();
+                } catch (Exception ignore) {}
             }
         }
     }
@@ -213,6 +255,8 @@ public class SqlDatabase {
     //
     // DnSqlStatement querying.
     //
+
+    /** Does a simple insert or update. */
     public int executeDnStatement(DnCxt cxt, DnSqlStatement stmt, Map<String,Object> data) throws DnException {
         SqlSession sqlSession = getMustExist(cxt);
         SqlBoundStatement boundStmt = sqlSession.checkAndGetStatement(stmt);
@@ -224,48 +268,84 @@ public class SqlDatabase {
         }
     }
 
+    /** Does an insert but allow getting back the counter Id value that was generated. */
+    public int executeDnStatementGetCounterBack(DnCxt cxt, DnSqlStatement stmt, Map<String,Object> data,
+            long[] counterValue) throws DnException {
+        SqlSession sqlSession = getMustExist(cxt);
+        SqlBoundStatement boundStmt = sqlSession.checkAndGetStatement(stmt);
+        var pStmt = getAndBindPreparedStatement(cxt, boundStmt, data);
+        try {
+            int result = pStmt.executeUpdate();
+            if (result > 0 && counterValue != null) {
+                try (var generatedKeys = pStmt.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        int colCount = generatedKeys.getMetaData().getColumnCount();
+                        for (int i = 0; i < colCount && i < counterValue.length; i++) {
+                            counterValue[i] = generatedKeys.getLong(i + 1);
+                        }
+                    }
+                }
+            }
+            return result;
+        } catch (SQLException e) {
+            throw SqlStmtUtil.mkDnException(String.format("Could not execute query %s", stmt.name), e);
+        }
+
+    }
+
+    /** General mechanism to query for rows. */
     public List<Map<String,Object>> queryDnStatement(DnCxt cxt, DnSqlStatement stmt, Map<String,Object> data)
-        throws DnException {
+            throws DnException {
         SqlSession sqlSession = getMustExist(cxt);
         SqlBoundStatement boundStmt = sqlSession.checkAndGetStatement(stmt);
         SqlColumnAliases aliases = boundStmt.aliases;
 
         var pStmt = getAndBindPreparedStatement(cxt, boundStmt, data);
         try {
-            List<Map<String,Object>> retVal = mList();
-            ResultSet rs = pStmt.executeQuery();
-            ResultSetMetaData md = rs.getMetaData();
-            List<DnField> fields = mList();
-            for (int i = 0; i < md.getColumnCount(); i++) {
-                String colName = md.getColumnName(i + 1);
-                String fldName = aliases.getFieldName(colName);
-                DnField fld = SqlStmtUtil.getDnField(stmt, boundStmt.aliases, fldName);
-                fields.add(fld);
-            }
-            int count = 0;
-            while (rs.next() && count++ < 100000) {
-                // Use linked hash map to preserve original field order of table.
-                var row = new LinkedHashMap<String,Object>();
-                for (int i = 0; i < fields.size(); i++) {
-                    DnField fld = fields.get(i);
-                    Object dbObj = rs.getObject(i + 1);
-                    Object obj = SqlTypeUtil.convertDbObject(cxt, fld, dbObj);
-                    if (obj != null) {
-                        row.put(fld.name, obj);
-                    }
+            try (ResultSet rs = pStmt.executeQuery()) {
+                List<Map<String,Object>> retVal = mList();
+                //ResultSet rs = pStmt.executeQuery();
+                ResultSetMetaData md = rs.getMetaData();
+                List<DnField> fields = mList();
+                for (int i = 0; i < md.getColumnCount(); i++) {
+                    String colName = md.getColumnName(i + 1);
+                    String fldName = aliases.getFieldName(colName);
+                    DnField fld = SqlStmtUtil.getDnField(stmt, boundStmt.aliases, fldName);
+                    fields.add(fld);
                 }
-                retVal.add(row);
+                int count = 0;
+                while (rs.next() && count++ < 100000) {
+                    // Use linked hash map to preserve original field order of table.
+                    var row = new LinkedHashMap<String,Object>();
+                    for (int i = 0; i < fields.size(); i++) {
+                        DnField fld = fields.get(i);
+                        Object dbObj = rs.getObject(i + 1);
+                        Object obj = SqlTypeUtil.convertDbObject(cxt, fld, dbObj);
+                        if (obj != null) {
+                            row.put(fld.name, obj);
+                        }
+                    }
+                    retVal.add(row);
+                }
+                return retVal;
             }
-            return retVal;
         } catch (SQLException e) {
             throw SqlStmtUtil.mkDnException(
                     String.format("Failure querying for result set from statement %s.", stmt.name), e);
         }
     }
 
-    public PreparedStatement getAndBindPreparedStatement(DnCxt cxt, SqlBoundStatement boundStmt,
-            Map<String,Object> data)
+    public Map<String,Object> queryOneDnStatement(DnCxt cxt, DnSqlStatement stmt, Map<String,Object> data)
             throws DnException {
+        List<Map<String,Object>> values = queryDnStatement(cxt, stmt, data);
+        if (values != null && values.size() > 0) {
+            return values.get(0);
+        }
+        return null;
+    }
+
+    public PreparedStatement getAndBindPreparedStatement(DnCxt cxt, SqlBoundStatement boundStmt,
+            Map<String,Object> data) throws DnException {
         var dnSqlStmt = boundStmt.dnSql;
         PreparedStatement pStmt = boundStmt.stmt;
         for (int i = 0; i < dnSqlStmt.bindFields.length; i++) {
@@ -284,5 +364,18 @@ public class SqlDatabase {
                     "session on database %s.", dbName));
         }
         return sqlSession;
+    }
+
+    public boolean hasCreatedTable(SqlCxt sqlCxt, String tableName) {
+        String dbTableName = mkSqlTableName(sqlCxt, tableName);
+        synchronized (createdTables) {
+            return createdTables.contains(dbTableName);
+        }
+    }
+
+    public void registerHasCreatedSqlTable(String tableName) {
+        synchronized (createdTables) {
+            createdTables.add(tableName);
+        }
     }
 }

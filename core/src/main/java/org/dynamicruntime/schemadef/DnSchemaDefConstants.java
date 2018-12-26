@@ -183,7 +183,7 @@ public class DnSchemaDefConstants {
     public static final String TB_HAS_ROW_DATES = "hasRowDates";
     /** Whether the *sourceDate*, the date assigned to the data that the external systems recognize as the date
      * of the data. */
-    public static final String RB_HAS_SOURCE_DATE = "hasSourceDate";
+    public static final String TB_HAS_SOURCE_DATE = "hasSourceDate";
     /** Whether a acting user ID tracker should be added to the table. */
     public static final String TB_HAS_MODIFY_USER = "hasModifyUser";
     /** Whether the *enabled* field should *not* be added to the table. */
@@ -192,6 +192,8 @@ public class DnSchemaDefConstants {
     public static final String TB_IS_USER_DATA = "isUserData";
     /** Name of fields entry in index. */
     public static final String TB_INDEX_FIELDS = "fields";
+    /** Whether index is unique. */
+    public static final String TB_UNIQUE_INDEX = "unique";
     /** Name of properties entry in index. */
     public static final String TB_INDEX_PROPS = "props";
     /** Whether a column is a big string. Needed for non-postgres databases including H2. */
@@ -216,5 +218,7 @@ public class DnSchemaDefConstants {
     public static final String MODIFIED_DATE = "modifiedDate";
     /** The external date for data. */
     public static final String SOURCE_DATE = "sourceDate";
+    /** Last touched date, used for initiating transactions. */
+    public static final String TOUCHED_DATE = "touchedDate";
 
 }

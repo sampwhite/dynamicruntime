@@ -5,6 +5,7 @@ import org.dynamicruntime.exception.DnException;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,6 +18,7 @@ public class SqlSession {
     public Connection conn;
     public volatile long lastAccess;
     public volatile boolean isBeingUsed;
+    public boolean inTran = false;
 
     public Map<String,SqlBoundStatement> preparedStatements = new HashMap<>();
 
@@ -44,16 +46,27 @@ public class SqlSession {
         }
     }
 
-    public Connection getConnection() throws DnException {
+    public Connection getConnection() {
+        return conn;
+    }
+
+    public Connection getSessionStartConnection() throws DnException {
         lastAccess = System.currentTimeMillis();
         synchronized (this) {
             if (conn == null) {
+                // Not clear if this is necessary.
+                for (var stmt : preparedStatements.values()) {
+                    try {
+                        stmt.stmt.close();
+                    } catch (Exception ignore) {}
+                }
                 preparedStatements.clear();
                 conn = sqlDb.createConnection();
                 // Put in any transaction isolation or connection settings here.
             }
             return conn;
         }
+
     }
 
     public SqlBoundStatement checkAndGetStatement(DnSqlStatement dnStmt) throws DnException {
@@ -66,7 +79,9 @@ public class SqlSession {
             var retVal = preparedStatements.get(dnStmt.sessionKey);
             if (retVal == null) {
                 try {
-                    var prepStmt = conn.prepareStatement(dnStmt.sql);
+                    var prepStmt = (dnStmt.returnGeneratedKeys) ?
+                            conn.prepareStatement(dnStmt.sql, Statement.RETURN_GENERATED_KEYS) :
+                            conn.prepareStatement(dnStmt.sql);
                     prepStmt.setQueryTimeout(sqlDb.queryTimeout);
                     var aliases = sqlDb.getAliases(dnStmt.topic);
                     var newBound = new SqlBoundStatement(dnStmt, aliases, conn, prepStmt);

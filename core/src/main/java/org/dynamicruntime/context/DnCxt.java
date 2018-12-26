@@ -15,9 +15,14 @@ public class DnCxt {
     public final InstanceConfig instanceConfig;
     public final List<String> parentLoggingIds;
     public final String loggingId;
-    /** The storage shard. Used by unit tests to isolate in-memory data from each other. Also
-     * used for scalability to do full stack software sharding of CPU and data. */
-    public final String shard;
+    /** The current acting user for this context. Can be changed (and corresponding shard may change as well if
+     * data being stored is using active user as its ). */
+    public UserProfile userProfile;
+    /** The active storage shard. Used by unit tests to isolate in-memory data from each other. Also
+     * used for scalability to do full stack software sharding of CPU and data. This is mutable
+     * so that a working thread can shift between shards, but such changes should be done with
+     * great care. */
+    public String shard;
     /** Objects attached to this context only and not propagated down to sub context objects. This
      * map plays the role typically played by ThreadLocal storage, but with the advantage that a
      * context can be handed off to a worker thread and not break thread local session. Sql transaction
@@ -31,9 +36,11 @@ public class DnCxt {
      * or are thread-safe. Typical usage for this map is to cache results of data gathering and
      * computation. */
     public final Map<String,Object> locals = mMap();
-    /** Date the context object was created. */
+    /** Used by tests to do time travel. */
+    public int nowTimeOffsetInSeconds = 0;
+    /** Date the context object was created.*/
     public final Date creationDate = new Date();
-    /** Nano time of start time. */
+    /** Nano time of start time. Used to time requests. */
     public final long nanoTime = System.nanoTime();
     /** Cached copy of the schema store. Allows ready access to an unchanging read only copy of the schema. We put
      * it into the DnCxt to show how fundamental it is to the application. */
@@ -64,6 +71,7 @@ public class DnCxt {
         var subCxt = new DnCxt(subCxtName, this.instanceConfig, this, this.shard);
         subCxt.locals.putAll(this.locals);
         subCxt.schemaStore = schemaStore;
+        subCxt.userProfile = userProfile;
         return subCxt;
     }
 
@@ -78,5 +86,10 @@ public class DnCxt {
     public double getDuration() {
         long diff = System.nanoTime() - nanoTime;
         return ((double)diff)/1000000;
+    }
+
+    public Date now() {
+        long n = System.currentTimeMillis() + 1000 * nowTimeOffsetInSeconds;
+        return new Date(n);
     }
 }

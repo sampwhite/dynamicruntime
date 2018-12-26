@@ -55,6 +55,11 @@ public class DnRawTable implements DnRawTypeInterface {
         return new DnRawTable(tableName, model, fields);
     }
 
+    public DnRawTable setCounterField(String fieldName) {
+        tbModel.put(TB_COUNTER_FIELD, fieldName);
+        return this;
+    };
+
     public DnRawTable setAttribute(String key, Object val) {
         tbModel.put(key, val);
         return this;

@@ -11,6 +11,7 @@ import org.dynamicruntime.schemadata.SchemaForSchema;
 import org.dynamicruntime.schemadef.DnRawSchemaStore;
 import org.dynamicruntime.schemadef.DnSchemaService;
 import org.dynamicruntime.servlet.DnRequestService;
+import org.dynamicruntime.sql.topic.SqlTopicService;
 import org.dynamicruntime.startup.ComponentDefinition;
 
 import static org.dynamicruntime.util.DnCollectionUtil.*;
@@ -52,7 +53,7 @@ public class CoreComponent implements ComponentDefinition {
 
     @Override
     public Collection<Class> getStartupInitializers(DnCxt cxt) {
-        return mList(DnSchemaService.class);
+        return mList(DnSchemaService.class, SqlTopicService.class);
     }
 
     @Override

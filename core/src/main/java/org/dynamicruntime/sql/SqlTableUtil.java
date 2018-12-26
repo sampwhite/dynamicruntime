@@ -6,6 +6,7 @@ import org.dynamicruntime.schemadef.DnField;
 import org.dynamicruntime.schemadef.DnTable;
 import org.dynamicruntime.util.EncodeUtils;
 
+import static org.dynamicruntime.schemadef.DnSchemaDefConstants.TB_UNIQUE_INDEX;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.util.ConvertUtil.*;
 
@@ -30,12 +31,22 @@ public class SqlTableUtil {
         }
     }
 
+    public static boolean checkCreateTable(SqlCxt sqlCxt, DnTable tableDef) throws DnException {
+        if (sqlCxt.sqlDb.hasCreatedTable(sqlCxt, tableDef.tableName)) {
+            return false;
+        }
+        createTable(sqlCxt, tableDef);
+        return true;
+    }
+
     /** Creates a table and adds columns and/or indexes if they are missing. This call should be done
-     * inside a SqlSession. */
+     * inside a SqlSession. Returns false if we already have asked to create this table. Caller can
+     * use return value to determine if row provisioning logic needs to be run. */
     public static void createTable(SqlCxt sqlCxt, DnTable tableDef) throws DnException {
         var cxt = sqlCxt.cxt;
         SqlDatabase sqlDb = sqlCxt.sqlDb;
-        String dbTableName = sqlDb.mkSqlTableName(cxt, tableDef.tableName);
+        String dbTableName = sqlDb.mkSqlTableName(sqlCxt, tableDef.tableName);
+
         // Register column aliases.
         sqlDb.addDefaultAliases(sqlCxt.topic, tableDef.columns);
 
@@ -73,7 +84,7 @@ public class SqlTableUtil {
                     isFirst = false;
                 }
                 sb.append(",\n");
-                String primaryKeyClause = SqlStmtUtil.createColumnList(sqlCxt, tableDef.primaryKey.columns);
+                String primaryKeyClause = SqlStmtUtil.createColumnList(sqlCxt, tableDef.primaryKey.fieldDeclarations);
                 sb.append(" PRIMARY KEY (").append(primaryKeyClause).append(")\n);");
                 String createStmt = sb.toString();
                 sqlDb.executeSchemaChangeSql(cxt, createStmt);
@@ -105,6 +116,7 @@ public class SqlTableUtil {
         }
 
         addIndexes(sqlCxt, dbTableName, tableDef.indexes);
+        sqlDb.registerHasCreatedSqlTable(dbTableName);
     }
 
     public static void addIndexes(SqlCxt sqlCxt, String dbTableName, List<DnTable.Index> indexes) throws DnException {
@@ -144,7 +156,7 @@ public class SqlTableUtil {
             }
 
             for (var index : indexes) {
-                List<String> fieldNames = index.getFieldNames();
+                List<String> fieldNames = index.fieldNames;
                 List<String> colNames = nMapSimple(fieldNames, aliases::getColumnName);
                 String key = String.join(":", colNames);
                 if (!existingIndexes.contains(key)) {
@@ -158,13 +170,13 @@ public class SqlTableUtil {
                     // Limit index name to 60 characters so we do not run into trouble with maximum
                     // identifier lengths.
                     String shortenedName = EncodeUtils.mkUniqueShorterStr(tbIndexName, 60);
-                    boolean isUnique = getBoolWithDefault(index.indexProperties, DnTable.UNIQUE, false);
+                    boolean isUnique = getBoolWithDefault(index.indexProperties, TB_UNIQUE_INDEX, false);
                     String uniqueStr = (isUnique) ? " UNIQUE" : "";
                     // Currently our building of index is simple. But eventually we may support more indexProperties
                     // and tweak the entries in the *index.columns* based on which database we are creating the
                     // index for.
                     String stmt = "CREATE" + uniqueStr + " INDEX " + shortenedName + " ON " + dbTableName + "(" +
-                            SqlStmtUtil.createColumnList(sqlCxt, index.columns) + ")";
+                            SqlStmtUtil.createColumnList(sqlCxt, index.fieldDeclarations) + ")";
                     sqlDb.executeSchemaChangeSql(cxt, stmt);
 
                 }

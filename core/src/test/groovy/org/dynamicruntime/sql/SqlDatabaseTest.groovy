@@ -54,11 +54,11 @@ class SqlDatabaseTest extends Specification {
         then: "Should a full table definition usable for creating tables"
         def tableDef = schemaStore.getTable("UserTotal")
         tableDef != null
-        tableDef.primaryKey.columns == ['userId']
-        tableDef.indexes.collect {it.columns} == [['modifiedDate'], ['userGroup','modifiedDate'], ['enabled','total']]
+        tableDef.primaryKey.fieldDeclarations == ['userId']
+        tableDef.indexes.collect {it.fieldDeclarations} == [['modifiedDate'], ['userGroup', 'modifiedDate'], ['enabled', 'total']]
 
         when: "Creating a database table using the definition"
-        def builder = new SqlDbBuilder(cxt, "primary")
+        def builder = new SqlDbBuilder(cxt, "primary", !executeAsIntegrationTest)
         def sqlDb = builder.createDatabase()
         def sqlCxt = new SqlCxt(cxt, sqlDb, "test")
 
@@ -97,7 +97,7 @@ class SqlDatabaseTest extends Specification {
 
         when: "Converting queries that use fields to ones that use columns"
         def testStr = "abc 'cde '' c:userId'''(c:userId) t:xyz t: :p : 'x t:UserTotal'"
-        def predictedTbName = sqlDb.mkSqlTableName(cxt, "xyz")
+        def predictedTbName = sqlDb.mkSqlTableName(sqlCxt, "xyz")
         def predictedStr = "abc 'cde '' c:userId'''(user_id) ${predictedTbName} t: ? : 'x t:UserTotal';"
         def testStmt = SqlStmtUtil.prepareSql(sqlCxt, "testString", newTableDef.columns, testStr)
 
@@ -106,7 +106,7 @@ class SqlDatabaseTest extends Specification {
         testStmt.bindFields == ["p"] as String[]
 
         when: "Building queries"
-        String insertQuery = SqlStmtUtil.mkInsertQuery(newTableDef.tableName, newTableDef.columns)
+        String insertQuery = SqlStmtUtil.mkInsertQuery(newTableDef.tableName, newTableDef.columns, null)
         DnSqlStatement insertStmt = SqlStmtUtil.prepareSql(sqlCxt, "i" + newTableDef.tableName,
                 newTableDef.columns, insertQuery)
         String resultsQuery = "select * from t:${newTableDef.tableName}"
@@ -137,7 +137,7 @@ class SqlDatabaseTest extends Specification {
     Map<String,String> getFieldsAndTypes(SqlCxt sqlCxt, String tableName) {
         def cxt = sqlCxt.cxt
         def sqlDb = sqlCxt.sqlDb
-        def realTableName = sqlDb.mkSqlTableName(cxt, tableName)
+        def realTableName = sqlDb.mkSqlTableName(sqlCxt, tableName)
         Map<String,String> fieldAndTypes = [:]
         def aliases = sqlDb.getAliases(sqlCxt.topic)
         sqlDb.withSession(cxt, {
@@ -159,7 +159,7 @@ class SqlDatabaseTest extends Specification {
     def getIndexInfo(SqlCxt sqlCxt, String tableName) {
         def cxt = sqlCxt.cxt
         def sqlDb = sqlCxt.sqlDb
-        def realTableName = sqlDb.mkSqlTableName(cxt, tableName)
+        def realTableName = sqlDb.mkSqlTableName(sqlCxt, tableName)
         def aliases = sqlDb.getAliases(sqlCxt.topic)
         List<String> indexSummaries = []
         sqlDb.withSession(cxt, {

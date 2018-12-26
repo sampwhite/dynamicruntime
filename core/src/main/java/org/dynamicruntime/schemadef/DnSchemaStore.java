@@ -1,6 +1,7 @@
 package org.dynamicruntime.schemadef;
 
 import org.dynamicruntime.context.DnCxt;
+import org.dynamicruntime.exception.DnException;
 
 import java.util.Collections;
 import java.util.Map;
@@ -33,5 +34,13 @@ public class DnSchemaStore {
 
     public DnTable getTable(String table) {
         return tables.get(table);
+    }
+
+    public DnTable getTableMustExist(String table) throws DnException {
+        DnTable dnTable = tables.get(table);
+        if (dnTable == null) {
+            throw new DnException(String.format("Expected table %s was not present.", table));
+        }
+        return dnTable;
     }
 }

@@ -12,9 +12,9 @@ import java.util.List;
 
 @SuppressWarnings("WeakerAccess")
 public class SqlStmtUtil {
-    public static String createColumnList(SqlCxt sqlCxt, List<String> fields) {
+    public static String createColumnList(SqlCxt sqlCxt, List<String> fieldDeclarations) {
         SqlColumnAliases aliases = sqlCxt.sqlDb.getAliases(sqlCxt.topic);
-        List<String> colNames = nMapSimple(fields, (f -> aliasComposite(aliases, f)));
+        List<String> colNames = nMapSimple(fieldDeclarations, (f -> aliasComposite(aliases, f)));
         return String.join(", ", colNames);
     }
 
@@ -40,7 +40,19 @@ public class SqlStmtUtil {
     }
 
     /**
-     * Parses the query for convertible elements using old school parsing algorithm.
+     * Parses the query for convertible elements using old school parsing algorithm written by an old school
+     * programmer.
+     *
+     * -----
+     * Small break for Java advertisement. This implementation is blazing fast and this is where
+     * Java is an optimal fit. Languages such as C/C++ cannot do this type of coding without creating
+     * security holes (assuming your programmers are not gods) and almost all other languages cannot create code
+     * that executes any where near as fast.
+     *
+     * Go and Rust maybe can be this fast and do it safely, but they do not have access to the large Maven library
+     * or full virtual machine capabilities making them a poor fit for large team enterprise software creation.
+     * -----
+     *
      * Word elements starting with a ':' are parameters. Word elements starting with
      * a 't:' are table definition names that need to be turned into actual database table names.
      * Word elements starting with 'c:' are fields that need to be mapped to column names.
@@ -56,7 +68,7 @@ public class SqlStmtUtil {
      */
     public static DnSqlStatement prepareSql(SqlCxt sqlCxt, String name, List<DnField> fields, String query) {
         SqlColumnAliases aliases = sqlCxt.sqlDb.getAliases(sqlCxt.topic);
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder(query.length() + 20);
         List<String> bindFields = mList();
 
         // Parse current query and turn it into one we will use as a prepared statement.
@@ -73,6 +85,7 @@ public class SqlStmtUtil {
             if (!inWord && !inQuote) {
                 // Support simple ASCII Java identifiers as words (with support for colons as well).
                 if (allowedWordStart) {
+                    // Use StringBuilder's ability to avoid creation of intermediate substrings.
                     sb.append(query, curIndex, i);
                     inWord = true;
                     startWordIndex = i;
@@ -87,7 +100,8 @@ public class SqlStmtUtil {
                     char ch2 = query.charAt(startWordIndex + 1);
                     int wordLen = i - startWordIndex;
                     if ((ch1 == ':' && wordLen > 1) || (ch2 == ':' && wordLen > 2)) {
-                        // Cannot avoid it, we create a substring creating a new Java object.
+                        // Cannot avoid it, we create a substring creating a new Java object, a slight performance
+                        // hit.
                         String word = query.substring(startWordIndex, i);
                         if (ch1 == ':') {
                             // A parameter.
@@ -101,7 +115,7 @@ public class SqlStmtUtil {
                         } else if (ch1 == 't') {
                             // A table name.
                             String tableDefName = word.substring(2);
-                            String tbName = sqlCxt.sqlDb.mkSqlTableName(sqlCxt.cxt, tableDefName);
+                            String tbName = sqlCxt.sqlDb.mkSqlTableName(sqlCxt, tableDefName);
                             sb.append(tbName);
                         } else {
                             // A strange expression which is likely to cause final query to fail to execute.
@@ -140,22 +154,84 @@ public class SqlStmtUtil {
         return new DnSqlStatement(sqlCxt.cxt.shard, sqlCxt.topic, name, query, convertedQuery, fields, bindFields);
     }
 
-    public static String mkInsertQuery(String tableName, List<DnField> fields) {
-        String firstPart = "INSERT INTO t:" + tableName + " (c:";
+    public static String mkInsertQuery(String tableName, List<DnField> fields, boolean[] hasAutoIncrement) {
         // Note that nulls get dropped.
         List<String> fieldNames = nMapSimple(fields, (fld -> {
             if (getBoolWithDefault(fld.data, DN_IS_AUTO_INCREMENTING, false)) {
+                if (hasAutoIncrement != null && hasAutoIncrement.length > 0) {
+                    hasAutoIncrement[0] = true;
+                }
                 return null;
             }
             return fld.name;
         }));
+        return mkInsertQuery2(tableName, fieldNames);
+    }
+
+    public static String mkInsertQuery2(String tableName, List<String> fieldNames) {
+        String firstPart = "INSERT INTO t:" + tableName + " (c:";
         // First list of fields are prefixed with "c:" so that they will get translated into column names.
         String secondPart = String.join(", c:", fieldNames);
         String thirdPart = ") VALUES (:";
         // Prefix field names with ":" so that they will be treated as named parameters.
         String fourthPart = String.join(", :", fieldNames);
-        String lastPart = ");";
+        String lastPart = ")";
         return firstPart + secondPart + thirdPart + fourthPart + lastPart;
+    }
+
+    public static String mkSelectQuery(String tableName, List<String> andFields) {
+        return "SELECT * FROM t:" + tableName + mkAndClause(andFields, true);
+    }
+
+    public static String mkUpdateQuery(String tableName, List<DnField> fields, List<String> andFields) {
+        List<String> fieldNames = nMapSimple(fields, (fld -> {
+            if (andFields.contains(fld.name)) {
+                return null;
+            }
+            return fld.name;
+        }));
+
+        return mkUpdateQuery2(tableName, fieldNames, andFields);
+
+    }
+
+    public static String mkUpdateQuery2(String tableName, List<String> fieldNames, List<String> andFields) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("UPDATE t:").append(tableName).append(" SET ");
+        boolean isFirst = true;
+        for (var fld : fieldNames) {
+            if (!isFirst) {
+                sb.append(", ");
+            }
+            isFirst = false;
+            sb.append("c:").append(fld).append(" = :").append(fld);
+        }
+        sb.append(mkAndClause(andFields, true));
+        return sb.toString();
+    }
+
+    public static String mkAndClause(List<String> andFields, boolean isStartOfClause) {
+        var sb = new StringBuilder();
+        if (andFields.size() > 0) {
+            if (isStartOfClause) {
+                sb.append(" WHERE ");
+            } else {
+                sb.append(" AND ");
+            }
+        }
+        appendAndStatements(sb, andFields);
+        return sb.toString();
+    }
+
+    public static void appendAndStatements(StringBuilder sb, List<String> andFields) {
+        boolean isFirst = true;
+        for (var s : andFields) {
+            if (!isFirst) {
+                sb.append(" AND ");
+            }
+            isFirst = false;
+            sb.append("c:").append(s).append(" = :").append(s);
+        }
     }
 
     public static DnException mkDnException(String msg, Exception e) {

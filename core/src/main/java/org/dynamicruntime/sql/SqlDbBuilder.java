@@ -26,17 +26,16 @@ public class SqlDbBuilder {
     public DnCxt cxt;
     public String dbName;
     public String dbConfigPrefix;
+    public boolean isInMemory;
 
-    public SqlDbBuilder(DnCxt cxt, String dbName) {
+    public SqlDbBuilder(DnCxt cxt, String dbName, boolean isInMemory) {
         this.cxt = cxt;
         this.dbName = dbName;
         this.dbConfigPrefix = "db." + dbName + ".";
+        this.isInMemory = isInMemory;
     }
 
     public SqlDatabase createDatabase() throws DnException {
-        boolean isInMemory = DnConfigUtil.getConfigBool(cxt, ConfigConstants.IN_MEMORY_SIMULATION, false,
-                "Whether code is using H2 in-memory databases to run a simulated version of " +
-                        "the application.");
         var options = new SqlDbOptions();
         var properties = new Properties();
         String connStr;
@@ -109,6 +108,9 @@ public class SqlDbBuilder {
             throw new DnException(String.format("Cannot connect to database %s using %s.", dbName, connStr), e,
                     DnException.INTERNAL_ERROR, DnException.DATABASE, DnException.CONNECTION);
         }
+        LogSql.log.debug(cxt,
+                String.format("Connecting to database %s for shard %s using connection string %s.",
+                        dbName, cxt.shard, connStr));
         var reservedFields = getReservedFields();
         var rfMap = nMkMap(reservedFields, (f -> f.name));
         return new SqlDatabase(dbName, driver, connStr, properties, rfMap, options, numConnections);

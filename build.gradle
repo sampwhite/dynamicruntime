@@ -22,7 +22,7 @@ repositories {
 
 dependencies {
     // Kotlin pulls in jetbrains annotations as well (such as @NotNull).
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    //compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     // We use groovy to launch, test, and execute scripts.
     compile 'org.codehaus.groovy:groovy-all:2.5.4'
     // Simple lightweight HTTP server.

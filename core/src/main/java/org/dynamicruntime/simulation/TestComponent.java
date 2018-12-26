@@ -5,6 +5,7 @@ import org.dynamicruntime.request.DnRequestCxt;
 import org.dynamicruntime.schemadef.DnRawSchemaPackage;
 import org.dynamicruntime.schemadef.DnRawSchemaStore;
 import org.dynamicruntime.schemadef.DnSchemaService;
+import org.dynamicruntime.sql.topic.SqlTopicService;
 import org.dynamicruntime.startup.ComponentDefinition;
 import org.dynamicruntime.util.DnCollectionUtil;
 
@@ -44,7 +45,7 @@ public class TestComponent implements ComponentDefinition {
 
     @Override
     public Collection<Class> getStartupInitializers(DnCxt cxt) {
-        return DnCollectionUtil.mList(DnSchemaService.class);
+        return DnCollectionUtil.mList(DnSchemaService.class, SqlTopicService.class);
     }
 
     @Override

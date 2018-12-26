@@ -15,7 +15,7 @@ public class DnConfigUtil {
         if (obj == null) {
             obj = dflt;
         }
-        if (obj != null || extras != null) {
+        if (obj != null || extras != null && !cxt.instanceConfig.configAccessReport.containsKey(key)) {
             DnConfigReport rpt = new DnConfigReport(key, obj, description, dflt, extras);
             cxt.instanceConfig.configAccessReport.put(key, rpt);
         }

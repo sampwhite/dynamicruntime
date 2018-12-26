@@ -32,4 +32,9 @@ public class DnCxtConstants {
      * that is not sharded that knows about all the possible shards, except for unit tests. */
     public static final String PRIMARY = "primary";
 
+    /** Default account names for user profile. */
+    public static final int AC_SYSTEM_USER_ID = 0;
+    public static final String AC_LOCAL = "local";
+    public static final String AC_PUBLIC = "public";
+
 }

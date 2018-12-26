@@ -5,4 +5,4 @@ db:
     dbType: "postgresql"
     database: "data1"
     hostname: "localhost"
-    passwordKey: "dbpasswords.primary"
+    passwordKey: "dbPassword.primary"

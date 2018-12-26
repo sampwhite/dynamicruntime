@@ -13,20 +13,23 @@ import java.util.Map;
 
 @SuppressWarnings("WeakerAccess")
 public class DnTable {
-    public static final String UNIQUE = "unique";
-
     public static class Index {
         /** Name of index. Provided only if code wants to use index later to help build queries. */
         public final String name;
-        /** The columns in the index. The columns can include additional information about sort order
-         * using a space separator after the column name. */
-        public final List<String> columns;
+        /** The field declarations in the index. The declarations can include additional information about sort order
+         * using a space separator after the field name. */
+        public final List<String> fieldDeclarations;
+        /** The field name portions of the declaration entries. This is the columns without the extra info following
+         * the field name. */
+        public final List<String> fieldNames;
         /** Extended properties of the index, including things like whether it has a uniqueness constraint or not. */
         public final Map<String,Object> indexProperties;
 
-        public Index(String name, List<String> columns, Map<String,Object> indexProperties) {
+        public Index(String name, List<String> fieldDeclarations, Map<String,Object> indexProperties) {
             this.name = name;
-            this.columns = columns;
+            this.fieldDeclarations = fieldDeclarations;
+            this.fieldNames = nMapSimple(fieldDeclarations, (s ->
+                    StrUtil.getToNextIndex(s, 0, " ")));
             this.indexProperties = indexProperties;
         }
 
@@ -48,15 +51,11 @@ public class DnTable {
                 throw DnException.mkConv("Could not extract index from " + fmtObject(obj) + ".");
             }
         }
-
-        public List<String> getFieldNames() {
-            return nMapSimple(columns, (s ->
-                    StrUtil.getToNextIndex(s, 0, " ")));
-        }
     }
 
     public final String tableName;
     public final List<DnField> columns;
+    public final Map<String,DnField> columnsByName;
     public final Index primaryKey;
     public final List<Index> indexes;
     public final boolean firstColIsCounter;
@@ -67,6 +66,10 @@ public class DnTable {
             Map<String,Object> data) {
         this.tableName = tableName;
         this.columns = columns;
+        this.columnsByName = mMapT();
+        for (var col : columns) {
+            columnsByName.put(col.name, col);
+        }
         this.primaryKey = primaryKey;
         this.indexes = indexes;
         this.data = data;
