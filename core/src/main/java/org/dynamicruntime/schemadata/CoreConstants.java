@@ -26,4 +26,7 @@ public class CoreConstants {
     /** Function name for getting schema endpoint definitions. */
     public static final String SS_GET_ENDPOINT_DEFINITIONS = "schema.getEndpointDefinitions";
     public static final String SS_ENDPOINT_PATH_PREFIX = "pathPrefix";
+    /** Function name for getting schema table definitions. */
+    public static final String SS_GET_TABLE_DEFINITIONS = "schema.getTableDefinitions";
+    public static final String SS_TABLE_NAME_PREFIX = "namePrefix";
 }

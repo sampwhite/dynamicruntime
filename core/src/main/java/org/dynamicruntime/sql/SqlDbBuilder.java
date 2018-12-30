@@ -1,6 +1,5 @@
 package org.dynamicruntime.sql;
 
-import org.dynamicruntime.config.ConfigConstants;
 import org.dynamicruntime.context.DnConfigUtil;
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
@@ -20,8 +19,8 @@ import java.util.Properties;
 @SuppressWarnings("WeakerAccess")
 public class SqlDbBuilder {
     public static final String H2_IN_MEMORY_URL =  "jdbc:h2:mem:";
-    public static final List<DnField> BASE_RESERVED_FIELDS = mList(DnField.mkSimple(EP_LIMIT, DN_INTEGER),
-            DnField.mkSimple(EP_FROM, DN_STRING), DnField.mkSimple(EP_UNTIL, DN_STRING));
+    public static final List<DnField> BASE_RESERVED_FIELDS = mList(DnField.mkSimple(EPF_LIMIT, DNT_INTEGER),
+            DnField.mkSimple(EPF_FROM, DNT_STRING), DnField.mkSimple(EPF_UNTIL, DNT_STRING));
 
     public DnCxt cxt;
     public String dbName;

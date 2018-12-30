@@ -4,7 +4,6 @@ import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.schemadef.DnField;
 
 import static org.dynamicruntime.util.DnCollectionUtil.*;
-import static org.dynamicruntime.util.ConvertUtil.*;
 import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 
 import java.sql.SQLTransientException;
@@ -34,7 +33,7 @@ public class SqlStmtUtil {
         }
         if (fld == null) {
             // If still null at this point, then we assume the type to be a string.
-            fld = DnField.mkSimple(fldName, DN_STRING);
+            fld = DnField.mkSimple(fldName, DNT_STRING);
         }
         return fld;
     }
@@ -157,7 +156,7 @@ public class SqlStmtUtil {
     public static String mkInsertQuery(String tableName, List<DnField> fields, boolean[] hasAutoIncrement) {
         // Note that nulls get dropped.
         List<String> fieldNames = nMapSimple(fields, (fld -> {
-            if (getBoolWithDefault(fld.data, DN_IS_AUTO_INCREMENTING, false)) {
+            if (fld.isAutoIncrementing()) {
                 if (hasAutoIncrement != null && hasAutoIncrement.length > 0) {
                     hasAutoIncrement[0] = true;
                 }

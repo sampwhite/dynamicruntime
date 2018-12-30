@@ -3,6 +3,7 @@ package org.dynamicruntime.endpoint;
 import org.dynamicruntime.request.DnRequestCxt;
 import org.dynamicruntime.schemadef.DnEndpoint;
 import org.dynamicruntime.schemadef.DnEndpointFunction;
+import org.dynamicruntime.schemadef.DnTable;
 import org.dynamicruntime.schemadef.DnType;
 
 import java.util.Comparator;
@@ -51,7 +52,7 @@ public class SchemaEndpoints {
         requestCxt.listResponse = nMapSimple(retVal, DnType::toMap);
     }
 
-    public static void getSchemaDefinitions(DnRequestCxt requestCxt) {
+    public static void getEndpointDefinitions(DnRequestCxt requestCxt) {
         var reqData = requestCxt.requestData;
         String prefix = getOptStr(reqData, SS_ENDPOINT_PATH_PREFIX);
         var endpoints = requestCxt.cxt.getSchema().endpoints.values();
@@ -66,9 +67,25 @@ public class SchemaEndpoints {
         requestCxt.listResponse = nMapSimple(retVal, DnEndpoint::toMap);
     }
 
+    public static void getTableDefinitions(DnRequestCxt requestCxt) {
+        var reqData = requestCxt.requestData;
+        String prefix = getOptStr(reqData, SS_TABLE_NAME_PREFIX);
+        var tables = requestCxt.cxt.getSchema().tables.values();
+        List<DnTable> retVal = mList();
+        for (var tb : tables) {
+            if (prefix != null && !tb.tableName.startsWith(prefix)) {
+                continue;
+            }
+            retVal.add(tb);
+        }
+        retVal.sort(Comparator.comparing(tb -> tb.tableName));
+        requestCxt.listResponse = nMapSimple(retVal, DnTable::toMap);
+    }
+
     public static List<DnEndpointFunction> getFunctions() {
         return mList(
                 mkEndpoint(SS_GET_TYPE_DEFINITIONS, SchemaEndpoints::getSchemaTypes),
-                mkEndpoint(SS_GET_ENDPOINT_DEFINITIONS, SchemaEndpoints::getSchemaDefinitions));
+                mkEndpoint(SS_GET_ENDPOINT_DEFINITIONS, SchemaEndpoints::getEndpointDefinitions),
+                mkEndpoint(SS_GET_TABLE_DEFINITIONS, SchemaEndpoints::getTableDefinitions));
     }
 }

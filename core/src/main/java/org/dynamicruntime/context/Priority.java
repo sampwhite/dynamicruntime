@@ -1,8 +1,9 @@
-package org.dynamicruntime.defs;
+package org.dynamicruntime.context;
 
 /** Place holder class to hold priority order. Note that we do not use Enums (besides a general
  * avoidance in this whole application) because a typical value somebody might supply is
- * *STANDARD - 1* or *LATE + 1*/
+ * *STANDARD - 1* or *LATE + 1* */
+@SuppressWarnings("unused")
 public class Priority {
     public static final int VERY_EARLY = 100;
     public static final int EARLY = 200;

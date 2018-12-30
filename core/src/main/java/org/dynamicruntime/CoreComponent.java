@@ -2,7 +2,7 @@ package org.dynamicruntime;
 
 import org.dynamicruntime.content.DnContentService;
 import org.dynamicruntime.context.DnCxt;
-import org.dynamicruntime.defs.Priority;
+import org.dynamicruntime.context.Priority;
 import org.dynamicruntime.endpoint.NodeEndpoints;
 import org.dynamicruntime.endpoint.SchemaEndpoints;
 import org.dynamicruntime.node.DnNodeService;
@@ -45,8 +45,9 @@ public class CoreComponent implements ComponentDefinition {
 
     @Override
     public void addSchema(DnCxt cxt, DnRawSchemaStore schemaStore) {
-        schemaStore.addFunctions(NodeEndpoints.getFunctions());
         schemaStore.addPackage(NodeSchema.getPackage());
+        schemaStore.addFunctions(NodeEndpoints.getFunctions());
+
         schemaStore.addPackage(SchemaForSchema.getPackage());
         schemaStore.addFunctions(SchemaEndpoints.getFunctions());
     }

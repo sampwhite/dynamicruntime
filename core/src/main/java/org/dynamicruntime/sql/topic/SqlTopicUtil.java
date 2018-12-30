@@ -41,13 +41,19 @@ public class SqlTopicUtil {
 
     public static DnSqlStatement mkTableSelectStmt(SqlCxt sqlCxt, DnTable table) {
         String qName = "q" + table.tableName;
-        String query = SqlStmtUtil.mkSelectQuery(table.tableName, table.primaryKey.fieldNames);
+        return mkNamedTableSelectStmt(sqlCxt, qName, table, table.primaryKey.fieldNames);
+    }
+
+    public static DnSqlStatement mkNamedTableSelectStmt(SqlCxt sqlCxt, String qName, DnTable table,
+            List<String> andFields) {
+        String query = SqlStmtUtil.mkSelectQuery(table.tableName, andFields);
         return SqlStmtUtil.prepareSql(sqlCxt, qName, table.columns, query);
     }
 
     public static DnSqlStatement mkTableUpdateStmt(SqlCxt sqlCxt, DnTable table) {
         String qName = "u" + table.tableName;
-        List<DnField> relevantColumns = nMapSimple(table.columns, (col -> (!col.name.equals(TOUCHED_DATE)) ? col : null));
+        List<DnField> relevantColumns = nMapSimple(table.columns, (col ->
+                (!col.name.equals(TOUCHED_DATE) && !col.isAutoIncrementing()) ? col : null));
         String query = SqlStmtUtil.mkUpdateQuery(table.tableName, relevantColumns, table.primaryKey.fieldNames);
         return SqlStmtUtil.prepareSql(sqlCxt, qName, table.columns, query);
     }
@@ -97,6 +103,12 @@ public class SqlTopicUtil {
         }
         prepForStdExecute(cxt, rowValues);
     }
+
+    public static void prepForTranInsert(DnCxt cxt, Map<String,Object> data) {
+        data.put(TOUCHED_DATE, cxt.now());
+        data.put(LAST_TRAN_ID, "INITIAL_INSERT");
+    }
+
 
     /** Adds standard protocol date fields to the row data about to be executed on. This call will
      * modify the contents of *rowValues*. */

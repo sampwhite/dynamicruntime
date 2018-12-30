@@ -9,26 +9,26 @@ public class DnSchemaDefConstants {
     public static final String DN_NAMESPACE = "namespace";
 
     //
-    // Primitive types.
+    // Primitive types, do not get namespaced or get a type definition.
     //
 
-    public static final String DN_STRING = "String";
-    public static final String DN_BOOLEAN = "Boolean";
-    public static final String DN_INTEGER = "Integer";
-    public static final String DN_DATE = "Date";
-    public static final String DN_FLOAT = "Float";
-    public static final String DN_ANY = "Any";
-    public static final String DN_MAP = "Map";
-    public static final String DN_BINARY = "Binary";
-    public static final String DN_GENERIC = "Generic";
+    public static final String DNT_STRING = "String";
+    public static final String DNT_BOOLEAN = "Boolean";
+    public static final String DNT_INTEGER = "Integer";
+    public static final String DNT_DATE = "Date";
+    public static final String DNT_FLOAT = "Float";
+    public static final String DNT_ANY = "Any";
+    public static final String DNT_MAP = "Map";
+    public static final String DNT_BINARY = "Binary";
+    public static final String DNT_GENERIC = "Generic";
     /** Represent a type that is not represented by normal JSON style data. It can represent a
      * request that takes no parameters or represent simple string data or binary data in a response.
-     * Using a value of DN_NONE essentially says that the normal JSON oriented DnSchema logic does not
+     * Using a value of DNT_NONE essentially says that the normal JSON oriented DnSchema logic does not
      * interact with the entity that has this type name. */
-    public static final String DN_NONE = "None";
+    public static final String DNT_NONE = "None";
 
-    public static final Set<String> PRIMITIVE_TYPES = Set.of(DN_STRING, DN_BOOLEAN, DN_INTEGER,
-            DN_DATE, DN_FLOAT, DN_ANY, DN_MAP, DN_BINARY, DN_GENERIC, DN_NONE);
+    public static final Set<String> PRIMITIVE_TYPES = Set.of(DNT_STRING, DNT_BOOLEAN, DNT_INTEGER,
+            DNT_DATE, DNT_FLOAT, DNT_ANY, DNT_MAP, DNT_BINARY, DNT_GENERIC, DNT_NONE);
 
     public static boolean isPrimitive(String dnTypeName) {
         return PRIMITIVE_TYPES.contains(dnTypeName);
@@ -109,8 +109,9 @@ public class DnSchemaDefConstants {
     /** Namespace for core types. */
     public static final String DN_CORE_NAMESPACE = "core";
     /** Type for a counting integer. An integer that starts at zero. Note that we have already
-     * applied the namespace so that it can be easily referenced as type for a field. */
-    public static final String DN_COUNT = "core.Count";
+     * applied the namespace so that it can be easily referenced as type for a field. The count type
+     * is provided for free at startup. */
+    public static final String DNT_COUNT = "core.Count";
 
     //
     // Endpoint fields.
@@ -131,40 +132,40 @@ public class DnSchemaDefConstants {
     /** Indicates whether response data is put into a list of items. */
     public static final String EP_IS_LIST_RESPONSE = "isListResponse";
     /** The maximum number of items to return. */
-    public static final String EP_LIMIT = "limit";
+    public static final String EPF_LIMIT = "limit";
     /** The *from* date for a date range query. Returns everything after or equal to this date. */
-    public static final String EP_FROM = "from";
+    public static final String EPF_FROM = "from";
     /** The *until* date for a date range query. Returns everything before the date, but not including the date. */
-    public static final String EP_UNTIL = "until";
+    public static final String EPF_UNTIL = "until";
     /** The number of items returned. */
-    public static final String EP_NUM_ITEMS = "numItems";
-    /** Whether the endpoint definition supports indicating wether more items can be returned. */
+    public static final String EPR_NUM_ITEMS = "numItems";
+    /** Whether the endpoint definition supports indicating whether more items can be returned. */
     public static final String EP_HAS_MORE_PAGING = "hasMorePaging";
     /** Whether there are more items beyond the ones that were returned. */
-    public static final String EP_HAS_MORE = "hasMore";
+    public static final String EPR_HAS_MORE = "hasMore";
     /** Enables returning the number of available items. */
     public static final String EP_HAS_NUM_AVAILABLE = "hasNumAvailable";
     /** The total number of available items.  If the *limit* parameter reduced the number of items
      * being returned, then this is the total count of what would have been available if the the number
      * had not been reduced.*/
-    public static final String EP_NUM_AVAILABLE = "numAvailable";
+    public static final String EPR_NUM_AVAILABLE = "numAvailable";
     /** The original Request URI of the request. */
-    public static final String EP_REQUEST_URI = "requestUri";
+    public static final String EPR_REQUEST_URI = "requestUri";
     /** The duration of the request (as computed internally). */
-    public static final String EP_DURATION = "duration";
+    public static final String EPR_DURATION = "duration";
     /** The items to be returned. */
-    public static final String EP_ITEMS = "items";
+    public static final String EPR_ITEMS = "items";
     /** The name of the field that defines the input type for the endpoint. */
-    public static final String EP_INPUT_TYPE = "endpointInputType";
+    public static final String EPF_INPUT_TYPE = "endpointInputType";
     /** The name of the field that defines the output type for the endpoint. */
-    public static final String EP_OUTPUT_TYPE = "endpointOutputType";
+    public static final String EPF_OUTPUT_TYPE = "endpointOutputType";
 
     /** The allowable HTTP methods. */
-    public static final String EP_GET = "GET";
-    public static final String EP_POST = "POST";
-    public static final String EP_PUT = "PUT";
+    public static final String EPH_GET = "GET";
+    public static final String EPH_POST = "POST";
+    public static final String EPH_PUT = "PUT";
 
-    public static final List<String> EP_ALLOWABLE_HTTP_METHODS = List.of(EP_GET, EP_POST, EP_PUT);
+    public static final List<String> EPH_ALLOWABLE_HTTP_METHODS = List.of(EPH_GET, EPH_POST, EPH_PUT);
 
     //
     // Table definition fields
@@ -190,14 +191,16 @@ public class DnSchemaDefConstants {
     public static final String TB_NO_ENABLED = "noEnabled";
     /** Whether this is a table for storing user data and user fields should be added. */
     public static final String TB_IS_USER_DATA = "isUserData";
+    /** Whether the table is a top level transaction locking table. */
+    public static final String TB_IS_TOP_LEVEL = "isTopLevel";
     /** Name of fields entry in index. */
-    public static final String TB_INDEX_FIELDS = "fields";
+    public static final String TBI_INDEX_FIELDS = "fields";
     /** Whether index is unique. */
-    public static final String TB_UNIQUE_INDEX = "unique";
+    public static final String TBI_UNIQUE_INDEX = "unique";
     /** Name of properties entry in index. */
-    public static final String TB_INDEX_PROPS = "props";
+    public static final String TBI_INDEX_PROPS = "props";
     /** Whether a column is a big string. Needed for non-postgres databases including H2. */
-    public static final String TB_IS_BIG_STRING = "isBigString";
+    public static final String TBC_IS_BIG_STRING = "isBigString";
 
     //
     // Protocol fields, no prefix because they are so common.
@@ -207,7 +210,9 @@ public class DnSchemaDefConstants {
     /** The group consumer belongs to, also group may be used in other contexts as well. */
     public static final String USER_GROUP = "userGroup";
     /** The account to which the user belongs. */
-    public static final String USER_ACCOUNT = "account";
+    public static final String USER_ACCOUNT = "userAccount";
+    /** The shard to which the user belongs. */
+    public static final String USER_SHARD = "shard";
     /** User doing modifications. */
     public static final String MODIFY_USER = "modifyUser";
     /** Whether something is enabled. */
@@ -218,7 +223,21 @@ public class DnSchemaDefConstants {
     public static final String MODIFIED_DATE = "modifiedDate";
     /** The external date for data. */
     public static final String SOURCE_DATE = "sourceDate";
+    /** Whether the data in the data or row has been verified. */
+    public static final String VERIFIED = "verified";
+    /** An authentication code sent to the user that is either played back by the user or attached to a later
+     * request. */
+    public static final String AUTH_CODE = "authCode";
+    /** An expiration time for when an authentication action must take place. */
+    public static final String AUTH_ACTION_EXPIRATION = "authActionExpiration";
+    /** The identifier of the transaction. It must be unique in the scope of a particular userId, unless
+     * the userId is not part of the primary key of the top level table, in which case it has to be globally
+     * unique (to the application instance). It is the *tranId* which makes edit requests idempotent, because
+     * there should be a history table that records each transaction and if the same transaction is attempted,
+     * it should do a no-op and report success. */
+    public static final String TRAN_ID = "tranId";
+    /** The identifier of the last transaction that updated this table. */
+    public static final String LAST_TRAN_ID = "lastTranId";
     /** Last touched date, used for initiating transactions. */
     public static final String TOUCHED_DATE = "touchedDate";
-
 }

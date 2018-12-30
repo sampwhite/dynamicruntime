@@ -25,29 +25,29 @@ public class SqlTypeUtil {
         switch (sqlType) {
             case Types.VARCHAR:
             case Types.CLOB:
-                return DN_STRING;
+                return DNT_STRING;
             case Types.INTEGER:
             case Types.BIGINT:
             case Types.SMALLINT:
             case Types.TINYINT:
-                return DN_INTEGER;
+                return DNT_INTEGER;
             case Types.BINARY:
             case Types.BLOB:
-                return DN_BINARY;
+                return DNT_BINARY;
             case Types.BOOLEAN:
             case Types.BIT:
-                return DN_BOOLEAN;
+                return DNT_BOOLEAN;
             case Types.DECIMAL:
             case Types.DOUBLE:
             case Types.FLOAT:
             case Types.REAL:
-                return DN_FLOAT;
+                return DNT_FLOAT;
             case Types.TIMESTAMP:
             case Types.DATE:
             case Types.TIME:
-                return DN_DATE;
+                return DNT_DATE;
             default:
-                return DN_NONE;
+                return DNT_NONE;
         }
     }
 
@@ -56,18 +56,18 @@ public class SqlTypeUtil {
         // support at a later time, maybe).
         if (field.isList) {
             // Lists get encoded as strings.
-            return DN_STRING;
+            return DNT_STRING;
         }
 
         String coreType = field.coreType;
         switch (coreType) {
-            case DN_STRING:
+            case DNT_STRING:
                 // H2 and Postgres support using a *varchar* without a maximum length without any
                 // performance implications.
                 return "varchar";
-            case DN_INTEGER:
+            case DNT_INTEGER:
                 // Always use 8-bits, costs little for a bit of peace of mind.
-                boolean isAutoNumber = getBoolWithDefault(field.data, DN_IS_AUTO_INCREMENTING, false);
+                boolean isAutoNumber = field.isAutoIncrementing();
                 if (isAutoNumber) {
                     if (sqlCxt.sqlDb.options.hasSerialType) {
                         return "bigserial";
@@ -75,21 +75,21 @@ public class SqlTypeUtil {
                     return "bigint auto_increment";
                 }
                 return "bigint";
-            case DN_FLOAT:
+            case DNT_FLOAT:
                 // We do the simple thing here. Not clear we need more precision.
                 return "float";
-            case DN_DATE:
+            case DNT_DATE:
                 if (sqlCxt.sqlDb.options.useTimezoneWithTz) {
                     // Postgresql custom type that can be useful.
                     return "timezonetz";
                 }
                 return "timestamp";
-            case DN_BOOLEAN:
+            case DNT_BOOLEAN:
                 return "boolean";
-            case DN_BINARY:
+            case DNT_BINARY:
                 return "blob";
-            case DN_MAP:
-            case DN_GENERIC:
+            case DNT_MAP:
+            case DNT_GENERIC:
                 return "varchar";
          }
          return "varchar";
@@ -124,14 +124,14 @@ public class SqlTypeUtil {
                 pStmt.setString(index, str);
             } else {
                 switch (coreType) {
-                    case DN_STRING:
-                    case DN_MAP:
-                    case DN_GENERIC: // Generic always resolves to some type of map.
+                    case DNT_STRING:
+                    case DNT_MAP:
+                    case DNT_GENERIC: // Generic always resolves to some type of map.
                         String s;
                         if (obj == null) {
                             s = null;
                         }
-                        else if (coreType.equals(DN_STRING)) {
+                        else if (coreType.equals(DNT_STRING)) {
                             s = toOptStr(obj);
                         } else {
                             if (obj instanceof CharSequence) {
@@ -144,7 +144,7 @@ public class SqlTypeUtil {
                         }
                         pStmt.setString(index, s);
                         break;
-                    case DN_BOOLEAN:
+                    case DNT_BOOLEAN:
                         Boolean b = toOptBool(obj);
                         if (b != null) {
                             pStmt.setBoolean(index, b);
@@ -152,7 +152,7 @@ public class SqlTypeUtil {
                             pStmt.setNull(index, Types.BOOLEAN);
                         }
                         break;
-                    case DN_DATE:
+                    case DNT_DATE:
                         Date d = toOptDate(obj);
                         if (d != null) {
                             pStmt.setTimestamp(index, new java.sql.Timestamp(d.getTime()));
@@ -160,7 +160,7 @@ public class SqlTypeUtil {
                             pStmt.setTimestamp(index, null);
                         }
                         break;
-                    case DN_FLOAT:
+                    case DNT_FLOAT:
                         Double db = toOptDouble(obj);
                         if (db != null) {
                             pStmt.setFloat(index, db.floatValue());
@@ -168,7 +168,7 @@ public class SqlTypeUtil {
                             pStmt.setNull(index, Types.FLOAT);
                         }
                         break;
-                    case DN_INTEGER:
+                    case DNT_INTEGER:
                         Long l = toOptLong(obj);
                         if (l != null) {
                             pStmt.setLong(index, l);
@@ -230,20 +230,20 @@ public class SqlTypeUtil {
         // Now in simpler case.
         Object retVal = null;
         switch (fld.coreType) {
-            case DN_BOOLEAN:
+            case DNT_BOOLEAN:
                 retVal = toOptBool(obj);
                 break;
-            case DN_INTEGER:
+            case DNT_INTEGER:
                 try {
                     retVal = toOptLong(obj);
                 } catch (Exception ignore) { }
                 break;
-            case DN_FLOAT:
+            case DNT_FLOAT:
                 try {
                     retVal = toOptDouble(obj);
                 } catch (Exception ignore) { }
                 break;
-            case DN_DATE:
+            case DNT_DATE:
                 try {
                     retVal = toOptDate(obj);
                     if (retVal instanceof Timestamp) {
@@ -253,7 +253,7 @@ public class SqlTypeUtil {
                 break;
             default:
                 String s = obj.toString().trim();
-                if (fld.coreType.equals(DN_MAP) || fld.coreType.equals(DN_GENERIC)) {
+                if (fld.coreType.equals(DNT_MAP) || fld.coreType.equals(DNT_GENERIC)) {
                     if (s.startsWith("{")) {
                         try {
                             retVal = ParsingUtil.toJsonMap(s);
@@ -272,13 +272,13 @@ public class SqlTypeUtil {
     public static boolean entitiesCanHaveCommas(DnCxt cxt, DnField fld) {
         boolean entitiesHaveCommas = true;
         switch (fld.coreType) {
-            case DN_BOOLEAN:
-            case DN_INTEGER:
-            case DN_FLOAT:
-            case DN_DATE:
+            case DNT_BOOLEAN:
+            case DNT_INTEGER:
+            case DNT_FLOAT:
+            case DNT_DATE:
                 return false;
-            case DN_MAP:
-            case DN_GENERIC:
+            case DNT_MAP:
+            case DNT_GENERIC:
                 return true;
         }
 

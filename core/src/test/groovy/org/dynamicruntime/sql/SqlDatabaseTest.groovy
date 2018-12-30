@@ -34,7 +34,7 @@ class SqlDatabaseTest extends Specification {
                                       'enabled:Boolean', 'createdDate:Date', 'modifiedDate:Date']
         when: "Defining a simple table"
 
-        def total = DnRawField.mkField("total", "Total", "A user's total").setTypeRef(DN_FLOAT)
+        def total = DnRawField.mkField("total", "Total", "A user's total").setTypeRef(DNT_FLOAT)
         def userTotalTable = DnRawTable.mkStdUserTable("UserTotal", "User totals",
                 [total], ["userId"])
         // Allows ranged queries on enabled totals.

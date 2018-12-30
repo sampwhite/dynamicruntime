@@ -28,7 +28,7 @@ public class DnRawEndpoint implements DnRawTypeInterface {
             epModel.put(DN_NAME, name);
         }
         if (!epModel.containsKey(EP_HTTP_METHOD)) {
-            epModel.put(EP_HTTP_METHOD, EP_GET);
+            epModel.put(EP_HTTP_METHOD, EPH_GET);
         }
         epModel.put(DN_IS_ENDPOINT, true);
         epModel.put(DN_BUILDER, EP_ENDPOINT);

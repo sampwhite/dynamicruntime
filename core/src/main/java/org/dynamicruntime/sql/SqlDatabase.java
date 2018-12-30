@@ -4,6 +4,7 @@ import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.context.DnCxtConstants;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.schemadef.DnField;
+import org.dynamicruntime.util.ConvertUtil;
 import org.dynamicruntime.util.StrUtil;
 
 import java.sql.*;
@@ -12,6 +13,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import static org.dynamicruntime.util.DnCollectionUtil.*;
+import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 
 @SuppressWarnings("WeakerAccess")
 public class SqlDatabase {
@@ -335,6 +337,8 @@ public class SqlDatabase {
         }
     }
 
+    /** Queries and returns only the first row. This is best for existence tests and when targeting
+     * indexes that have a uniqueness constraint. */
     public Map<String,Object> queryOneDnStatement(DnCxt cxt, DnSqlStatement stmt, Map<String,Object> data)
             throws DnException {
         List<Map<String,Object>> values = queryDnStatement(cxt, stmt, data);
@@ -342,6 +346,15 @@ public class SqlDatabase {
             return values.get(0);
         }
         return null;
+    }
+
+    /** Queries a single row but only returns it if it enabled. Works well outside of transactions, not
+     * so well inside transactions. Should only be done against indexes with uniqueness constraints. */
+    public Map<String,Object> queryOneEnabled(DnCxt cxt, DnSqlStatement stmt, Map<String,Object> data)
+            throws DnException {
+        var retVal = queryOneDnStatement(cxt, stmt, data);
+        return (retVal != null && ConvertUtil.getBoolWithDefault(retVal, ENABLED, false)) ?
+                retVal : null;
     }
 
     public PreparedStatement getAndBindPreparedStatement(DnCxt cxt, SqlBoundStatement boundStmt,

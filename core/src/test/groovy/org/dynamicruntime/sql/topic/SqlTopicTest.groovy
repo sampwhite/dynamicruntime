@@ -44,7 +44,7 @@ class SqlTopicTest extends Specification {
         def userData = [x: (long)Integer.MAX_VALUE + 1, y: 2]
         sqlDb.withSession(cxt) {
             long[] id = [-1] as long[]
-            def row = [userGroup: "public", userData: userData, touchedDate: cxt.now()]
+            def row = [userGroup: "public", userData: userData, lastTranId: "insert", touchedDate: cxt.now()]
             SqlTopicUtil.prepForStdExecute(cxt, row) // Adds createdDate and modifiedDate.
             sqlDb.executeDnStatementGetCounterBack(cxt, sqlTopic.iTranLockQuery, row, id)
             ids.add(id[0])
@@ -62,14 +62,14 @@ class SqlTopicTest extends Specification {
 
         when: "Performing transactions"
         // Do explicit provision of userId.
-        SqlTopicTranProvider.executeTopicTran(sqlCxt, "testUpdateTran", [userId:1]) {
+        SqlTopicTranProvider.executeTopicTran(sqlCxt, "testUpdateTran", "update1", [userId:1]) {
             // Current tran row should be magically provided as *tranData* in the *sqlCxt* object.
             sqlCxt.tranData.userData.x += 1
         }
 
         // The user profile should dictate the row being edited.
         cxt.userProfile = new UserProfile(2, "local", "local", [:])
-        SqlTopicTranProvider.executeTopicTran(sqlCxt, "testUpdateTran", [:]) {
+        SqlTopicTranProvider.executeTopicTran(sqlCxt, "testUpdateTran", "update2", [:]) {
             sqlCxt.tranData.userData.x += 1
         }
         def rows2 = []
@@ -87,11 +87,9 @@ class SqlTopicTest extends Specification {
     SqlCxt createSqlCxt(String pckgName, List<DnRawTypeInterface> types, String shard = "primary") {
         // Provision *test* topic's transaction table.
         def userData = DnRawField.mkField("userData", "User Data",
-                "Various different types of user data").setTypeRef(DN_MAP)
-        def touchedDate = DnRawField.mkReqDateField("touchedDate", "Touched Date",
-                "Date when row was last accessed by a transaction")
-        DnRawTypeInterface usersTable = DnRawTable.mkStdUserTable(tranTableName, "Users table",
-                [userData, touchedDate], null).setCounterField("userId")
+                "Various different types of user data").setTypeRef(DNT_MAP)
+        DnRawTypeInterface usersTable = DnRawTable.mkStdUserTopLevelTable(tranTableName, "Users table",
+                [userData], null).setCounterField("userId")
         def allTypes = types + usersTable
 
         // Package up our types.

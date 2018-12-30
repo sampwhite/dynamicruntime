@@ -55,6 +55,13 @@ public class DnRawTable implements DnRawTypeInterface {
         return new DnRawTable(tableName, model, fields);
     }
 
+    public static DnRawTable mkStdUserTopLevelTable(String tableName, String description, List<DnRawField> fields,
+            List<String> primaryKey) {
+        var model = mMap(DN_DESCRIPTION, description, TB_PRIMARY_KEY, primaryKey,
+                TB_HAS_ROW_DATES, true, TB_IS_USER_DATA, true, TB_IS_TOP_LEVEL, true);
+        return new DnRawTable(tableName, model, fields);
+
+    }
     public DnRawTable setCounterField(String fieldName) {
         tbModel.put(TB_COUNTER_FIELD, fieldName);
         return this;
@@ -63,6 +70,10 @@ public class DnRawTable implements DnRawTypeInterface {
     public DnRawTable setAttribute(String key, Object val) {
         tbModel.put(key, val);
         return this;
+    }
+
+    public DnRawTable setTopLevel() {
+        return setAttribute(TB_IS_TOP_LEVEL, true);
     }
 
     public DnRawTable setSimpleIndexes(List<List<String>> indexes) {
@@ -76,6 +87,6 @@ public class DnRawTable implements DnRawTypeInterface {
     }
 
     public static Map<String,Object> mkComplexIndex(String name, List<String> fields, Map<String,Object> props) {
-        return mMap(DN_NAME, name, TB_INDEX_FIELDS, fields, TB_INDEX_PROPS, props);
+        return mMap(DN_NAME, name, TBI_INDEX_FIELDS, fields, TBI_INDEX_PROPS, props);
     }
 }

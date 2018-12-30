@@ -24,22 +24,31 @@ public class SchemaForSchema {
             mList(dnTypeName, namespace));
     public static DnRawEndpoint getSchemaTypesEndpoint = mkListEndpoint("/schema/dnType/list",
             SS_GET_TYPE_DEFINITIONS, "Gets the definitions of schema DnTypes.",
-            schemaTypeReq.name, DN_MAP)
+            schemaTypeReq.name, DNT_MAP)
                 .setAttribute(EP_HAS_NUM_AVAILABLE, true);
 
-    public static final DnRawField pathPrefix = mkField(SS_ENDPOINT_PATH_PREFIX, "Path Prefix",
+    public static DnRawField pathPrefix = mkField(SS_ENDPOINT_PATH_PREFIX, "Path Prefix",
             "Endpoint path prefix to apply as a filter to the results.");
-    public static final DnRawType schemaEndpointReq = mkType("SchemaEndpointRequest",
+    public static DnRawType schemaEndpointReq = mkType("SchemaEndpointRequest",
             mList(pathPrefix));
     public static DnRawEndpoint getSchemaEndpointsEndpoint = mkListEndpoint("/schema/endpoint/list",
             SS_GET_ENDPOINT_DEFINITIONS, "Gets the schema definitions of endpoints.",
-            schemaEndpointReq.name, DN_MAP)
+            schemaEndpointReq.name, DNT_MAP)
                 .setAttribute(EP_HAS_NUM_AVAILABLE, true);
 
+    public static DnRawField tableNamePrefix = mkField(SS_TABLE_NAME_PREFIX, "Name Prefix",
+            "A prefix filter to apply to the table names.");
+    public static DnRawType schemaTableReq = mkType("SchemaTableRequest",
+            mList(tableNamePrefix));
+    public static DnRawEndpoint getSchemaTablesEndpoints = mkListEndpoint("/schema/table/list",
+            SS_GET_TABLE_DEFINITIONS, "Gets the schema definitions of tables.",
+            schemaTableReq.name, DNT_MAP).setAttribute(EP_HAS_NUM_AVAILABLE, true);
+
     public static DnRawSchemaPackage getPackage() {
-        return DnRawSchemaPackage.mkPackage("NodeSchema", SCHEMA_NAMESPACE, mList(
-                schemaTypeReq, getSchemaTypesEndpoint.getRawType(),
-                schemaEndpointReq, getSchemaEndpointsEndpoint.getRawType()));
+        return DnRawSchemaPackage.mkPackage("SchemaForSchema", SCHEMA_NAMESPACE, mList(
+                schemaTypeReq, getSchemaTypesEndpoint,
+                schemaEndpointReq, getSchemaEndpointsEndpoint,
+                schemaTableReq, getSchemaTablesEndpoints));
     }
 
 }

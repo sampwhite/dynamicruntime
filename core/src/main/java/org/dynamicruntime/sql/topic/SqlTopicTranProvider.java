@@ -15,15 +15,17 @@ import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 public class SqlTopicTranProvider implements SqlTranExecProvider {
     public final SqlCxt sqlCxt;
     public final String tranName;
+    public final String tranId;
     public final SqlFunction tranExecute;
     public final DnCxt cxt;
     public final SqlDatabase sqlDb;
     public final SqlTopic sqlTopic;
     public final boolean isUserTran;
 
-    public SqlTopicTranProvider(SqlCxt sqlCxt, String tranName, SqlFunction tranExecute) {
+    public SqlTopicTranProvider(SqlCxt sqlCxt, String tranName, String tranId, SqlFunction tranExecute) {
         this.sqlCxt = sqlCxt;
         this.tranName = tranName;
+        this.tranId = tranId;
         this.tranExecute = tranExecute;
         this.cxt = sqlCxt.cxt;
         this.sqlDb = sqlCxt.sqlDb;
@@ -53,6 +55,8 @@ public class SqlTopicTranProvider implements SqlTranExecProvider {
                 }
             }
         }
+        SqlTopicUtil.prepForTranInsert(cxt, sqlCxt.tranData);
+        sqlDb.executeDnStatement(cxt, this.sqlTopic.iTranLockQuery, sqlCxt.tranData);
     }
 
     @Override
@@ -70,27 +74,38 @@ public class SqlTopicTranProvider implements SqlTranExecProvider {
             throw new DnException("Data not present for " + sqlTopic.qTranLockQuery.name +
                     " after initiating transaction.");
         }
-        sqlCxt.tranData.putAll(curRow);
+
+        for (var key : curRow.keySet()) {
+            if (!key.equals(LAST_TRAN_ID) && !key.equals(TOUCHED_DATE)) {
+                sqlCxt.tranData.put(key, curRow.get(key));
+            }
+        }
 
         // Do the actual work of the query.
         tranExecute.execute();
 
         if (!sqlCxt.tranAlreadyDone) {
-            if (isUserTran) {
-                SqlTopicUtil.prepForUserExecute(cxt, sqlCxt.tranData);
-            } else {
-                SqlTopicUtil.prepForStdExecute(cxt, sqlCxt.tranData);
-            }
-        }
+            sqlCxt.tranData.put(LAST_TRAN_ID, tranId);
 
-        // Write back that we did the transaction.
-        sqlDb.executeDnStatement(cxt, sqlTopic.uTranLockQuery, sqlCxt.tranData);
+            prepForExecute();
+
+            // Write back that we did the transaction.
+            sqlDb.executeDnStatement(cxt, sqlTopic.uTranLockQuery, sqlCxt.tranData);
+        }
     }
 
-    public static void executeTopicTran(SqlCxt sqlCxt, String tranName, Map<String,Object> tranData,
+    public void prepForExecute() throws DnException {
+        if (isUserTran) {
+            SqlTopicUtil.prepForUserExecute(cxt, sqlCxt.tranData);
+        } else {
+            SqlTopicUtil.prepForStdExecute(cxt, sqlCxt.tranData);
+        }
+    }
+
+    public static void executeTopicTran(SqlCxt sqlCxt, String tranName, String tranId, Map<String,Object> tranData,
             SqlFunction tranExecute) throws DnException {
         sqlCxt.tranData = tranData;
-        var provider = new SqlTopicTranProvider(sqlCxt, tranName, tranExecute);
+        var provider = new SqlTopicTranProvider(sqlCxt, tranName, tranId, tranExecute);
         SqlTranUtil.doTran(sqlCxt, tranName, provider);
     }
 }

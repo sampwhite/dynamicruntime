@@ -17,7 +17,7 @@ class DnSchemaServiceTest extends Specification {
         LogStartup.log.debug(null, "Started test loading schema")
         when: "Creating a simple schema package."
         def fld1 = DnRawField.mkField("field1a", "Field 1 A", "The first field of first type")
-        def fld2 = DnRawField.mkField("field1b", null, null).setTypeRef(DN_INTEGER)
+        def fld2 = DnRawField.mkField("field1b", null, null).setTypeRef(DNT_INTEGER)
         def type1a = DnRawType.mkType("FirstTypeA", [fld1, fld2])
         def fld3 = DnRawField.mkField("fieldComposed1", null, null).setTypeRef(type1a.name)
         def type1b = DnRawType.mkType("FirstTypeB", [fld1, fld2, fld3])
@@ -29,7 +29,7 @@ class DnSchemaServiceTest extends Specification {
 
         then: "Schema store should have expected value"
         dnType1a != null
-        dnType1a.fields?.collect {[it.name, it.typeRef]} == [["field1a", DN_STRING], ["field1b", DN_INTEGER]]
+        dnType1a.fields?.collect {[it.name, it.typeRef]} == [["field1a", DNT_STRING], ["field1b", DNT_INTEGER]]
         dnType1b != null
         dnType1b.fieldsByName.get(fld3.name).typeRef == "${namespace}.${type1a.name}"
         LogStartup.log.debug(cxt, "Finished test loading schema")
@@ -47,7 +47,7 @@ class DnSchemaServiceTest extends Specification {
     def "Test creating endpoint"() {
         when: "Creating a simple endpoint"
         def fld1 = DnRawField.mkField("field1a", "Field 1 A", "The first field of first type")
-        def fld2 = DnRawField.mkField("field1b", null, null).setTypeRef(DN_INTEGER)
+        def fld2 = DnRawField.mkField("field1b", null, null).setTypeRef(DNT_INTEGER)
         def inType1 = DnRawType.mkType("FirstInType", [fld1, fld2])
         def fld3 = DnRawField.mkField("field1b", "Field 1 B", "The response field")
         def outType1 = DnRawType.mkType("FirstOutType", [fld3])

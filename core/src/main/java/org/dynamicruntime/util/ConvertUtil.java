@@ -435,4 +435,22 @@ public class ConvertUtil {
         }
         return (retVal != null) ? retVal : new ArrayList<>();
     }
+
+    @SuppressWarnings("unchecked")
+    public static List<String> toOptListOfStrings(Object o) {
+        if (!(o instanceof List)) {
+            return null;
+        }
+        List l = (List)o;
+        for (var entry : l) {
+            if (!(entry instanceof String)) {
+                return null;
+            }
+        }
+        return (List<String>)l;
+    }
+
+    public static List<String> getOptListOfStrings(Map<String,Object> map, String key) {
+        return map != null ? toOptListOfStrings(map.get(key)) : null;
+    }
 }

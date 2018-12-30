@@ -23,9 +23,9 @@ class StartAll {
             // once the concept of *deploy* option is implemented.
             InstanceRegistry.setDevMode()
             InstanceRegistry.addComponentDefinitions([new CoreComponent(), new CommonComponent()])
-            def instanceName = fileConfig.instanceName ?: "local"
+            String instanceName = fileConfig.instanceName ?: "local"
             InstanceRegistry.setDefaultInstance(instanceName)
-            def envName = fileConfig.envName
+            String envName = fileConfig.envName
             if (envName) {
                 InstanceRegistry.setEnvName(envName)
             }

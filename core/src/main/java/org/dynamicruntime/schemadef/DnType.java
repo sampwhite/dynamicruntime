@@ -200,11 +200,11 @@ public class DnType {
         if (promoteBaseType) {
             newModel.put(DN_BASE_TYPE, newBaseTypeName);
         }*/
-        String newBaseTypeName = baseTypeName;
+        //String newBaseTypeName = baseTypeName;
 
         md.model = newModel;
         md.rawFields = newRawFields;
-        md.baseType = newBaseTypeName;
+        md.baseType = baseTypeName;
         return md;
     }
 
@@ -220,7 +220,7 @@ public class DnType {
 
     public Map<String,Object> toMap() {
         List<Map<String,Object>> fieldData = (fields != null) ?
-                nMapSimple(fields, (fld -> fld.toMap())) : null;
+                nMapSimple(fields, DnField::toMap) : null;
         if (fieldData != null) {
             Map<String,Object> retVal = cloneMap(model);
             retVal.put(DN_FIELDS, fieldData);

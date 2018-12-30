@@ -1,10 +1,14 @@
 package org.dynamicruntime.common;
 
+import org.dynamicruntime.common.user.UserSchemaDefData;
+import org.dynamicruntime.common.user.UserService;
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.schemadef.DnRawSchemaStore;
 import org.dynamicruntime.startup.ComponentDefinition;
 
 import java.util.Collection;
+
+import static org.dynamicruntime.util.DnCollectionUtil.mList;
 
 @SuppressWarnings({"WeakerAccess"})
 public class CommonComponent implements ComponentDefinition {
@@ -32,7 +36,7 @@ public class CommonComponent implements ComponentDefinition {
     }
     @Override
     public void addSchema(DnCxt cxt, DnRawSchemaStore schemaStore) {
-
+        schemaStore.addPackage(UserSchemaDefData.getPackage());
     }
     @Override
     public Collection<Class> getStartupInitializers(DnCxt cxt) {
@@ -40,6 +44,6 @@ public class CommonComponent implements ComponentDefinition {
     }
     @Override
     public Collection<Class> getServiceInitializers(DnCxt cxt) {
-        return null;
+        return mList(UserService.class);
     }
 }

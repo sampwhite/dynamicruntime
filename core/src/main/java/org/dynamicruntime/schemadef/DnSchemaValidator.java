@@ -44,7 +44,7 @@ public class DnSchemaValidator {
         Set<String> unconsumedKeys = new HashSet<>(data.keySet());
         Map<String,Object> output = mMap();
         if (type.isSimple) {
-            if (type.baseType == null || !type.baseType.equals(DN_NONE)) {
+            if (type.baseType == null || !type.baseType.equals(DNT_NONE)) {
                 // Bad logic in code, not problem with data being supplied.
                 throw new DnException("Validating a Map with the simple type.");
             }
@@ -176,12 +176,17 @@ public class DnSchemaValidator {
                 }
             } else if (obj instanceof CharSequence) {
                 // Still have a chance to parse this.
-                if ((coreType.equals(DN_STRING) && isNoCommas) || coreType.equals(DN_BOOLEAN) ||
-                        coreType.equals(DN_INTEGER) || coreType.equals(DN_FLOAT)) {
+                if ((coreType.equals(DNT_STRING) && isNoCommas) || coreType.equals(DNT_BOOLEAN) ||
+                        coreType.equals(DNT_INTEGER) || coreType.equals(DNT_FLOAT) || coreType.equals(DNT_DATE)) {
                     var c = StrUtil.splitString(obj.toString(), ",");
                     l = mList();
                     for (Object o : c) {
-                        l.add(validateAndCoercePrimitive(field, type, coreType,false, o));
+                        var outObj = validateAndCoercePrimitive(field, type, coreType,false, o);
+                        if (outObj == null && coreType.equals(DNT_STRING)) {
+                            // Do not allow nulls in lists of strings.
+                            outObj = "";
+                        }
+                        l.add(outObj);
                     }
                 } else {
                     throw DnException.mkConv(String.format("Cannot convert a string into a list of objects of type " +
@@ -202,7 +207,7 @@ public class DnSchemaValidator {
             try {
                 if (obj != null) {
                     switch (coreType) {
-                        case DN_STRING:
+                        case DNT_STRING:
                             String s = isNoTrim ? toOptStr(obj) : toTrimmedOptStr(obj);
                             if (isNoCommas && s != null && s.indexOf(',') >= 0) {
                                 throw DnException.mkConv(String.format(
@@ -210,21 +215,21 @@ public class DnSchemaValidator {
                             }
                             out = s;
                             break;
-                        case DN_BOOLEAN:
+                        case DNT_BOOLEAN:
                             out = toOptBool(obj);
                             break;
-                        case DN_INTEGER:
+                        case DNT_INTEGER:
                             out = toOptLong(obj);
                             isNumber = true;
                             break;
-                        case DN_FLOAT:
+                        case DNT_FLOAT:
                             out = toOptDouble(obj);
                             isNumber = true;
                             break;
-                        case DN_DATE:
+                        case DNT_DATE:
                             out = toOptDate(obj);
                             break;
-                        case DN_MAP:
+                        case DNT_MAP:
                             out = toOptMap(obj);
                             break;
                         default:

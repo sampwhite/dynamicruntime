@@ -6,7 +6,7 @@ import org.dynamicruntime.schemadef.DnField;
 import org.dynamicruntime.schemadef.DnTable;
 import org.dynamicruntime.util.EncodeUtils;
 
-import static org.dynamicruntime.schemadef.DnSchemaDefConstants.TB_UNIQUE_INDEX;
+import static org.dynamicruntime.schemadef.DnSchemaDefConstants.TBI_UNIQUE_INDEX;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.util.ConvertUtil.*;
 
@@ -170,7 +170,7 @@ public class SqlTableUtil {
                     // Limit index name to 60 characters so we do not run into trouble with maximum
                     // identifier lengths.
                     String shortenedName = EncodeUtils.mkUniqueShorterStr(tbIndexName, 60);
-                    boolean isUnique = getBoolWithDefault(index.indexProperties, TB_UNIQUE_INDEX, false);
+                    boolean isUnique = getBoolWithDefault(index.indexProperties, TBI_UNIQUE_INDEX, false);
                     String uniqueStr = (isUnique) ? " UNIQUE" : "";
                     // Currently our building of index is simple. But eventually we may support more indexProperties
                     // and tweak the entries in the *index.columns* based on which database we are creating the

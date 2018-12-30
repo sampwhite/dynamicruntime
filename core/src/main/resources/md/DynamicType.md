@@ -294,6 +294,8 @@ The builder is named *table* and it has the following inputs.
  of value that populates the *group* field depends on how users are organized, but the *group* value is targeted
  if any sharding is done on the table. The value for *group* may also vary depending on the type type of data
  being stored.
+* isTopLevel - Whether the columns *lastTranId* and *touchedDate* should be added to the table. Generally
+if these columns are added then the table should be treated as a locking table to initiate transactions. 
 * <other> - Other fields that define storage options in a private communication with data storage solution.
 
 An Index object can either be:

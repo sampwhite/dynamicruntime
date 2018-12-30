@@ -1,7 +1,7 @@
 package org.dynamicruntime.startup;
 
 import org.dynamicruntime.context.DnCxt;
-import org.dynamicruntime.defs.Priority;
+import org.dynamicruntime.context.Priority;
 import org.dynamicruntime.schemadef.DnRawSchemaStore;
 
 import java.util.Collection;

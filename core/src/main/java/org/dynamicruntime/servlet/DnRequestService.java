@@ -169,33 +169,33 @@ public class DnRequestService implements ServiceInitializer {
             throws DnException {
         var response = requestCxt.mapResponse;
         if (out.fieldsByName != null) {
-            if (out.fieldsByName.containsKey(EP_DURATION)) {
+            if (out.fieldsByName.containsKey(EPR_DURATION)) {
                 double duration = requestCxt.cxt.getDuration();
-                response.put(EP_DURATION, ConvertUtil.fmtDouble(duration));
+                response.put(EPR_DURATION, ConvertUtil.fmtDouble(duration));
             }
-            if (out.fieldsByName.containsKey(EP_REQUEST_URI)) {
-                response.put(EP_REQUEST_URI, handler.logRequestUri);
+            if (out.fieldsByName.containsKey(EPR_REQUEST_URI)) {
+                response.put(EPR_REQUEST_URI, handler.logRequestUri);
             }
-            if (out.fieldsByName.containsKey(EP_ITEMS)) {
+            if (out.fieldsByName.containsKey(EPR_ITEMS)) {
                // In a list scenario.
                 List<Map<String,Object>> list = (requestCxt.listResponse != null) ? requestCxt.listResponse : mList();
                 int originalSize = list.size();
-                Long limit = getOptLong(requestCxt.requestData, EP_LIMIT);
+                Long limit = getOptLong(requestCxt.requestData, EPF_LIMIT);
                 if (limit != null && list.size() > limit) {
                     list = list.subList(0, limit.intValue());
                 }
-                response.put(EP_ITEMS, list);
-                if (out.fieldsByName.containsKey(EP_NUM_ITEMS)) {
-                    response.put(EP_NUM_ITEMS, list.size());
+                response.put(EPR_ITEMS, list);
+                if (out.fieldsByName.containsKey(EPR_NUM_ITEMS)) {
+                    response.put(EPR_NUM_ITEMS, list.size());
                 }
-                if (out.fieldsByName.containsKey(EP_HAS_MORE)) {
-                    response.put(EP_HAS_MORE, requestCxt.hasMore);
+                if (out.fieldsByName.containsKey(EPR_HAS_MORE)) {
+                    response.put(EPR_HAS_MORE, requestCxt.hasMore);
                 }
-                if (out.fieldsByName.containsKey(EP_NUM_AVAILABLE)) {
+                if (out.fieldsByName.containsKey(EPR_NUM_AVAILABLE)) {
                     if (requestCxt.totalListSize < originalSize) {
                         requestCxt.totalListSize = originalSize;
                     }
-                    response.put(EP_NUM_AVAILABLE, requestCxt.totalListSize);
+                    response.put(EPR_NUM_AVAILABLE, requestCxt.totalListSize);
                 }
             }
         }

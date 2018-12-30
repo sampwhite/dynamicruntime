@@ -29,11 +29,11 @@ public class NodeSchema {
     public static DnRawType healthInfo = mkType("HealthInfoResponse",
             mList(startTime, startTime, uptime, nodeId, version));
     public static DnRawEndpoint healthEndpoint = mkEndpoint("/health/info", ND_GET_HEALTH_FUNCTION,
-            "Gets basic health status information for the node.", DN_NONE, healthInfo.name);
+            "Gets basic health status information for the node.", DNT_NONE, healthInfo.name);
 
 
     public static DnRawSchemaPackage getPackage() {
         return DnRawSchemaPackage.mkPackage("NodeSchema", NODE_NAMESPACE, mList(healthInfo,
-                healthEndpoint.getRawType()));
+                healthEndpoint));
     }
 }

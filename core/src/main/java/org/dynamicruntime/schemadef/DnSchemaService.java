@@ -44,7 +44,7 @@ public class DnSchemaService implements ServiceInitializer {
         rawSchemaStore.builders.put(TB_TABLE, this::buildTableDefinition);
 
         // Add some built-in types.
-        var count = DnRawType.mkSubType(DN_COUNT, DN_INTEGER)
+        var count = DnRawType.mkSubType(DNT_COUNT, DNT_INTEGER)
                 .setAttribute(DN_MIN, 0);
         var corePckg = DnRawSchemaPackage.mkPackage("DnSchemaServiceCore", DN_CORE_NAMESPACE,
                 mList(count));
@@ -122,22 +122,22 @@ public class DnSchemaService implements ServiceInitializer {
         String inputTypeRef = DnTypeUtils.applyNamespace(namespace, getReqStr(inModel, EP_INPUT_TYPE_REF));
         String outputTypeRef = DnTypeUtils.applyNamespace(namespace, getReqStr(inModel, EP_OUTPUT_TYPE_REF));
 
-        DnRawField inputField = DnRawField.mkField(EP_INPUT_TYPE,
+        DnRawField inputField = DnRawField.mkField(EPF_INPUT_TYPE,
                 "Endpoint Input Type", "The definition of the validation and transformation to " +
                         "be applied to input data for the endpoint.");
-        DnRawField outputField = DnRawField.mkField(EP_OUTPUT_TYPE, "Endpoint Output Type",
+        DnRawField outputField = DnRawField.mkField(EPF_OUTPUT_TYPE, "Endpoint Output Type",
                 "The specification of the allowable output for this endpoint.");
-        DnRawField requestUri = DnRawField.mkReqField(EP_REQUEST_URI, "Request URI",
+        DnRawField requestUri = DnRawField.mkReqField(EPR_REQUEST_URI, "Request URI",
                 "The request URI that make this request.");
-        DnRawField duration = DnRawField.mkReqField(EP_DURATION, "Duration in Milliseconds",
-                "The time taken to perform the request in milliseconds.").setTypeRef(DN_FLOAT);
+        DnRawField duration = DnRawField.mkReqField(EPR_DURATION, "Duration in Milliseconds",
+                "The time taken to perform the request in milliseconds.").setTypeRef(DNT_FLOAT);
 
         if (getBoolWithDefault(inModel, EP_IS_LIST_RESPONSE, false)) {
             int defaultLimit = 100;
             // More complex result.
             var inputType = DnRawType.mkSubType(inputTypeRef);
-            var limitType = DnRawType.mkSubType(DN_COUNT).setAttribute(DN_MAX, 20000);
-            DnRawField limit = DnRawField.mkField(EP_LIMIT, "Limit On Results",
+            var limitType = DnRawType.mkSubType(DNT_COUNT).setAttribute(DN_MAX, 20000);
+            DnRawField limit = DnRawField.mkField(EPF_LIMIT, "Limit On Results",
                     "The maximum number of items that can be returned.")
                     .setTypeDef(limitType)
                     .setAttribute(DN_DEFAULT_VALUE, defaultLimit);
@@ -145,20 +145,20 @@ public class DnSchemaService implements ServiceInitializer {
             inputType.addField(limit);
             inputField.setTypeDef(inputType);
 
-            DnRawField numItems = DnRawField.mkReqField(EP_NUM_ITEMS, "Number of Items",
-                    "Number of items returned.").setTypeRef(DN_COUNT);
-            DnRawField items = DnRawField.mkReqField(EP_ITEMS, "Items",
+            DnRawField numItems = DnRawField.mkReqField(EPR_NUM_ITEMS, "Number of Items",
+                    "Number of items returned.").setTypeRef(DNT_COUNT);
+            DnRawField items = DnRawField.mkReqField(EPR_ITEMS, "Items",
                     "Items returned by endpoint.")
                     .setTypeRef(outputTypeRef).setAttribute(DN_IS_LIST, true);
             List<DnRawField> fieldList = mList(numItems, requestUri, duration);
             if (getBoolWithDefault(inModel, EP_HAS_MORE_PAGING, false)) {
-                DnRawField hasMore = DnRawField.mkReqBoolField(EP_HAS_MORE, "Has More",
+                DnRawField hasMore = DnRawField.mkReqBoolField(EPR_HAS_MORE, "Has More",
                         "Whether there are more items that could be returned.");
                 fieldList.add(hasMore);
             }
             if (getBoolWithDefault(inModel, EP_HAS_NUM_AVAILABLE, false)) {
-                DnRawField totalSize = DnRawField.mkReqField(EP_NUM_AVAILABLE, "Total Size",
-                        "The total number of items available to be returned.").setTypeRef(DN_COUNT);
+                DnRawField totalSize = DnRawField.mkReqField(EPR_NUM_AVAILABLE, "Total Size",
+                        "The total number of items available to be returned.").setTypeRef(DNT_COUNT);
                 fieldList.add(totalSize);
             }
             fieldList.add(items);
@@ -186,15 +186,20 @@ public class DnSchemaService implements ServiceInitializer {
         List<Map<String,Object>> indexes = mList();
         List<DnRawField> fields = mList();
 
+        var existingFields = nMapSimple(getListOfMapsDefaultEmpty(inModel, DN_FIELDS), DnRawField::mkRawField);
+
         String idFieldName = getOptStr(inModel, TB_COUNTER_FIELD);
         Map<String,Object> primaryKey;
         /* See if ID field needs to be added. */
         if (idFieldName != null) {
-            DnRawField idField = DnRawField.mkReqIntField(idFieldName, "Auto Counter",
-                    "Auto counter field that has primary key defined on it.");
+            DnRawField idField = findItem(existingFields, (fld -> fld.name.equals(idFieldName)));
+            if (idField == null) {
+                idField = DnRawField.mkReqField(idFieldName, "Auto Counter",
+                        "Auto counter field that has primary key defined on it.").setTypeRef(DNT_COUNT);
+                fields.add(idField);
+            }
             idField.setAttribute(DN_IS_AUTO_INCREMENTING, true);
-            fields.add(idField);
-            primaryKey = mMap(TB_INDEX_FIELDS, mList(idFieldName));
+            primaryKey = mMap(TBI_INDEX_FIELDS, mList(idFieldName));
         } else {
             primaryKey = buildIndex(inModel.get(TB_PRIMARY_KEY));
             if (primaryKey == null) {
@@ -205,8 +210,8 @@ public class DnSchemaService implements ServiceInitializer {
         /* See if user fields need to be added.. */
         boolean isUserData = getBoolWithDefault(inModel, TB_IS_USER_DATA, false);
         if (isUserData) {
-            var userField = DnRawField.mkReqIntField(USER_ID, "User ID", "Unique numeric " +
-                    "user ID for user.");
+            var userField = DnRawField.mkReqField(USER_ID, "User ID", "Unique numeric " +
+                    "user ID for user.").setTypeRef(DNT_COUNT);
             var groupField = DnRawField.mkReqField(USER_GROUP, "User Group",
                     "The container group that the user belongs to that is used to determine " +
                             "sharding, UI experience, and logic rules for the user.");
@@ -215,7 +220,6 @@ public class DnSchemaService implements ServiceInitializer {
         }
 
         /* Add the fields given to us. */
-        var existingFields = nMapSimple(getListOfMapsDefaultEmpty(inModel, DN_FIELDS), DnRawField::mkRawField);
         fields.addAll(existingFields);
 
         /* See if the modifyUser should be added. */
@@ -224,6 +228,17 @@ public class DnSchemaService implements ServiceInitializer {
             var modifyUserField = DnRawField.mkReqIntField(MODIFY_USER, "Modify User",
                     "User ID of user that last edited the data.");
             fields.add(modifyUserField);
+        }
+
+        /* See if transaction fields should be added. */
+        boolean isTopLevel = getBoolWithDefault(inModel, TB_IS_TOP_LEVEL, false);
+        if (isTopLevel) {
+            var touchedField = DnRawField.mkReqDateField(TOUCHED_DATE, "Touched Date",
+                    "The last time a transaction lock was attempted against this table.");
+            var lastTranId = DnRawField.mkReqField(LAST_TRAN_ID, "Last Transaction ID",
+                    "The identifier of the transaction that last successfully concluded a transaction.");
+            fields.add(touchedField);
+            fields.add(lastTranId);
         }
 
         /* See if enabled field should be suppressed. */
@@ -244,11 +259,11 @@ public class DnSchemaService implements ServiceInitializer {
             fields.add(createdDate);
             fields.add(modifiedDate);
             var modifiedIndex = buildIndex(mMap(DN_NAME, "ModifiedDate",
-                    TB_INDEX_FIELDS, mList(MODIFIED_DATE)));
+                    TBI_INDEX_FIELDS, mList(MODIFIED_DATE)));
             indexes.add(modifiedIndex);
             if (isUserData) {
                 var groupModifiedIndex = buildIndex(mMap(DN_NAME, "GroupModifiedDate",
-                        TB_INDEX_FIELDS, mList(USER_GROUP, MODIFIED_DATE)));
+                        TBI_INDEX_FIELDS, mList(USER_GROUP, MODIFIED_DATE)));
                 indexes.add(groupModifiedIndex);
             }
         }
@@ -260,9 +275,35 @@ public class DnSchemaService implements ServiceInitializer {
             indexes.addAll(ids);
         }
 
+        // Make sure primary key fields go at beginning. Use the DnTable.Index.extract to get
+        // index fields.
+        var pi = DnTable.Index.extract(primaryKey);
+        Map<String,DnRawField> primaryFields = mMapT();
+        List<DnRawField> remainingFields = mList();
+        for (var fld : fields) {
+            // We support repeated fields in list with only earlier field being put in primary key segment.
+            // We keep the duplication, because the schema type calculation allows merging
+            // of data from repeated fields.
+            if (pi.fieldNames.contains(fld.name) && !primaryFields.containsKey(fld.name)) {
+                primaryFields.put(fld.name, fld);
+            } else {
+                remainingFields.add(fld);
+            }
+        }
+        List<DnRawField> sortedFields = mList();
+        for (var fldName : pi.fieldNames) {
+            var fld = primaryFields.get(fldName);
+            if (fld == null) {
+                throw DnException.mkConv(String.format("Primary key refers to field %s that does not exist in table %s.",
+                        fldName, tableName));
+            }
+            sortedFields.add(fld);
+        }
+        sortedFields.addAll(remainingFields);
+
         DnRawType tableType = DnRawType.mkType(tbInputType.name, mList());
         tableType.model.putAll(inModel);
-        tableType.addFields(fields);
+        tableType.addFields(sortedFields);
         tableType.setAttribute(TB_PRIMARY_KEY, primaryKey);
         tableType.setAttribute(TB_INDEXES, indexes);
         tableType.setAttribute(DN_IS_TABLE, true);
@@ -276,7 +317,7 @@ public class DnSchemaService implements ServiceInitializer {
             if (strs.size() == 0) {
                  return null;
             }
-            return mMap(TB_INDEX_FIELDS, strs);
+            return mMap(TBI_INDEX_FIELDS, strs);
         } else {
             return  toOptMap(obj);
         }

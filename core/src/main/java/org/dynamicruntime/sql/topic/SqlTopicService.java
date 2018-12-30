@@ -24,6 +24,15 @@ public class SqlTopicService implements ServiceInitializer {
         return (obj instanceof SqlTopicService) ? (SqlTopicService)obj : null;
     }
 
+    public static SqlCxt mkSqlCxt(DnCxt cxt, String topic) throws DnException {
+        var s = get(cxt);
+        if (s == null) {
+            return null;
+        }
+        var sqlTopic = s.getOrCreateTopic(cxt, topic);
+        return new SqlCxt(cxt, sqlTopic);
+    }
+
     @Override
     public String getServiceName() {
         return SQL_TOPIC_SERVICE;

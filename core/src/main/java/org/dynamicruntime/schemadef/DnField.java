@@ -88,7 +88,7 @@ public class DnField {
             anonType = null;
         }
         if (anonType == null && typeRef == null) {
-            typeRef = DN_STRING;
+            typeRef = DNT_STRING;
         }
         DnType dnAnonType = (anonType != null) ? DnType.extractAnon(anonType, types) : null;
         String curBaseRef = (dnAnonType != null) ? dnAnonType.baseType : typeRef;
@@ -102,7 +102,7 @@ public class DnField {
     public static String determineCoreType(String fieldName, String curRef, int nestLevel,
             Map<String,DnRawType> types) throws DnException {
         if (curRef == null || isPrimitive(curRef)) {
-            return (curRef != null) ? curRef : DN_STRING;
+            return (curRef != null) ? curRef : DNT_STRING;
         }
         if (nestLevel > 5) {
             throw DnException.mkConv("Nesting too deep or recursively for determining primitive type of a field");
@@ -114,7 +114,7 @@ public class DnField {
         }
         var fields = getOptMap(rawType.model, DN_FIELDS);
         if (fields != null && fields.size() > 0) {
-            return DN_MAP;
+            return DNT_MAP;
         }
         var baseType = getOptStr(rawType.model, DN_BASE_TYPE);
         return determineCoreType(fieldName, baseType, nestLevel + 1, types);
@@ -127,6 +127,10 @@ public class DnField {
         } catch (DnException e) {
            throw new RuntimeException("Should not get this exception.", e);
         }
+    }
+
+    public boolean isAutoIncrementing() {
+        return getBoolWithDefault(data, DN_IS_AUTO_INCREMENTING, false);
     }
 
     public String toString() {

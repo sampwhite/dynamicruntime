@@ -1,7 +1,5 @@
 package org.dynamicruntime.schemadef;
 
-import org.dynamicruntime.exception.DnException;
-
 import static org.dynamicruntime.util.ConvertUtil.*;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 
@@ -39,27 +37,27 @@ public class DnRawField {
     }
 
     public static DnRawField mkIntField(String name, String label, String description) {
-        return mkField(name, label, description).setTypeRef(DN_INTEGER);
+        return mkField(name, label, description).setTypeRef(DNT_INTEGER);
     }
 
     public static DnRawField mkReqIntField(String name, String label, String description) {
-        return mkField(name, label, description).setTypeRef(DN_INTEGER).setRequired(true);
+        return mkField(name, label, description).setTypeRef(DNT_INTEGER).setRequired(true);
     }
 
     public static DnRawField mkBoolField(String name, String label, String description) {
-        return mkField(name, label, description).setTypeRef(DN_BOOLEAN);
+        return mkField(name, label, description).setTypeRef(DNT_BOOLEAN);
     }
 
     public static DnRawField mkReqBoolField(String name, String label, String description) {
-        return mkField(name, label, description).setTypeRef(DN_BOOLEAN).setRequired(true);
+        return mkField(name, label, description).setTypeRef(DNT_BOOLEAN).setRequired(true);
     }
 
     public static DnRawField mkDateField(String name, String label, String description) {
-        return mkField(name, label, description).setTypeRef(DN_DATE);
+        return mkField(name, label, description).setTypeRef(DNT_DATE);
     }
 
     public static DnRawField mkReqDateField(String name, String label, String description) {
-        return mkField(name, label, description).setTypeRef(DN_DATE).setRequired(true);
+        return mkField(name, label, description).setTypeRef(DNT_DATE).setRequired(true);
     }
 
     public DnRawField setTypeRef(String typeRef) {
@@ -92,7 +90,7 @@ public class DnRawField {
     /** Called when raw field is added to raw type. */
     public DnRawField finish() {
         if (!data.containsKey(DN_TYPE_DEF) && !data.containsKey(DN_TYPE_REF)) {
-            data.put(DN_TYPE_REF, DN_STRING);
+            data.put(DN_TYPE_REF, DNT_STRING);
         }
         return this;
     }

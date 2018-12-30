@@ -93,8 +93,9 @@ public class SqlTopic {
             synchronized(queryHolders) {
                 queryHolder = (T)queryHolders.get(holderName);
                 if (queryHolder == null) {
-                    queryHolder = creator.createQueryHolder(this);
-                    queryHolder.init(sqlCxt);
+                    queryHolder = creator.createQueryHolder();
+                    var qt = queryHolder; // To make lambda happy.
+                    sqlCxt.sqlDb.withSession(sqlCxt.cxt, () -> qt.init(sqlCxt));
                     queryHolders.put(holderName, queryHolder);
                 }
             }

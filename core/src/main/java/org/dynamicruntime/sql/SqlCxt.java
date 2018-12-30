@@ -8,7 +8,8 @@ import org.dynamicruntime.sql.topic.SqlTopic;
 
 import java.util.Map;
 
-/** Convenience wrapper to bundle common parameters to SQL method calls. */
+/** Convenience wrapper to bundle common parameters to SQL method calls. The wrapper also locks down the
+ * active SqlTopic and shard. */
 @SuppressWarnings("WeakerAccess")
 public class SqlCxt {
     public final DnCxt cxt;
@@ -42,7 +43,7 @@ public class SqlCxt {
         this.sqlTopic = sqlTopic;
     }
 
-    public <T extends SqlQueryHolderBase> T getQueryHolder(String name, SqlQueryHolderCreator<T> creator)
+    public <T extends SqlQueryHolderBase> T getOrCreateQueryHolder(String name, SqlQueryHolderCreator<T> creator)
             throws DnException {
         if (sqlTopic == null) {
             throw new DnException("Cannot create query holder " + name + " unless full topic for topic " + topic +

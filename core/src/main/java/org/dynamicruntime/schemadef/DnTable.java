@@ -39,17 +39,22 @@ public class DnTable {
             } else if (obj instanceof Map) {
                 Map<String,Object> map = toOptMap(obj);
                 String name = getOptStr(map, DN_NAME);
-                Object fieldsObj = map.get(TB_INDEX_FIELDS);
+                Object fieldsObj = map.get(TBI_INDEX_FIELDS);
                 if (!(fieldsObj instanceof List)) {
                     throw DnException.mkConv("Could not extract fields from index for object " +
                             fmtObject(obj) + ".");
                 }
-                Map<String,Object> props = getMapDefaultEmpty(map, TB_INDEX_PROPS);
+                Map<String,Object> props = getMapDefaultEmpty(map, TBI_INDEX_PROPS);
                 List<String> fields = nMapSimple((List<?>)fieldsObj,Object::toString);
                 return new Index(name, fields, props);
             } else {
                 throw DnException.mkConv("Could not extract index from " + fmtObject(obj) + ".");
             }
+        }
+
+        public Map<String,Object> toMap() {
+            var m = (indexProperties != null && indexProperties.size() > 0) ? indexProperties : null;
+            return mMap(DN_NAME, name, TBI_INDEX_FIELDS, fieldDeclarations, TBI_INDEX_PROPS, m);
         }
     }
 
@@ -76,7 +81,7 @@ public class DnTable {
         boolean hasCounter = false;
         if (columns.size() > 0) {
             DnField firstCol = columns.get(0);
-            hasCounter = getBoolWithDefault(firstCol.data, DN_IS_AUTO_INCREMENTING, false);
+            hasCounter = firstCol.isAutoIncrementing();
         }
         this.firstColIsCounter = hasCounter;
     }
@@ -97,5 +102,22 @@ public class DnTable {
             }
         }
         return new DnTable(tableName, dnType.fields, primaryKey, indexes, data);
+    }
+
+    public Map<String,Object> toMap() {
+        Map<String,Object> retVal = cloneMap(data);
+        List<Map<String,Object>> fieldData = (columns != null) ?
+                nMapSimple(columns, DnField::toMap) : null;
+        if (fieldData != null) {
+            retVal.put(DN_FIELDS, fieldData);
+        }
+        retVal.put(TB_NAME, tableName);
+        if (primaryKey != null) {
+            retVal.put(TB_PRIMARY_KEY, primaryKey.toMap());
+        }
+        if (indexes != null) {
+            retVal.put(TB_INDEXES, nMapSimple(indexes, Index::toMap));
+        }
+        return retVal;
     }
 }
