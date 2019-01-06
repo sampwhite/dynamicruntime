@@ -21,7 +21,8 @@ repositories {
 }
 
 dependencies {
-    // Kotlin pulls in jetbrains annotations as well (such as @NotNull).
+    // Kotlin pulls in jetbrains annotations as well (such as @NotNull). Currently not used
+    // because IntelliJ has problems with Kotlin and Java 1.10.
     //compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     // We use groovy to launch, test, and execute scripts.
     compile 'org.codehaus.groovy:groovy-all:2.5.4'
@@ -44,8 +45,11 @@ dependencies {
     // Useful utilities from Apache.
     compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.7'
 
-    // The Apache way of doing HTTP, robust and reliable.
+    // The Apache way of doing HTTP, robust and reliable. Also has useful utility methods.
     compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.3'
+    
+    // Current Apache endorsed page templating (for emails and such).
+    compile group: 'org.freemarker', name: 'freemarker', version: '2.3.28'
     
     // Bring in *yaml* support. Our config file format of choice.
     compile group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.9.7'
@@ -54,7 +58,7 @@ dependencies {
     // We are using AWS Aurora Postgres, so we use a postgres connector.
     compile group: 'org.postgresql', name: 'postgresql', version: '42.2.5'
 
-    // Data to be use for unit testing and when running code in simulation mode.
+    // Database to be used for unit testing and when running code in simulation mode.
     compile group: 'com.h2database', name: 'h2', version: '1.4.197'
 
     // Bring in *markdown* conversion to HTML support.

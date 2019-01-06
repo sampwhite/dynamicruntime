@@ -67,7 +67,7 @@ public class DnRequestService implements ServiceInitializer {
         String method = handler.method;
         // Redirect top level request to current preferred location.
         if (target.equals("/")) {
-            handler.sendRedirect("/" + CONTENT_ROOT + "/md/Home.md");
+            handler.sendRedirect("/" + CONTENT_ROOT + "/html/endpoints.html");
             return;
         }
         if (target.equals("/favicon.ico")) {
@@ -99,7 +99,7 @@ public class DnRequestService implements ServiceInitializer {
         if (method.equals("GET") && contextRoot.equals(CONTENT_ROOT)) {
             DnContentService contentService = DnContentService.get(cxt);
             if (contentService != null) {
-                var content = contentService.getContent(cxt, subTarget);
+                var content = contentService.getContent(cxt, CONTENT_ROOT + "/" + subTarget);
                 handler.sentResponse = true;
                 if (content.isBinary) {
                     handler.sendBinaryResponse(content.binaryContent, code, content.mimeType);

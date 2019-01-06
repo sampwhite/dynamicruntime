@@ -12,9 +12,9 @@ public interface DnServletHandler {
     // All the objects should be strings.
     Map<String,Object> getQueryParams();
     Map<String,Object> getPostData();
-    // Let auth code get cookies.
+    // Let auth implementation get cookies.
     List<String> getRequestHeader(String header);
-    // Let auth code set cookies.
+    // Let auth implementation set cookies.
     void addResponseHeader(String header, String value);
     void sendRedirect(String redirectUrl) throws IOException;
 }

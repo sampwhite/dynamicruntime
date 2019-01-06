@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!--HEAD content extracted and put into layout.ftl-->
+    <!--B-HEAD-->
+    <title>Endpoints</title>
+    <script src="https://unpkg.com/react@16/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+    <script type="text/babel" src="/content/js/dncore.js"></script>
+    <!--E-HEAD-->
+    <link href="/content/css/dynrt.css" rel="stylesheet">
+</head>
+<body>
+<!--BODY content extracted and put into layout.ftl-->
+<!--B-BODY-->
+<h1>Endpoints</h1>
+<div class="intro">
+    This page presents the available endpoints that this particular node can execute.
+</div>
+
+<div id="root">
+    <script type="text/babel">
+        function mkGetDisplay(item) {
+            const {httpMethod} = item;
+            const className = httpMethod + "Method";
+            return (
+                <span className={className}>{httpMethod}</span>
+            )
+        }
+
+        function mkPathDisplay(item) {
+            const {path} = item;
+            const endpoint = <a href={path}>{path}</a>;
+            return (
+                <span className="path">{endpoint}</span>
+            )
+        }
+
+        const cols = [{key: "httpMethod", label: "Method", mkDisplay: mkGetDisplay},
+            {key: "path", label: "Endpoint", mkDisplay: mkPathDisplay},
+            {key: "description", label: "Description"}];
+
+        ReactDOM.render(
+            <div>
+                <DnTable columns={cols} dataUrl={"/schema/endpoint/list"}/>
+            </div>,
+            document.getElementById('root')
+        );
+    </script>
+</div>
+<!--E-BODY-->
+</body>
+</html>

@@ -1,0 +1,60 @@
+body {
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 16px;
+}
+h1 {
+    font-size: 26px;
+}
+h2 {
+    font-size: 22px;
+}
+.sidenav {
+    padding-left: 10px;
+    height: 100%; /* Full-height: remove this if you want "auto" height */
+    width: 160px; /* Set the width of the sidebar */
+    position: fixed; /* Fixed Sidebar (stay in place on scroll) */
+    z-index: 1; /* Stay on top */
+    top: 0; /* Stay at the top */
+    left: 0;
+    background-color: #AAAAAA;
+    overflow-x: hidden; /* Disable horizontal scroll */
+    padding-top: 10px;
+    font-size: 16px;
+    color: #111122;
+}
+.main {
+    margin-left: 160px; /* Same as the width of the sidebar */
+    padding: 0 10px;
+}
+
+.intro {
+    padding: 5px;
+    margin: 5px;
+}
+
+th {
+    padding: 2px;
+}
+
+td {
+    border: 1px solid black;
+    padding: 3px;
+}
+
+tr {
+    border-spacing: 0;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+.httpMethod {
+    text-align: center;
+    font-weight: bold;
+}
+
+.GETMethod {
+    color: darkgreen;
+}

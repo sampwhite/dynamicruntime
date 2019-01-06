@@ -9,12 +9,16 @@ import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.startup.ServiceInitializer;
 
 import org.dynamicruntime.util.IoUtil;
+import org.dynamicruntime.util.PageUtil;
 import org.dynamicruntime.util.StrUtil;
+
+import static org.dynamicruntime.util.DnCollectionUtil.*;
 
 import java.io.File;
 import java.net.FileNameMap;
 import java.net.URLConnection;
-import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.Map;
 
 @SuppressWarnings("WeakerAccess")
 public class DnContentService implements ServiceInitializer {
@@ -22,7 +26,10 @@ public class DnContentService implements ServiceInitializer {
     ClassLoader classLoader;
     public FileNameMap fileNameMap;
     public Parser mdParser;
+    /** Markdown to HTML */
     public HtmlRenderer mdHtmlRenderer;
+    /** FreeMarker templates to Strings */
+    public DnTemplates templates;
 
 
     @Override
@@ -40,41 +47,63 @@ public class DnContentService implements ServiceInitializer {
         fileNameMap = URLConnection.getFileNameMap();
         mdParser = Parser.builder().build();
         mdHtmlRenderer = HtmlRenderer.builder().build();
+        templates = new DnTemplates();
     }
-        @Override
+
+    @Override
     public void checkInit(DnCxt cxt) {
 
     }
 
-    public DnContentData getContent(DnCxt cxt, String resourcePath) throws DnException {
-        var resourceUrl = classLoader.getResource(resourcePath);
-        if (resourceUrl == null) {
-            throw DnException.mkFileIo(String.format("Cannot find resource %s.", resourcePath), null,
-                    DnException.NOT_FOUND);
-        }
-        File f = new File(resourceUrl.getFile());
+    public DnContentData getContent(@SuppressWarnings("unused") DnCxt cxt, String resourcePath) throws DnException {
+        File f = getFileResource(resourcePath);
+        Date resTimestamp = new Date(f.lastModified());
         String ext = StrUtil.getAfterLastIndex(resourcePath, ".");
-        byte[] bytes = IoUtil.readInBinaryFile(f);
         if ("md".equals(ext)) {
-            Node node = mdParser.parse(convertToStr(bytes));
-            Node child = node.getFirstChild();
-            Node childNext = child != null ? child.getFirstChild() : null;
-            while (childNext != null && !(child instanceof Text)) {
-                child = childNext;
-                childNext = childNext.getNext();
+            DnTemplates.DnTemplate t = templates.checkGetTemplate(resourcePath, f, (content -> {
+                Node node = mdParser.parse(content);
+                Node child = node.getFirstChild();
+                Node childNext = child != null ? child.getFirstChild() : null;
+                while (childNext != null && !(child instanceof Text)) {
+                    child = childNext;
+                    childNext = childNext.getNext();
+                }
+                String title = (child instanceof Text) ? ((Text)child).getLiteral() : "Dynamic Runtime";
+                String body = mdHtmlRenderer.render(node);
+                // Return null for actual content output so we do not generate actual FreeMarker template.
+                return new DnTemplates.DnOutput(null, mMap("title", title, "body", body));
+            }));
+            // Eventually we may augment *baseParams*.
+            return applyHtmlLayout(t.baseParams);
+        }
+        if ("html".equals(ext)) {
+            DnTemplates.DnTemplate t = templates.checkGetTemplate(resourcePath, f, (content -> {
+                String head = PageUtil.extractSection(content, "<!--B-HEAD-->", "<!--E-HEAD-->");
+                String body = (head != null) ?
+                        PageUtil.extractSection(content, "<!--B-BODY-->", "<!--E-BODY-->") : null;
+                if (body != null) {
+                    // Page is turned into arguments to the layout.ftl page.
+                    return new DnTemplates.DnOutput(null, mMap("head", head, "body", body));
+                }
+                // Evaluate HTML page without applying layout.
+                return new DnTemplates.DnOutput(content, mMap());
+            }));
+            if (t.template != null) {
+                return DnContentData.mkHtml(templates.evalTemplate(t, mMap()).output);
+            } else {
+                return applyHtmlLayout(t.baseParams);
             }
-            String title = (child instanceof Text) ? ((Text)child).getLiteral() : "Dynamic Runtime";
-            String layout = getStrResource("md/layout.html");
-            String mdText = convertMarkdown(cxt, convertToStr(bytes));
-            String str1 = layout.replace("{{title}}", title);
-            String str2 = str1.replace("{{body}}", mdText);
-
-            return DnContentData.mkHtml(str2);
         }
 
         String mimeType = fileNameMap.getContentTypeFor(resourcePath);
         if (mimeType == null && resourcePath.endsWith(".ico")) {
             mimeType = "image/ico";
+        }
+        if (mimeType == null && resourcePath.endsWith(".js")) {
+            mimeType = "application/javascript";
+        }
+        if (mimeType == null && resourcePath.endsWith(".css")) {
+            mimeType = "text/css";
         }
         if (mimeType == null) {
             mimeType = "text/plain";
@@ -82,28 +111,29 @@ public class DnContentService implements ServiceInitializer {
         boolean isBinary = mimeType.startsWith("image") || mimeType.startsWith("video") ||
                 mimeType.startsWith("audio");
         if (isBinary) {
-            return new DnContentData(mimeType, true, null, bytes);
+            var bytes = IoUtil.readInBinaryFile(f);
+            return new DnContentData(mimeType, true, null, bytes, resTimestamp);
         } else {
-            return new DnContentData(mimeType, false, convertToStr(bytes), null);
+            String resp = IoUtil.readInFile(f);
+            return new DnContentData(mimeType, false, resp, null, resTimestamp);
         }
     }
 
-    public String convertMarkdown(@SuppressWarnings("unused") DnCxt cxt, String markdown) {
-        Node node = mdParser.parse(markdown);
-        return mdHtmlRenderer.render(node);
+    public DnContentData applyHtmlLayout(Map<String,Object> params) throws DnException {
+        var layoutFile = getFileResource("layout/layout.ftl");
+        DnTemplates.DnTemplate layoutTemplate = templates.checkGetTemplate("layout/layout.ftl",
+                layoutFile, null);
+
+        var output = templates.evalTemplate(layoutTemplate, params);
+        return DnContentData.mkHtml(output.output);
     }
 
-    public static String convertToStr(byte[] bytes) {
-        return new String(bytes, StandardCharsets.UTF_8);
-    }
-
-    public String getStrResource(String resourcePath) throws DnException {
+    public File getFileResource(String resourcePath) throws DnException {
         var resourceUrl = classLoader.getResource(resourcePath);
         if (resourceUrl == null) {
-            throw DnException.mkFileIo(String.format("Cannot find text resource %s.", resourcePath), null,
+            throw DnException.mkFileIo(String.format("Cannot find resource %s.", resourcePath), null,
                     DnException.NOT_FOUND);
         }
-        File f = new File(resourceUrl.getFile());
-        return convertToStr(IoUtil.readInBinaryFile(f));
+        return new File(resourceUrl.getFile());
     }
 }

@@ -4,9 +4,10 @@
 
 Welcome to Dynamic Runtime, an open source project to create a flexible Java application that can scale in both
 complexity and load. Go to the [Github Dynamic Runtime Project](https://github.com/sampwhite/dynamicruntime) for
-more.
+more. For information about the **DnType** schema, see [Dynamic Types](/content/md/DynamicType.md).
 
-The first batch of endpoints have been created.
+For a current list of endpoints in HTML format go to [/content/html/endpoints.html](/content/html/endpoints.html).
+Here is some information about some of the endpoints.
 
 * Health Info - [/health/info](/health/info)
 * List of schema DnTypes - [/schema/dnType/list](/schema/dnType/list) Try out parameters *limit*, *dnTypeName*,

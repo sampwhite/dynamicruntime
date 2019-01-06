@@ -31,7 +31,7 @@ be reused when naming types. The primitive types are following.
 the requests do not take ordinary parameters. As another example, *None* can represent either file uploads or file
 downloads.
 
-Before we go on we call a type *simple* if it has no fields and a recursive chase up the *base* types
+Before we go on, we call a type *simple* if it has no fields and a recursive chase up the *base* types
 leads to a primitive type. A type is *anonymous* if it is not captured into the DnSchemaStore. The data 
 structure of the DnType is as follows.
 
@@ -40,8 +40,8 @@ structure of the DnType is as follows.
  * *label* - Optional friendly label for type.
  * *description* - Optional description of type.
  * *dnBuilder* - A post processing builder that builds out the type more fully based on other data in this
-   type definition, usually using custom fields that show up in the *<other>* category. A discussion about builders
-   can be found later in this document.
+   type definition, usually using custom fields that show up in the *&lt;other&gt;* section of attributes. A discussion 
+   about builders can be found later in this document.
  * *baseType* - The base type this type extends. If this DnType adds no fields, then this type is considered to be
   the same as the base type for many purposes. Also, since the *baseType* attribute is a reference string to
   the name of a type, this gives a way of pulling in other types by name.  The *baseType*
@@ -58,13 +58,14 @@ structure of the DnType is as follows.
  * *isTable* - Type represents a table.
  * *noCommas* - The value of the field cannot have commas. If this is true and *isList* is true and
   a string is being parsed to populate the list, the list can be broken up by commas. This only applies
-  to simple types whose primitive type is a String.
+  to lists of simple DnTypes (String, Boolean, Integer, Date, Float). Empty entities in the list are converted
+  to nulls except for the DnType String where they are turned into empty strings.
  * *min* - Only applies to simple types whose primitive type is numeric. This is minimum numeric value (inclusive)
  * *max* - Only applies if there are no fields present in this type and a recursive chase up the *baseType* references
  leads to a primitive numeric type. This is the maximum numeric value (exclusive).
  * *&lt;other&gt;* - Other attributes can be put into the schema for a private channel between code, data, and 
   presentation. It can also be used as inputs to builders. This is meant to get sufficiently complex 
-  that additional *DnType* definitions will be  needed to defined the structure of this data. Or put it another
+  that additional *DnType* definitions will be  needed to define the structure of this data. Or put it another
   way, the *DnType* has extended metadata that needs its own *DnType* to define its structure. This makes
   the *DnType* both a model definition and an instanced data  object simultaneously. This is a theme which
   this application intends to build on.
@@ -247,12 +248,7 @@ DnType *Category* is extended to have an additional *limit* field that can be us
 limit the results. The second is that the DnType *Content* has been subsumed into a containing type
 so that the *items* field of the containing type has *Content* has the of one of its objects. The values 
 *duration*, *requestUri*, and *none* are all handled by generic protocol handlers and
-are invisible to the function *getContent*.
-
-Another DnBuilder is the *table* builder, which we will expand on at a later point. But it can
-take input parameters like *primaryKey* and *indexes*. The builder would then add standard protocol
-fields like *creationDate* and *updatedDate*. Then code that interacts with the table could look
-at the table design and automatically create based parameterized queries to query, insert, and update rows.
+are invisible to the implementation code for the function *getContent*.
 
 #### Table Definition Builder
 
@@ -288,15 +284,15 @@ The builder is named *table* and it has the following inputs.
  modified the row.
 * noEnabled - Whether the column *enabled* should **not** be added to the database table. By default it is
  added to the table at the end before the date fields added by *hasDates*.
-* isUserData - Whether the columns *userId* and *group* are added to the database and whether an index on
- *group* (and additionally *modifiedDate* if it is present) is created. Unless, a primary key is created
+* isUserData - Whether the columns *userId* and *userGroup* are added to the database and whether an index on
+ *userGroup* (and additionally *modifiedDate* if it is present) is created. Unless, a primary key is created
  with *userId* in it, then an index on *userId* (and *modifiedDate* if present) is created as well. The type
- of value that populates the *group* field depends on how users are organized, but the *group* value is targeted
- if any sharding is done on the table. The value for *group* may also vary depending on the type type of data
+ of value that populates the *userGroup* field depends on how users are organized, but the *userGroup* value is targeted
+ if any sharding is done on the table. The value for *userGroup* may also vary depending on the type type of data
  being stored.
 * isTopLevel - Whether the columns *lastTranId* and *touchedDate* should be added to the table. Generally
 if these columns are added then the table should be treated as a locking table to initiate transactions. 
-* <other> - Other fields that define storage options in a private communication with data storage solution.
+* &lt;other&gt; - Other fields that define storage options in a private communication with data storage solution.
 
 An Index object can either be:
 
@@ -309,8 +305,7 @@ An Index object can either be:
     But it can be used in code to find the index definition and use it to help build queries.
    * fields - The array of strings described in the first option.
    * props - A map of additional properties about the index. One common property is *unique* which if set to true means
-   there is an uniqueness constraint on the index. Note that a primary key has that constraint automatically. This
-   field is rarely present.
+   there is an uniqueness constraint on the index. Note that a primary key has that constraint automatically.
    
 If the index is supplied using the first option, it is converted into the second.
 
@@ -411,9 +406,9 @@ the date fields and the *enabled* field without direct intervention by the logic
    
 ### Namespacing
 
-One of the reasons when cloning is needed is so that a DnType can be put into a particular namespace, 
+One of the reasons for cloning is for making a copy of a DnType so it can be put into a particular namespace, 
 which alters the name of its type. Also, any fields referring to a base type also may have that reference 
-adjusted as well. Essentially, if the name of a DnType does not have a dot ('.') in it, then the name space is 
-added a prefix separated by a dot. This allows the definition of the raw type to be done without reference
-to a namespace and the namespacing applied later.
+adjusted as well. Essentially, if the name of a DnType does not have a dot ('.') in it, then the current
+namespace is added a prefix separated by a dot. This allows the definition of the raw type to be done 
+without reference to a namespace and the namespacing applied later.
  
