@@ -110,6 +110,6 @@ compileTestKotlin {
 
 // Boilerplate task to start the server.
 task execute(type:JavaExec) {
-    main = findProperty('mainClass') ?: 'StartAll'
+    main = findProperty('mainClass') ?: 'start.StartAll'
     classpath = sourceSets.main.runtimeClasspath
 }
