@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!--HEAD content extracted and put into layout.ftl-->
+    <!--B-HEAD-->
+    <title>Form for Endpoint</title>
+    <script src="https://unpkg.com/react@16/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+    <!-- Dynamic Runtime JSX javascript. -->
+    <script type="text/babel" src="/content/js/dncore.js"></script>
+    <!--E-HEAD-->
+    <link href="/content/css/dynrt.css" rel="stylesheet">
+</head>
+<body>
+<!--BODY content extracted and put into layout.ftl-->
+<!--B-BODY-->
+<h1>Form for Endpoint</h1>
+<div class="intro">
+    This page presents a form for an endpoint that can be submitted to make a request against an endpoint.
+</div>
+
+<div id="root">
+    <script type="text/babel">
+        const params = extractParams(window.location.search);
+        const endpoint = params.get("endpoint");
+
+        ReactDOM.render(
+            <div>
+                <DnEndpointForm endpoint={endpoint} dataUrl={"/schema/endpoint/list"} params={params}/>
+            </div>,
+            document.getElementById('root')
+        );
+    </script>
+</div>
+<!--E-BODY-->
+</body>
+</html>

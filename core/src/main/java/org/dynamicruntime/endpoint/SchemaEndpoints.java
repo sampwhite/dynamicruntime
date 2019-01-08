@@ -11,6 +11,7 @@ import java.util.List;
 
 import static org.dynamicruntime.schemadata.CoreConstants.*;
 import static org.dynamicruntime.schemadef.DnEndpointFunction.mkEndpoint;
+import static org.dynamicruntime.schemadef.DnSchemaDefConstants.EP_ENDPOINT;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.util.ConvertUtil.*;
 
@@ -54,16 +55,24 @@ public class SchemaEndpoints {
 
     public static void getEndpointDefinitions(DnRequestCxt requestCxt) {
         var reqData = requestCxt.requestData;
-        String prefix = getOptStr(reqData, SS_ENDPOINT_PATH_PREFIX);
-        var endpoints = requestCxt.cxt.getSchema().endpoints.values();
+        String endpointPath = getOptStr(reqData, EP_ENDPOINT);
         List<DnEndpoint> retVal = mList();
-        for (var ep : endpoints) {
-            if (prefix != null && !ep.path.startsWith(prefix)) {
-                 continue;
+        if (endpointPath != null) {
+            var endpoint = requestCxt.cxt.getSchema().endpoints.get(endpointPath);
+            if (endpoint != null) {
+                retVal.add(endpoint);
             }
-            retVal.add(ep);
+        } else {
+            String prefix = getOptStr(reqData, SS_ENDPOINT_PATH_PREFIX);
+            var endpoints = requestCxt.cxt.getSchema().endpoints.values();
+            for (var ep : endpoints) {
+                if (prefix != null && !ep.path.startsWith(prefix)) {
+                    continue;
+                }
+                retVal.add(ep);
+            }
+            retVal.sort(Comparator.comparing(ep -> ep.path));
         }
-        retVal.sort(Comparator.comparing(ep -> ep.path));
         requestCxt.listResponse = nMapSimple(retVal, DnEndpoint::toMap);
     }
 

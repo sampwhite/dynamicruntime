@@ -27,10 +27,12 @@ public class SchemaForSchema {
             schemaTypeReq.name, DNT_MAP)
                 .setAttribute(EP_HAS_NUM_AVAILABLE, true);
 
+    public static DnRawField endpointPath = mkField(EP_ENDPOINT, "Endpoint",
+            "Execution path for a specific endpoint.");
     public static DnRawField pathPrefix = mkField(SS_ENDPOINT_PATH_PREFIX, "Path Prefix",
             "Endpoint path prefix to apply as a filter to the results.");
     public static DnRawType schemaEndpointReq = mkType("SchemaEndpointRequest",
-            mList(pathPrefix));
+            mList(endpointPath, pathPrefix));
     public static DnRawEndpoint getSchemaEndpointsEndpoint = mkListEndpoint("/schema/endpoint/list",
             SS_GET_ENDPOINT_DEFINITIONS, "Gets the schema definitions of endpoints.",
             schemaEndpointReq.name, DNT_MAP)

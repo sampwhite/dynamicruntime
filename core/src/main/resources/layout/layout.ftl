@@ -15,6 +15,7 @@
 <div class="sidenav">
     <h3>Dynamic Runtime</h3>
     <p>Changing your data model as your application runs.</p>
+    <p>See list of <a href="/content/html/endpoints.html">endpoints</a>.</p>
     <p>See the <a href="/content/md/Home.md">Home</a> page for more information about this application.</p>
 </div>
 <div class="main">
