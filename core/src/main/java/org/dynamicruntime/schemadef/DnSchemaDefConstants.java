@@ -76,7 +76,7 @@ public class DnSchemaDefConstants {
 
     /** Attribute of DnField a reference to a DnType for the field. */
     public static final String DN_TYPE_REF = "dnTypeRef";
-    /** Attribute holding an anonymous implementation of a DnType for the field. */
+    /** Attribute holding an inline implementation of a DnType for the field. */
     public static final String DN_TYPE_DEF = "dnTypeDef";
     /** Whether DnType is a list (or collection of the DnType) instead of a single instance of the DnType. */
     public static final String DN_IS_LIST = "isList";

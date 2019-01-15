@@ -17,6 +17,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ import java.util.Map;
 @SuppressWarnings("WeakerAccess")
 public class DnRequestHandler implements DnServletHandler {
     public static boolean enableLengthRounding = false;
+    public static boolean logHttpHeaders = false;
     public String target;
     public String contextRoot;
     public String subTarget;
@@ -94,8 +96,20 @@ public class DnRequestHandler implements DnServletHandler {
 
     public void logSuccess(DnCxt cxt, int code) {
         double duration = cxt.getDuration();
+        String logReqData = logRequestUri;
+        if (logHttpHeaders) {
+            Map<String, List<String>> headers = mMapT();
+            var names = request.getHeaderNames();
+            while (names.hasMoreElements()) {
+                var name = names.nextElement();
+                var hdrValues = Collections.list(request.getHeaders(name));
+                headers.put(name, new ArrayList<>(hdrValues));
+            }
+            String remoteAddr = request.getRemoteAddr();
+            logReqData = remoteAddr + " " + logReqData + " " + headers.toString();
+        }
         LogServlet.log.debug(cxt, String.format("%d Request %s (%s ms)",
-                code, logRequestUri, fmtDouble(duration)));
+                code, logReqData, fmtDouble(duration)));
     }
 
     public void handleException(DnCxt cxt, Throwable t) {

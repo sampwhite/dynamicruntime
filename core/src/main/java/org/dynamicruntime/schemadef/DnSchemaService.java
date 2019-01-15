@@ -165,7 +165,7 @@ public class DnSchemaService implements ServiceInitializer {
             var outputType = DnRawType.mkType(fieldList);
             outputField.setTypeDef(outputType);
         } else {
-            // Endpoints always use anonymous types at their core.
+            // Endpoints always use inline (unregistered) types at their core.
             inputField.setTypeDef(DnRawType.mkSubType(inputTypeRef));
             var outputType = DnRawType.mkSubType(outputTypeRef);
             outputType.addFields(mList(requestUri, duration));

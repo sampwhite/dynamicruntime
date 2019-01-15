@@ -4,6 +4,7 @@ import config.ConfigLoader
 import org.dynamicruntime.common.CommonComponent
 import org.dynamicruntime.CoreComponent
 import org.dynamicruntime.context.DnCxt
+import org.dynamicruntime.servlet.DnRequestHandler
 import org.dynamicruntime.servlet.DnServer
 import org.dynamicruntime.startup.InstanceRegistry
 import org.dynamicruntime.startup.LogStartup
@@ -28,6 +29,9 @@ class StartAll {
             String envName = fileConfig.envName
             if (envName) {
                 InstanceRegistry.setEnvName(envName)
+            }
+            if (fileConfig.logHeaders) {
+                DnRequestHandler.logHttpHeaders = true
             }
             def config = InstanceRegistry.getOrCreateInstanceConfig(instanceName, fileConfig)
             cxt = InstanceRegistry.createCxt("startServer", config)

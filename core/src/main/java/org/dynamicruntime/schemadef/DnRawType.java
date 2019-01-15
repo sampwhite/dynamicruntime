@@ -44,8 +44,8 @@ public class DnRawType implements DnRawTypeInterface {
     }
 
     /** Clones down to field data. Cloning is our main defense against data pollution across
-     * schemas. Note that any anonymous types for fields get cloned, but only the parts that are
-     * necessary to clone. */
+     * schemas. Note that any inline types (types that are not registered) for fields get cloned,
+     * but only the parts that are necessary to clone. */
     public DnRawType cloneType(String namespace) {
         Map<String,Object> newModel = cloneMap(model);
 
@@ -61,7 +61,7 @@ public class DnRawType implements DnRawTypeInterface {
 
                 if (namespace != null) {
                     DnTypeUtils.updateTypeIfChanged(namespace, DN_TYPE_REF, m, false);
-                    applyNamespaceToAnonymousType(namespace, m, 0, false);
+                    applyNamespaceToInlineType(namespace, m, 0, false);
                 }
                 return m;
             }));
@@ -74,10 +74,10 @@ public class DnRawType implements DnRawTypeInterface {
         return new DnRawType(newName, newModel);
     }
 
-    public Map<String,Object> applyNamespaceToAnonymousType(String namespace, Map<String,Object> fieldData,
+    public Map<String,Object> applyNamespaceToInlineType(String namespace, Map<String,Object> fieldData,
             int nestLevel, boolean cloneIfChanged) {
         if (nestLevel > 10) {
-            throw new RuntimeException("Anonymous type for field " + getOptStr(fieldData, DN_NAME) +
+            throw new RuntimeException("Inline type for field " + getOptStr(fieldData, DN_NAME) +
                     " and type " + name + " nests to deeply or has a recursion in its nesting.");
         }
         Map<String,Object> anonData = getOptMap(fieldData, DN_TYPE_DEF);
@@ -95,7 +95,7 @@ public class DnRawType implements DnRawTypeInterface {
             if (newFld != null) {
                 changed[0] = true;
             }
-            newFld = applyNamespaceToAnonymousType(namespace, newFld != null ? newFld : fld, nestLevel + 1,
+            newFld = applyNamespaceToInlineType(namespace, newFld != null ? newFld : fld, nestLevel + 1,
                     newFld == null);
             if (newFld != null) {
                 changed[0] = true;
@@ -136,7 +136,7 @@ public class DnRawType implements DnRawTypeInterface {
         return new DnRawType(null, mMap()).addFields(fields);
     }
 
-    /** Makes a type that extends from another type. If the type is anonymous then the *typeName*
+    /** Makes a type that extends from another type. If the type is inline then the *typeName*
      * can be null. */
     public static DnRawType mkSubType(String typeName, String baseTypeName) {
         return new DnRawType(typeName, mMap(DN_NAME, typeName, DN_BASE_TYPE, baseTypeName));

@@ -41,7 +41,7 @@ import org.dynamicruntime.exception.DnException;
  * code. We have found this approach to generally be a failure.
  *
  * The second approach is for a writer of external code to look at the base code set and say, "I would like
- * to vary the behavior of this code at the particular point." Normally what might happen at this point, is
+ * to vary the behavior of this code at the particular location." Normally what might happen at this point, is
  * that the writer of the new code may then edit the base code to do what they need, hard-wiring implementation
  * details that are particular to that writer's needs. But a better approach is for the writer to add a "hook"
  * to the code and create a *workData* object as described above to capture all the "working locals". Adding

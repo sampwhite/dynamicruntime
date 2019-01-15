@@ -49,8 +49,8 @@ together using reflection.
 
 Many of the coding choices made in this project are with an awareness of the capabilities and limitations of 
 IntelliJ. In particular, the code tries to take advantage of the fact that IntelliJ can answer questions like 
-"who uses this variable?" or "who implements this interface?" quickly and without ambiguity. It is one 
-of the reasons there are so many string constants in the code. Using "where used" on them can be a great
+"who uses this variable or calls this method?" or "who implements this interface?" quickly and without ambiguity. 
+It is one of the reasons there are so many string constants in the code. Using "where used" on them can be a great
 way to navigate around the code.
 
 We give a particular example from the code. The functional interface *DnEndpointFunctionalInterface* is used
@@ -68,7 +68,7 @@ For this project, we have created a universal exception class called *DnExceptio
 fact that we have seen over the years that the logic for error handling tends to have a lot of similarities
 and if you start creating different exception classes, you lose your ability to leverage that commonality. And for
 Java with enforced exception signatures on methods, using different exception classes forces the creation of
-a lot of code that rethrows one type of exception as another type of exception and many times losing useful
+code layers that rethrow one type of exception as another type of exception and many times losing useful
 information in the process. One of the advantages of having a universal exception class is that a lot
 of the code can ignore the issue of exception handling all together. Again this speaks to the issue of breaking
 apart areas of concern into different code packages. This issue is particularly relevant to *functional* 
@@ -77,6 +77,15 @@ being thrown by the lambda function.
 
 For a particular win of this approach, look at the method *DnException#canRetry* and
 ask if any other application can answer whether a retry should be done as authoritatively.
+
+## Execution Context
+
+In other applications, user session data and active database sessions are all stored in thread locals,
+making them essentially invisible elements when executing the code during debug. Thread local storage is 
+also used to control dynamic binding between various elements of an application. In this application, we 
+put all those attributes into a single class named DnCxt with an intent to make all this data explicit
+and immediately available during a debug session. It also eliminates complications when delegating
+code to worker threads.
 
 ## Enums
 
@@ -104,8 +113,8 @@ surrounding the variable or method. Using this type of naming reference conventi
 reading the code to know what parts of the code require mental effort and what parts do not, greatly 
 speeding the comprehension of code for a skilled reader of code.
 
-On one other note, we are also taking advantage of IntelliJ which can help you find the definition of
-a method call whose source of origin might otherwise be difficult to chase down.
+On one other note, with IntelliJ (or similar IDEs) you can quickly find the definition of
+a method call even if the source is obscured.
 
 
 

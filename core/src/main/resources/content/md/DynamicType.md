@@ -32,11 +32,11 @@ the requests do not take ordinary parameters. As another example, *None* can rep
 downloads.
 
 Before we go on, we call a type *simple* if it has no fields and a recursive chase up the *base* types
-leads to a primitive type. A type is *anonymous* if it is not captured into the DnSchemaStore. The data 
+leads to a primitive type. A type is *inline* if it is not captured into the DnSchemaStore. The data 
 structure of the DnType is as follows.
 
 ### DnType
- * *name* - Name of type. Optional for anonymous types.
+ * *name* - Name of type. Optional for inline types.
  * *label* - Optional friendly label for type.
  * *description* - Optional description of type.
  * *dnBuilder* - A post processing builder that builds out the type more fully based on other data in this
@@ -81,7 +81,7 @@ structure of the DnType is as follows.
  * *description* - Description of field. Required if field is meant to hold data.
  * *dnTypeRef* - A reference to a DnType by name. This allows the type for the field to have independent
   existence. This field is ignored, if *dnTypeDef* is defined.
- * *dnTypeDef* - A full anonymous *DnType* object that is owned by this field and has no independent
+ * *dnTypeDef* - A full inline *DnType* object that is owned by this field and has no independent
   existence. Useful when interior nested types have meaning only in the context of their parent. When the DnField
   is cloned, this object is recursively cloned, cloning any referenced fields that also use a dnTypeDef to define
   their type. This type definition is considered to be immutable, it must be cloned in order to be modified.

@@ -1,0 +1,5 @@
+DIR=`dirname "$0"`
+DN_DIR="${DIR}/../../.."
+cd $DN_DIR
+git pull
+./gradlew execute
