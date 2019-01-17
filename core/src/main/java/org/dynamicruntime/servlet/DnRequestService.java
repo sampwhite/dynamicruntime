@@ -172,7 +172,7 @@ public class DnRequestService implements ServiceInitializer {
         String userAgent = handler.request.getHeader("User-Agent");
         // Get X-Forwarded-By
         // Assume using AWS for now, use its user-agent for requests from load balancer.
-        boolean isFromLoadBalancer = (userAgent != null && userAgent.contains("Elb-Health"));
+        boolean isFromLoadBalancer = (userAgent != null && userAgent.contains("ELB-Health"));
         requestCxt.requestInfo = new DnRequestInfo(userAgent, handler.forwardedFor, isFromLoadBalancer,
                 handler.queryParams, handler.postData);
 
