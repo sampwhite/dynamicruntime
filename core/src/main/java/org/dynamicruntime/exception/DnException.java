@@ -44,6 +44,8 @@ public class DnException extends Exception {
     public static final String INTERRUPTED = "interrupted";
     // Indicates that parsing or conversion was taking place.
     public static final String CONVERSION = "conversion";
+    // Indicates that authentication related activity was being performed.
+    public static final String AUTH = "auth";
     // Indicates that code threw a deliberate exception based on internal logic and
     // wants the exception to be handled as significant.
     public static final String CODE = "code";

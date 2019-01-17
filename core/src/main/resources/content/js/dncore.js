@@ -6,6 +6,10 @@
 // Mimic *import* statements. We cannot do imports because we are doing standalone React.
 const React = React;
 const {Component} = React;
+if (!Component.setState) {
+    // Suppress warnings on usage of setState.
+    Component.setState = {};
+}
 
 function extractParams(url) {
     return new URLSearchParams(url);
@@ -35,14 +39,12 @@ class DnTable extends Component {
             .then(res => res.json())
             .then(
                 (result) => {
-                    // noinspection JSCheckFunctionSignatures
-                    this.setState({
+                   this.setState({
                         isLoaded: true,
                         items: result.items
                     });
                 },
                 (error) => {
-                    // noinspection JSCheckFunctionSignatures
                     this.setState({
                         isLoaded: true,
                         error
@@ -107,6 +109,7 @@ class DnEndpointForm extends Component {
         };
         this.computeRequestUrl = this.computeRequestUrl.bind(this);
         this.handleInputChange = this.handleInputChange.bind(this);
+        this.setFormBuildingState = this.setFormBuildingState.bind(this);
         this.onSubmit = this.onSubmit.bind(this);
     }
 
@@ -123,20 +126,35 @@ class DnEndpointForm extends Component {
             .then(res => res.json())
             .then(
                 (result) => {
-                    // noinspection JSCheckFunctionSignatures
-                    this.setState({
-                        isLoaded: true,
-                        items: result.items
-                    });
+                    this.setFormBuildingState(result.items)
                 },
                 (error) => {
-                    // noinspection JSCheckFunctionSignatures
                     this.setState({
                         isLoaded: true,
                         error
                     });
                 }
             )
+    }
+
+    setFormBuildingState(items) {
+        const obj = {isLoaded: true, items: items};
+        if (items.length === 1) {
+            const {endpointInputType} = items[0];
+            if (endpointInputType) {
+                const {dnFields} = endpointInputType;
+                const fields = dnFields ? dnFields : [];
+                fields.map(fld => {
+                    const {name} = fld;
+                    const fldName = "fld_" + name;
+                    // Controlled forms need an initial state value.
+                    obj[fldName] = "";
+                });
+            }
+        }
+        //alert(JSON.stringify(obj));
+
+        this.setState(obj);
     }
 
     static toFormType(dnType) {
@@ -179,6 +197,27 @@ class DnEndpointForm extends Component {
         return paramStr.length > 0 ? endpoint + "?" + paramStr : endpoint;
     }
 
+    computeRequestParams() {
+        const {items} = this.state;
+        const {endpointInputType} = items[0];
+        const {dnFields: fields} = endpointInputType;
+
+        const params = {};
+        //const obj = Object.assign({}, this.state);
+        //obj.items = [];
+        //alert(JSON.stringify(obj));
+        if (fields) {
+            for (let fld of fields) {
+                const fldName = "fld_" + fld.name;
+                const val = this.state[fldName];
+                if (val) {
+                    params[fld.name] = val;
+                }
+            }
+        }
+        return params;
+    }
+
 
     handleInputChange(event) {
         const target = event.target;
@@ -192,15 +231,17 @@ class DnEndpointForm extends Component {
 
     onSubmit(event) {
         event.preventDefault();
+        const {endpoint} = this.props;
         const {items} = this.state;
         const {httpMethod} = items[0];
-        const execUrl = this.computeRequestUrl();
+        const execUrl = (httpMethod === "GET") ? this.computeRequestUrl() : endpoint;
+
         const args = (httpMethod === "GET") ? null :
             {
                 headers: {
                     "content-type": "application/json: charset=utf-8"
                 },
-                body: {},
+                body: JSON.stringify(this.computeRequestParams()),
                 method: httpMethod
             };
 
@@ -208,14 +249,12 @@ class DnEndpointForm extends Component {
             .then(res => res.text())
             .then(
                 (result) => {
-                    // noinspection JSCheckFunctionSignatures
                     this.setState({
                         results: result
                     });
                 },
                 (error) => {
-                    // noinspection JSCheckFunctionSignatures
-                    this.setState({
+                     this.setState({
                         results: error.message
                     });
                 }
@@ -227,7 +266,7 @@ class DnEndpointForm extends Component {
         if (!endpoint || endpoint.trim().length === 0) {
             return <DnMessage>Endpoint form requires the query parameter <b>endpoint</b>.</DnMessage>
         }
-        const {error, isLoaded, items, results} = this.state;
+        const {error, isLoaded, items} = this.state;
         if (!isLoaded) {
             return <DnMessage>Loading...</DnMessage>
         } else if (error) {
@@ -257,9 +296,7 @@ class DnEndpointForm extends Component {
                         <tr key={"textarea_"+ name}>
                             <td colSpan="3">
                                 <textarea className="jsonInput" name={fldName} cols="100" rows="10"
-                                          onChange={this.handleInputChange}>
-                                    {this.state[fldName]}
-                                </textarea>
+                                          value={this.state[fldName]} onChange={this.handleInputChange}/>
                             </td>
                         </tr>
                     ]
@@ -270,9 +307,9 @@ class DnEndpointForm extends Component {
                             <td key={"label_" + name} className="formLabel"><label>{label}:</label></td>
                             <td key={"input_" + name} className="formInput">
                                 <input name={fldName} type={inputType} value={this.state[fldName]}
-                                    onChange={this.handleInputChange}/>
+                                       onChange={this.handleInputChange}/>
                             </td>
-                            <td key={"description_" + description} className="formDescription">{description}</td>
+                            <td key={"description_" + name} className="formDescription">{description}</td>
                         </tr>
                     )
                 }
@@ -306,7 +343,7 @@ class DnEndpointForm extends Component {
                         <p key="submitButton"><input type="submit" value="Execute Request"/></p>
                     </form>
                     <form key="results">
-                        <textarea cols="140" rows="40" value={results} readOnly={true}/>
+                        <textarea name="results" cols="140" rows="40" value={this.state.results} readOnly={true}/>
                     </form>
                 </div>
             );

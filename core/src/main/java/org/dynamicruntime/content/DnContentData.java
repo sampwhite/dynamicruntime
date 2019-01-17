@@ -10,6 +10,7 @@ public class DnContentData {
     public boolean isBinary;
     public String strContent;
     public byte[] binaryContent;
+    public int cacheMaxAge;
     // Maybe somebody used for *Etag* headers. Also may be used for an internal in-memory cache, especially if
     // conversions are being performed on content (such as transforming images).
     @SuppressWarnings("unused")

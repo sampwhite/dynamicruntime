@@ -9,9 +9,6 @@ public interface DnServletHandler {
     boolean hasResponseBeenSent();
     void setResponseHasBeenSent(boolean beenSent);
     String getTarget();
-    // All the objects should be strings.
-    Map<String,Object> getQueryParams();
-    Map<String,Object> getPostData();
     // Let auth implementation get cookies.
     List<String> getRequestHeader(String header);
     // Let auth implementation set cookies.

@@ -17,6 +17,14 @@ public class CoreConstants {
     public static final String ND_VERSION = "version";
 
     //
+    // Node endpoints.
+    //
+    /** Function name for toggling node cluster membership. */
+    public static final String ND_SET_CLUSTER_MEMBERSHIP = "node.setClusterMembership";
+    /** Parameter for setting clusterMemberState *. */
+    public static final String ND_IS_CLUSTER_MEMBER = "isClusterMember";
+
+    //
     // Schema for schema.
     //
     /** Function name for getting schema type definitions. */

@@ -4,11 +4,13 @@ import org.dynamicruntime.content.DnContentService;
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.request.DnRequestCxt;
+import org.dynamicruntime.request.DnRequestInfo;
 import org.dynamicruntime.schemadef.DnEndpoint;
 import org.dynamicruntime.schemadef.DnSchemaService;
 import org.dynamicruntime.schemadef.DnSchemaValidator;
 import org.dynamicruntime.schemadef.DnType;
 import org.dynamicruntime.startup.ServiceInitializer;
+import org.dynamicruntime.user.UserConstants;
 import org.dynamicruntime.util.ConvertUtil;
 
 import static org.dynamicruntime.util.DnCollectionUtil.*;
@@ -33,6 +35,7 @@ public class DnRequestService implements ServiceInitializer {
     public final Map<String,ContextRootRules> contextRulesMap = mMapT();
 
     public List<String> anonRoots = mList(CONTENT_ROOT, "health", "schema");
+    public List<String> adminRoots = mList("node");
     public boolean isInit = false;
 
     public static DnRequestService get(DnCxt cxt) {
@@ -56,6 +59,10 @@ public class DnRequestService implements ServiceInitializer {
         // what type of functionality.
         for (var anonRoot : anonRoots) {
             contextRulesMap.put(anonRoot, new ContextRootRules(anonRoot, false, null));
+        }
+        for (var adminRoot : adminRoots) {
+            contextRulesMap.put(adminRoot,
+                    new ContextRootRules(adminRoot, false, UserConstants.ROLE_ADMIN));
         }
         isInit = true;
     }
@@ -84,6 +91,7 @@ public class DnRequestService implements ServiceInitializer {
                     DnException.NOT_FOUND, DnException.SYSTEM, DnException.CODE);
 
         }
+        handler.contextRules = contextRules;
 
         // Request is legitimate enough to decode the request data in the query string parameters
         // and in the JSON request body (if one is provided).
@@ -100,6 +108,7 @@ public class DnRequestService implements ServiceInitializer {
             DnContentService contentService = DnContentService.get(cxt);
             if (contentService != null) {
                 var content = contentService.getContent(cxt, CONTENT_ROOT + "/" + subTarget);
+                //if (handler.query)
                 handler.sentResponse = true;
                 if (content.isBinary) {
                     handler.sendBinaryResponse(content.binaryContent, code, content.mimeType);
@@ -124,7 +133,9 @@ public class DnRequestService implements ServiceInitializer {
         }
         // Eventually for certain context roots we will not log requests. Otherwise log will get filled with
         // meaningless data. The logging also takes about 0.1 to 0.2 milliseconds of time.
-        handler.logSuccess(cxt, code);
+        if (handler.logSuccess) {
+            handler.logSuccess(cxt, code);
+        }
     }
 
     void executeEndpoint(DnCxt cxt, DnRequestHandler handler,  DnEndpoint endpoint) throws DnException {
@@ -157,11 +168,32 @@ public class DnRequestService implements ServiceInitializer {
         var requestCxt = new DnRequestCxt(cxt, requestData, endpoint);
         requestCxt.webRequest = handler;
 
+        // Get user-agent.
+        String userAgent = handler.request.getHeader("User-Agent");
+        // Get X-Forwarded-By
+        // Assume using AWS for now, use its user-agent for requests from load balancer.
+        boolean isFromLoadBalancer = (userAgent != null && userAgent.contains("Elb-Health"));
+        requestCxt.requestInfo = new DnRequestInfo(userAgent, handler.forwardedFor, isFromLoadBalancer,
+                handler.queryParams, handler.postData);
+
+        // Put in hook to do authentication. For now, do not let admin requests make it through using
+        // a proxy.
+        if (handler.contextRules.requiredRole != null) {
+            if (requestCxt.isProxied()) {
+                throw new DnException("Current acting user (if any) does not have the privilege " +
+                        "to execute this request", null, DnException.NOT_AUTHORIZED, DnException.SYSTEM,
+                        DnException.AUTH);
+            }
+        }
+
         // Execute request.
         endpoint.endpointFunction.executeRequest(requestCxt);
 
         if (!handler.sentResponse) {
             prepareAndSendResponse(requestCxt, endpoint.outType, handler);
+            if (!requestCxt.logRequest) {
+                handler.logSuccess = false;
+            }
         }
     }
 

@@ -45,6 +45,9 @@ dependencies {
     // Useful utilities from Apache.
     compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.7'
 
+    // More useful utilities from Apache.
+    compile group: 'commons-io', name: 'commons-io', version: '2.6'
+
     // The Apache way of doing HTTP, robust and reliable. Also has useful utility methods.
     compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.3'
     
@@ -111,5 +114,7 @@ compileTestKotlin {
 // Boilerplate task to start the server.
 task execute(type:JavaExec) {
     main = findProperty('mainClass') ?: 'start.StartAll'
+    // Make sure executable does not use up all the memory on a 1 GIG AWS node.
+    jvmArgs = ['-Xmx512m']
     classpath = sourceSets.main.runtimeClasspath
 }

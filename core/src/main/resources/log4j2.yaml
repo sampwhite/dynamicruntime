@@ -1,4 +1,4 @@
-Configutation:
+Configuration:
   name: Default
   Properties:
     Property:
@@ -9,20 +9,34 @@ Configutation:
       name: Console_Appender
       target: SYSTEM_OUT
       PatternLayout:
-        pattern: "[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{2} - %msg %throwable%n"
+        pattern: "[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{3} - %msg %throwable%n"
     File:
       name: File_Appender
       fileName: ${log-path}/logfile.log
       PatternLayout:
-        pattern: "[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{2} - %msg %throwable%n"
+        pattern: "[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{3} - %msg %throwable%n"
+    RollingFile:
+      - name: RollingFile_Appender
+        fileName: ${log-path}/rollfile.log
+        filePattern: "rollfile.log.%d{yyyy-MM-dd-hh-mm}.gz"
+        PatternLayout:
+          pattern: "[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{3} - %msg %throwable%n"
+        Policies:
+          SizeBasedTriggeringPolicy:
+            size: 1 MB
+        DefaultRollOverStrategy:
+          max: 5
   Loggers:
     Root:
       level: info
       AppenderRef:
       - ref: Console_Appender
+        level: debug
+      - ref: RollingFile_Appender
+        level: debug
     Logger:
     - name: org.dynamicruntime
       level: debug
       AppenderRef:
       - ref: File_Appender
-        level: error
+        level: info

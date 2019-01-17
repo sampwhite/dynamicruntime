@@ -244,9 +244,14 @@ public class DnSchemaValidator {
             }
 
             if (field != null && (field.isRequired || field.isList) && out == null) {
-                String msg = (field.isList) ?
-                        String.format("List element was null or empty for field %s.", fieldName) :
-                        String.format("Required field %s was not supplied a value.", fieldName);
+                String msg;
+                if (field.isList) {
+                    msg = String.format("List element was null or empty for field %s.", fieldName);
+                } else if (objIsEmpty(obj)) {
+                    msg = String.format("Required field %s was not supplied a value.", fieldName);
+                } else {
+                    msg = String.format("Required field %s was not supplied a valid value.", fieldName);
+                }
                 throw DnException.mkConv(msg);
             }
 
@@ -272,5 +277,15 @@ public class DnSchemaValidator {
                     "using the type %s for field '%s'.", fmtObject(obj), coreType, fieldName));
         }
         return out;
+    }
+
+    public static boolean objIsEmpty(Object obj) {
+        if (obj == null) {
+            return true;
+        } else if (obj instanceof CharSequence) {
+            String s = obj.toString().trim();
+            return s.isEmpty();
+        }
+        return false;
     }
 }

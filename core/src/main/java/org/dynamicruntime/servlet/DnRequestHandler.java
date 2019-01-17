@@ -1,5 +1,6 @@
 package org.dynamicruntime.servlet;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -16,6 +17,7 @@ import static org.dynamicruntime.util.ConvertUtil.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,9 +36,13 @@ public class DnRequestHandler implements DnServletHandler {
     public String method;
     public String uri;
     public String queryStr;
+    public String contentType;
     public String logRequestUri;
     public Map<String,Object> queryParams;
     public Map<String,Object> postData;
+    public String forwardedFor;
+    public ContextRootRules contextRules;
+    public boolean logSuccess = true;
     public boolean sentResponse = false;
 
     public DnRequestHandler(String target, HttpServletRequest request, HttpServletResponse response) {
@@ -57,6 +63,13 @@ public class DnRequestHandler implements DnServletHandler {
         this.method = request.getMethod();
         this.uri = request.getRequestURI();
         this.queryStr = request.getQueryString();
+        String contentType = request.getContentType();
+        if (contentType == null || contentType.length() == 0) {
+            contentType = "application/none";
+        }
+        this.contentType = contentType;
+        String ff = request.getHeader("X-Forwarded-For");
+        this.forwardedFor = (ff != null && ff.length() > 0) ? ff : null;
         URLEncodedUtils.parse(queryStr, StandardCharsets.UTF_8);
         this.logRequestUri = method + ":" + uri + ((queryStr != null) ? "?" + queryStr : "");
     }
@@ -77,7 +90,7 @@ public class DnRequestHandler implements DnServletHandler {
         }
     }
 
-    public void decodeRequestData() {
+    public void decodeRequestData() throws IOException, DnException {
         List<NameValuePair> params = URLEncodedUtils.parse(queryStr, StandardCharsets.UTF_8);
         Map<String,Object> parsed = mMapT();
         for (var param : params) {
@@ -90,8 +103,52 @@ public class DnRequestHandler implements DnServletHandler {
             parsed.put(n, v);
         }
         queryParams = parsed;
-        // We will parse json payloads later.
-        postData = null;
+        if (contentType.startsWith("application/json") && postData == null) {
+            String s = readInputStream();
+            postData = ParsingUtil.toJsonMap(s);
+            logRequestUri = logRequestUri + encodePostDataForLogging();
+        }
+    }
+
+    public String encodePostDataForLogging() {
+        StringBuilder sb = new StringBuilder();
+        sb.append('{');
+        boolean isFirstTime = true;
+        for (var key : postData.keySet()) {
+            String result = null;
+            if (!key.toLowerCase().contains("password")) {
+                Object v = postData.get(key);
+                if (v instanceof Number || v instanceof Boolean) {
+                    result = fmtObject(v);
+                } else if (v instanceof String) {
+                    String s = (String)v;
+                    if (s.length() < 128) {
+                        s = s.replace("%", "%25").replace("&", "%26")
+                                .replace("=", "%3D");
+                        result = s;
+                    } else {
+                        result = "...";
+                    }
+                } else if (v instanceof List) {
+                    result = "[...]";
+                } else if (v instanceof Map) {
+                    result = "{...}";
+                } else {
+                    result = "#";
+                }
+            } else {
+                result = "***";
+            }
+            if (!isFirstTime) {
+                sb.append('&');
+            }
+            isFirstTime = false;
+            sb.append(key);
+            sb.append('=');
+            sb.append(result);
+        }
+        sb.append('}');
+        return sb.toString();
     }
 
     public void logSuccess(DnCxt cxt, int code) {
@@ -107,10 +164,20 @@ public class DnRequestHandler implements DnServletHandler {
             }
             String remoteAddr = request.getRemoteAddr();
             logReqData = remoteAddr + " " + logReqData + " " + headers.toString();
+        } else {
+            if (forwardedFor != null) {
+                logReqData = forwardedFor + " " + logReqData;
+            }
         }
         LogServlet.log.debug(cxt, String.format("%d Request %s (%s ms)",
                 code, logReqData, fmtDouble(duration)));
     }
+
+    public String readInputStream() throws IOException {
+        InputStream in = request.getInputStream();
+        byte[] bytes = IOUtils.toByteArray(in);
+        return new String(bytes, StandardCharsets.UTF_8);
+     }
 
     public void handleException(DnCxt cxt, Throwable t) {
         try {
@@ -145,17 +212,21 @@ public class DnRequestHandler implements DnServletHandler {
                 if (cxt != null) {
                     responseData.put("duration", durStr);
                 }
+                String logRequestData = logRequestUri;
+                if (forwardedFor != null) {
+                    logRequestData = forwardedFor + " " + logRequestData;
+                }
                 if (code == DnException.BAD_INPUT) {
                     LogServlet.log.debug(cxt,
                             String.format("%d User input on request %s was in error (%s ms). ", code,
-                                    logRequestUri, durStr) + msg);
+                                    logRequestData, durStr) + msg);
                 } else if (code == DnException.NOT_FOUND) {
                     LogServlet.log.info(cxt,
                             String.format("%d Request %s had target that did not exist (%s ms). ",
-                                    code, logRequestUri, durStr) + msg);
+                                    code, logRequestData, durStr) + msg);
                 } else {
                     LogServlet.log.error(cxt, t, String.format("%d Error for request %s (%s ms). ",
-                            code, logRequestUri, durStr));
+                            code, logRequestData, durStr));
                 }
                 sendJsonResponse(responseData, code);
             } else {
@@ -241,15 +312,5 @@ public class DnRequestHandler implements DnServletHandler {
     @Override
     public String getTarget() {
         return target;
-    }
-
-    @Override
-    public Map<String, Object> getQueryParams() {
-        return queryParams;
-    }
-
-    @Override
-    public Map<String, Object> getPostData() {
-        return postData;
     }
 }

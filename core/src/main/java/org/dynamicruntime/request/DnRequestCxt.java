@@ -24,6 +24,8 @@ public class DnRequestCxt {
     /** The raw web request. The endpoint function should allow for this being null so that one endpoint
      * can call another endpoint locally without having to make an actual HTTP request. */
     public DnServletHandler webRequest;
+    /** Extra information about the request if request came through an endpoint. */
+    public DnRequestInfo requestInfo;
 
     /** Schema validated and coerced request data. This is the *meat* of the request. */
     public final Map<String,Object> requestData;
@@ -45,8 +47,12 @@ public class DnRequestCxt {
     /** The total number of items available to be returned, even if not all were returned in *listResponse*. */
     public int totalListSize;
 
-    /** Whether request created a new entry that can be potentially accessed or updated by another endpoint call. */
+    /** Whether request created a new entry that can be potentially accessed or updated by another endpoint call.
+     * If enabled, a HTTP 201 is returned instead of HTTP 200. */
     public boolean didCreation;
+
+    /** Whether to log request */
+    public boolean logRequest = true;
 
     public DnRequestCxt(DnCxt cxt, Map<String,Object> requestData, DnEndpoint endpoint) {
         this.cxt = cxt;
@@ -59,5 +65,11 @@ public class DnRequestCxt {
     public static DnRequestCxt get(DnCxt cxt) {
         Object obj = cxt.locals.get(DN_REQUEST_CXT);
         return (obj instanceof DnRequestCxt) ? (DnRequestCxt)obj : null;
+    }
+
+    /** Indicates whether request was forwarded from an HTTPS web site. If so, then
+     * the authentication layer can be applied. */
+    public boolean isProxied() {
+        return (requestInfo != null && requestInfo.isProxied);
     }
 }
