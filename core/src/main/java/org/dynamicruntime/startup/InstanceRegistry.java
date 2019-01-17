@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class InstanceRegistry {
     // Change if want a different default instance.
     static public String defaultInstance = "local";
+    static public boolean isFirstTime = true;
 
     // This is global to the VM. However, different instances can choose which of these components are loaded or
     // active.
@@ -48,11 +49,19 @@ public class InstanceRegistry {
         envType =  GENERAL_TYPE;
     }
 
-    // Call only during initialization of VM.
+    // Call only during initialization of VM (and it is assumed at this point that the start up is single threaded).
     public static void addComponentDefinitions(List<ComponentDefinition> definitions) {
+        if (isFirstTime) {
+            isFirstTime = false;
+            doVmInit();
+        }
         for (ComponentDefinition definition : definitions) {
             componentDefinitions.put(definition.getComponentName(), definition);
         }
+    }
+
+    public static void doVmInit() {
+        Runtime.getRuntime().addShutdownHook(new DnShutdownThread());
     }
 
     public static DnCxt createCxt(String cxtName, String instanceName) throws DnException {

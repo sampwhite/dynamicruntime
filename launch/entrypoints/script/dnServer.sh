@@ -2,20 +2,34 @@
 SERVICE_NAME=DnServer
 SCRIPT=$(readlink -f "$0")
 PATH_TO_DIR=`dirname "$SCRIPT"`
-PID_PATH_NAME=$PATH_TO_DIR/DnServer.pid
-EXE_PATH="./gradlew --console=plain execute"
 
+
+DN_DIR="${PATH_TO_DIR}/../../../.."
+cd $DN_DIR
+export DN_PROJECT_DIR=`pwd`
+PID_PATH_NAME=$DN_PROJECT_DIR/dynapp.pid
+
+if [ -f $DN_PROJECT_DIR/gradlew ]; then
+    GRADLEW_DIR=$DN_PROJECT_DIR
+else
+    echo "Using dynamicruntime directory, consider putting a settings.gradle and gradlew into parent directory"
+    GRADLEW_DIR=$DN_PROJECT_DIR/dynamicruntime
+fi
 
 start() {
-    . ~/.profile
-    DN_DIR="${PATH_TO_DIR}/../../.."
-    cd $DN_DIR
-    export DN_PROJECT_DIR=`pwd`
+    cd $DN_PROJECT_DIR/dynamicruntime
     git pull
+    cd $GRADLEW_DIR
+
     # Use AWS trick for getting our private IP address
     export NODE_IP_ADDRESS=`curl -s http://169.254.169.254/latest/meta-data/local-ipv4`
-    nohup $EXE_PATH 2>> /dev/null >> /dev/null &
-    echo $! > $PID_PATH_NAME
+
+    nohup ./gradlew --console=plain execute 2>&1 | multilog t s1048576 n3 ./logs &
+    jobs -p  > $PID_PATH_NAME
+
+    #nohup $EXE_PATH 2>&1 | multilog t s1048576 n3 ./logs &
+    # | multilog t s1048576 n3 ./logs
+    # echo $! > $PID_PATH_NAME
 }
 
 detach() {

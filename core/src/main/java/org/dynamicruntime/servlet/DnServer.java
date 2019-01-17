@@ -26,12 +26,15 @@ public class DnServer extends ContextHandler {
         new DnServer(server);
         try {
             server.start();
-            LogServlet.log.debug(cxt, String.format("Started server at %s:%d on hostname %s.",
+            LogServlet.log.debug(cxt, String.format("Started server at http://%s:%d on hostname %s.",
                     nodeId.nodeIpAddress, nodeId.port, nodeId.hostname));
             try {
                 server.join();
             } catch (InterruptedException ignore) {}
         } catch (Exception e) {
+            try {
+                server.stop();
+            } catch (Exception ignore) {}
             throw new DnException("Could not start server", e);
         }
      }
