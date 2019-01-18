@@ -155,8 +155,9 @@ public class DnCollectionUtil {
             Object curObj = curMap.get(key);
             if (curObj instanceof Map && newObj instanceof Map) {
                 // We clone as needed, so we do not corrupt internals of original holder of *curMap*.
+                var newMap = (Map<String,Object>)newObj;
                 newObj = cloneMap((Map<String,Object>)curObj);
-                mergeMapRecursively((Map<String,Object>)curObj, (Map<String,Object>)newObj, nestLevel + 1);
+                mergeMapRecursively((Map<String,Object>)curObj, newMap, nestLevel + 1);
             }
             curMap.put(key, newObj);
         }
