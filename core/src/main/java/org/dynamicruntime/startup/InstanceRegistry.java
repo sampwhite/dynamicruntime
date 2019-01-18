@@ -74,7 +74,7 @@ public class InstanceRegistry {
     }
 
     public static InstanceConfig getOrCreateInstanceConfig(String instanceName, Map<String,Object> overlayConfig)
-        throws DnException {
+            throws DnException {
         return getOrCreateInstanceConfig(instanceName, overlayConfig, componentDefinitions.values());
     }
 
@@ -152,7 +152,7 @@ public class InstanceRegistry {
             }
 
             // Apply overlay config last.
-            configData.putAll(overlayConfig);
+            mergeMapRecursively(configData, overlayConfig);
 
             // Resolve config and set it as the instance config. Resolving performs
             // some complicated activities, look at implementation.

@@ -21,7 +21,8 @@ public class NodeEndpoints {
         if (requestCxt.requestInfo != null && requestCxt.requestInfo.isFromLoadBalancer) {
             if (!nodeService.isInCluster) {
                 throw new DnException(
-                        String.format("Node %s is not acting as part of the cluster.", nodeService.getNodeLabel()),
+                        String.format("Load balancer check, node %s is not acting as part of the cluster.",
+                                nodeService.getNodeLabel()),
                         null, DnException.NOT_SUPPORTED, DnException.SYSTEM, DnException.CONNECTION);
             }
             if (!nodeService.loggingHealthChecks) {

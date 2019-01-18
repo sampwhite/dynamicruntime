@@ -115,7 +115,7 @@ public class DnRequestHandler implements DnServletHandler {
         sb.append('{');
         boolean isFirstTime = true;
         for (var key : postData.keySet()) {
-            String result = null;
+            String result;
             if (!key.toLowerCase().contains("password")) {
                 Object v = postData.get(key);
                 if (v instanceof Number || v instanceof Boolean) {
@@ -185,7 +185,7 @@ public class DnRequestHandler implements DnServletHandler {
                 sentResponse = true;
                 int code = DnException.INTERNAL_ERROR;
                 String source = DnException.SYSTEM;
-                String activity = null;
+                String activity = DnException.UNSPECIFIED;
                 String msg = t.getMessage();
                 boolean canRetry = false;
                 if (t instanceof DnException) {
@@ -222,9 +222,17 @@ public class DnRequestHandler implements DnServletHandler {
                                     logRequestData, durStr) + msg);
                 } else if (code == DnException.NOT_FOUND) {
                     LogServlet.log.info(cxt,
-                            String.format("%d Request %s had target that did not exist (%s ms). ",
-                                    code, logRequestData, durStr) + msg);
-                } else {
+                            String.format("%d Request %s had target that did not exist (%s ms). %s",
+                                    code, logRequestData, durStr, msg));
+                } else if (code == DnException.NOT_SUPPORTED && DnException.CONNECTION.equals(activity)) {
+                    // We give log message a four letter acronym so we can find it easily using full text
+                    // search. This is not an error because we are trying to answer the question:
+                    // Can this node allow connection over the network from a particular agent for a
+                    // particular task.
+                    LogServlet.log.info(cxt, String.format("RDBP Request deliberately bounced (%s ms). %s",
+                                durStr, msg));
+                }
+                else {
                     LogServlet.log.error(cxt, t, String.format("%d Error for request %s (%s ms). ",
                             code, logRequestData, durStr));
                 }
