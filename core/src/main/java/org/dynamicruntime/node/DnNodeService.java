@@ -59,6 +59,6 @@ public class DnNodeService implements ServiceInitializer {
         double durInDays = ((double)(curTime - vt))/(1000*24*3600);
         String durRpt = fmtDouble(durInDays) + " days";
         return mMap(ND_START_TIME, VM_STARTTIME, ND_UPTIME, durRpt, ND_NODE_ID, nodeIdLabel,
-                ND_IS_CLUSTER_MEMBER, isInCluster, ND_VERSION, "0.1");
+                ND_IS_CLUSTER_MEMBER, isInCluster, ND_VERSION, "0.2");
     }
 }
