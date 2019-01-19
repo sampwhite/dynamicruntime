@@ -19,4 +19,7 @@ initially more difficult to write, they end up being more efficient and adaptabl
 At this point, the project is just getting started. The developers on this project will contribute when they
 have time.
 
-See [Dynamic Schema](core/src/main/resources/content/md/DynamicType.md) for information on how the DnType objects are defined.
+See [Dynamic Schema](core/src/main/resources/content/md/DynamicType.md) for information on how the DnType objects 
+are defined.
+
+For a web site that demos running the latest version of the code, see [dynamicruntime.org](https://dynamicruntime.org).
