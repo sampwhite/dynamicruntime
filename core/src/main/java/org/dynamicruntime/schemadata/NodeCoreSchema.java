@@ -14,9 +14,7 @@ import static org.dynamicruntime.schemadef.DnRawEndpoint.*;
 
 
 @SuppressWarnings("WeakerAccess")
-public class NodeSchema {
-    public static final String NODE_NAMESPACE = "node";
-
+public class NodeCoreSchema {
     public static DnRawField startTime = mkReqDateField(ND_START_TIME, "Start Time",
             "Date and time at which the node started.");
     public static DnRawField uptime = mkReqField(ND_UPTIME, "Uptime",
@@ -39,7 +37,7 @@ public class NodeSchema {
             "Sets the cluster membership state.", memberInfo.name, healthInfo.name).setMethod(EPH_PUT);
 
     public static DnRawSchemaPackage getPackage() {
-        return DnRawSchemaPackage.mkPackage("NodeSchema", NODE_NAMESPACE, mList(healthInfo,
+        return DnRawSchemaPackage.mkPackage("NodeCoreSchema", ND_NAMESPACE, mList(healthInfo,
                 healthEndpoint, memberInfo, membershipEndpoint));
     }
 }

@@ -1,7 +1,7 @@
 package org.dynamicruntime.endpoint;
 
 import org.dynamicruntime.exception.DnException;
-import org.dynamicruntime.node.DnNodeService;
+import org.dynamicruntime.node.DnCoreNodeService;
 import org.dynamicruntime.request.DnRequestCxt;
 import org.dynamicruntime.schemadef.DnEndpointFunction;
 
@@ -17,7 +17,7 @@ import java.util.Objects;
 public class NodeEndpoints {
     /** Gets basic health info. */
     static void getHealth(DnRequestCxt requestCxt) throws DnException {
-        var nodeService = Objects.requireNonNull(DnNodeService.get(requestCxt.cxt));
+        var nodeService = Objects.requireNonNull(DnCoreNodeService.get(requestCxt.cxt));
         if (requestCxt.requestInfo != null && requestCxt.requestInfo.isFromLoadBalancer) {
             if (!nodeService.isInCluster) {
                 throw new DnException(
@@ -34,7 +34,7 @@ public class NodeEndpoints {
 
     static void setClusterMembership(DnRequestCxt requestCxt) throws DnException {
         boolean setMembership = getBoolWithDefault(requestCxt.requestData, ND_IS_CLUSTER_MEMBER, true);
-        var nodeService = Objects.requireNonNull(DnNodeService.get(requestCxt.cxt));
+        var nodeService = Objects.requireNonNull(DnCoreNodeService.get(requestCxt.cxt));
         nodeService.isInCluster = setMembership;
         requestCxt.mapResponse.putAll(nodeService.getHealth());
     }

@@ -2,7 +2,7 @@ package org.dynamicruntime.schemadef;
 
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
-import org.dynamicruntime.startup.ServiceInitializer;
+import org.dynamicruntime.startup.StartupServiceInitializer;
 import org.dynamicruntime.util.ConvertUtil;
 
 import java.util.List;
@@ -15,7 +15,7 @@ import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 import static org.dynamicruntime.schemadef.LogSchema.*;
 
 @SuppressWarnings("WeakerAccess")
-public class DnSchemaService implements ServiceInitializer {
+public class DnSchemaService implements StartupServiceInitializer {
     public static final String DN_SCHEMA_SERVICE = DnSchemaService.class.getSimpleName();
     public DnRawSchemaStore rawSchemaStore;
     public final AtomicReference<DnSchemaStore> schemaStore = new AtomicReference<>();

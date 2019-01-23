@@ -2,6 +2,8 @@ package org.dynamicruntime.schemadata;
 
 @SuppressWarnings("WeakerAccess")
 public class CoreConstants {
+    // Node schema namespace
+    public static final String ND_NAMESPACE = "node";
     //
     // Node health values.
     //
@@ -15,6 +17,25 @@ public class CoreConstants {
     public static final String ND_NODE_ID = "nodeId";
     /** Version */
     public static final String ND_VERSION = "version";
+
+    //
+    // Node configuration values.
+    //
+    /** Unique identifier for instance. */
+    public static final String ND_INSTANCE_NAME = "instanceName";
+    /** The type of instance configuration. */
+    public static final String ND_CONFIG_TYPE = "configType";
+    /** The name of the configuration data. */
+    public static final String ND_CONFIG_NAME = "configName";
+    /** The configuration data package. */
+    public static final String ND_CONFIG_DATA = "configData";
+
+    // Currently known node configuration types.
+    /** Auth data type. */
+    public static final String NDC_AUTH_CONFIG = "authConfig";
+
+    /** The encryption key to create user authentication cookies. */
+    public static final String ND_ENCRYPTION_KEY = "encryptionKey";
 
     //
     // Node endpoints.

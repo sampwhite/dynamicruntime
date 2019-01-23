@@ -1,5 +1,7 @@
 package org.dynamicruntime.common;
 
+import org.dynamicruntime.common.node.DnNodeSchemaDefData;
+import org.dynamicruntime.common.node.DnNodeService;
 import org.dynamicruntime.common.user.UserSchemaDefData;
 import org.dynamicruntime.common.user.UserService;
 import org.dynamicruntime.context.DnCxt;
@@ -37,6 +39,7 @@ public class CommonComponent implements ComponentDefinition {
     @Override
     public void addSchema(DnCxt cxt, DnRawSchemaStore schemaStore) {
         schemaStore.addPackage(UserSchemaDefData.getPackage());
+        schemaStore.addPackage(DnNodeSchemaDefData.getPackage());
     }
     @Override
     public Collection<Class> getStartupInitializers(DnCxt cxt) {
@@ -44,6 +47,6 @@ public class CommonComponent implements ComponentDefinition {
     }
     @Override
     public Collection<Class> getServiceInitializers(DnCxt cxt) {
-        return mList(UserService.class);
+        return mList(UserService.class, DnNodeService.class);
     }
 }

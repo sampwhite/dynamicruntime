@@ -29,7 +29,7 @@ public class UserProfile {
      * in userGroup should be rare and may require an update (and/or migration) of all the user's active data set and
      * may even force the disabling of the current userId and creating a new one. The default determination
      * of the user group is to use the value for *account*, unless the account is *public* in which case the
-     * default is the use the year (rendered as a string) of the user's creation date.*/
+     * default is the year (rendered as a string) of the user's creation date.*/
     public final String userGroup;
     //
     // User profile data.

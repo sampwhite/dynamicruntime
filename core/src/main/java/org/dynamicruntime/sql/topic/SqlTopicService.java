@@ -6,13 +6,13 @@ import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.sql.SqlCxt;
 import org.dynamicruntime.sql.SqlDatabase;
 import org.dynamicruntime.sql.SqlDbBuilder;
-import org.dynamicruntime.startup.ServiceInitializer;
+import org.dynamicruntime.startup.StartupServiceInitializer;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @SuppressWarnings("WeakerAccess")
-public class SqlTopicService implements ServiceInitializer {
+public class SqlTopicService implements StartupServiceInitializer {
     public static final String SQL_TOPIC_SERVICE = SqlTopicService.class.getSimpleName();
 
     public final Map<String,SqlTopicHolder> topics = new ConcurrentHashMap<>();

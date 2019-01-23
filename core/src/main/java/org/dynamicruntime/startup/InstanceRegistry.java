@@ -176,8 +176,8 @@ public class InstanceRegistry {
                 }
             }
 
-            bindAndInitServices(cxt, startupInitializers);
-            bindAndInitServices(cxt, serviceInitializers);
+            bindAndInitServices(cxt, startupInitializers, true);
+            bindAndInitServices(cxt, serviceInitializers, false);
             instanceConfigs.put(instanceName, config);
 
             return config;
@@ -186,15 +186,26 @@ public class InstanceRegistry {
     }
 
     @SuppressWarnings("unchecked")
-    public static void bindAndInitServices(DnCxt cxt, Collection<Class> initializersList) throws DnException {
+    public static void bindAndInitServices(DnCxt cxt, Collection<Class> initializersList, boolean isBoot) throws DnException {
         var instance = cxt.instanceConfig;
         List<String> initializerKeys = mList();
         for (Class initializer : initializersList) {
             try {
                 var service = initializer.getConstructor().newInstance();
-                if (!(service instanceof ServiceInitializer)) {
-                    throw new DnException("Class " + initializer.getCanonicalName() + " did not implement a " +
-                            "ServiceInitializer interface.");
+                if (isBoot) {
+                    if (!(service instanceof StartupServiceInitializer)) {
+                        throw new DnException("Class " + initializer.getCanonicalName() + " did not implement a " +
+                                "StartupServiceInitializer interface.");
+                    }
+                } else {
+                    if (!(service instanceof ServiceInitializer)) {
+                        throw new DnException("Class " + initializer.getCanonicalName() + " did not implement a " +
+                                "ServiceInitializer interface.");
+                    }
+                    if (service instanceof StartupServiceInitializer) {
+                        throw new DnException("Class " + initializer.getCanonicalName()
+                                + " is a startup initializer but it is in the regular start up list.");
+                    }
                 }
                 var serviceInitializer = (ServiceInitializer)service;
 
