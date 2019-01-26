@@ -19,8 +19,19 @@ public class UserConstants {
      * make it unique. */
     public static final String AUTH_USERNAME = "username";
     /** Prefix assigned to usernames that have not yet been truly determined. The username is an entity that
-     * the actual user can potentially delay filling out until user is more fully provisioned. */
+     * the actual user can potentially delay filling out until user is more fully provisioned. If a username
+     * starts with this prefix it is treated as if the user has no username. */
     public static final String AUTH_USERNAME_TMP_PREFIX = "@TMP@";
+    /** The authId that uniquely identifies the authToken. Both are required for token authentication. */
+    public static final String AUTH_ID = "authId";
+    /** Token used to do authentication. Tokens come in different varieties. */
+    public static final String AUTH_TOKEN = "authToken";
+   /** Rules to apply to any authentication done by token. This can be used to limit what IP addresses
+     * can use the token or to limit modification actions. It can also be used to designate that
+     * all GET actions should go to read only secondary databases. */
+    public static final String AUTH_RULES = "authRules";
+    /** Name of HTTP header used to define a token parameter. */
+    public static final String AUTH_HDR_TOKEN = "DnAuthToken";
 
     /** Fields extracted from *authUserData*. */
     public static final String AUTH_ROLES = "roles";

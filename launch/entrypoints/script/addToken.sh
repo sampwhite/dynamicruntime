@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Adds a token that can be used to act as particular user or to login as that user.
+# Command line is
+# addToken <username> <tokenId> <tokenPassword>

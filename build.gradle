@@ -112,8 +112,12 @@ compileTestKotlin {
 }*/
 
 // Boilerplate task to start the server.
-task execute(type:JavaExec) {
+task execute(type: JavaExec) {
     main = findProperty('mainClass') ?: 'start.StartAll'
+    def argsStr = findProperty('dnArgs') as String
+    if (argsStr) {
+        args(argsStr.split("\\^"))
+    }
     workingDir = System.getProperty("user.dir")
     // Make sure executable does not use up all the memory on a 1 GIG AWS node.
     jvmArgs = ['-Xmx512m']

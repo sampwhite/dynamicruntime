@@ -2,6 +2,7 @@ package org.dynamicruntime.simulation;
 
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.request.DnRequestCxt;
+import org.dynamicruntime.schemadef.DnEndpointFunction;
 import org.dynamicruntime.schemadef.DnRawSchemaPackage;
 import org.dynamicruntime.schemadef.DnRawSchemaStore;
 import org.dynamicruntime.schemadef.DnSchemaService;
@@ -21,6 +22,7 @@ import java.util.List;
 public class TestComponent implements ComponentDefinition {
     public List<DnRawSchemaPackage> schemaPackages;
     public List<Class> serviceInitializers;
+    public List<DnEndpointFunction> endpointFunctions = mList();
 
     public TestComponent(DnRawSchemaPackage schemaPackage) {
         this.schemaPackages = mList(schemaPackage);
@@ -52,7 +54,9 @@ public class TestComponent implements ComponentDefinition {
         for (var schemaPackage : schemaPackages) {
             schemaStore.addPackage(schemaPackage);
         }
-       schemaStore.addFunction("testEndpoint", this::testEndpoint);
+        // Hardwire one function for free.
+        schemaStore.addFunction("testEndpoint", this::testEndpoint);
+        schemaStore.addFunctions(endpointFunctions);
     }
 
     @Override

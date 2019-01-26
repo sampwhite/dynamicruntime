@@ -10,7 +10,9 @@ public interface DnServletHandler {
     void setResponseHasBeenSent(boolean beenSent);
     String getTarget();
     // Let auth implementation get cookies.
-    List<String> getRequestHeader(String header);
+    List<String> getHeaderNames();
+    String getRequestHeader(String header);
+    List<String> getRequestHeaders(String header);
     // Let auth implementation set cookies.
     void addResponseHeader(String header, String value);
     void sendRedirect(String redirectUrl) throws IOException;

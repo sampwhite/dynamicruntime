@@ -90,18 +90,16 @@ public class SqlTopicUtil {
         return true;
     }
 
-    /** Adds standard protocol date fields and user fields to data. */
-    public static void prepForUserExecute(DnCxt cxt, Map<String,Object> rowValues) throws DnException {
+    public static void checkAddUserFields(DnCxt cxt, Map<String,Object> rowValues) {
         long userId = cxt.userProfile != null ? cxt.userProfile.userId : DnCxtConstants.AC_SYSTEM_USER_ID;
         String group = cxt.userProfile != null ? cxt.userProfile.userGroup : DnCxtConstants.AC_LOCAL;
-        if (userId > 0 || !rowValues.containsKey(USER_ID)) {
+        if (!rowValues.containsKey(USER_ID)) {
             rowValues.put(USER_ID, userId);
             rowValues.put(USER_GROUP, group);
         }
         if (!rowValues.containsKey(USER_GROUP)) {
             rowValues.put(USER_GROUP, group);
         }
-        prepForStdExecute(cxt, rowValues);
     }
 
     public static void prepForTranInsert(DnCxt cxt, Map<String,Object> data) {

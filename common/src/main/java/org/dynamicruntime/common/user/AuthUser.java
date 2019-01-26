@@ -1,6 +1,7 @@
 package org.dynamicruntime.common.user;
 
 import org.dynamicruntime.exception.DnException;
+import org.dynamicruntime.user.UserAuthData;
 
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,10 @@ public class AuthUser {
     public Map<String,Object> authUserData;
     /* Original source data from AuthUser table and data that will get put back. */
     public Map<String,Object> data;
+
+    // Additional data from various authentication methods.
+    public String authId;
+    public Map<String,Object> authRules;
 
     public AuthUser(long userId, String account, String primaryId) {
         this.userId = userId;
@@ -96,5 +101,12 @@ public class AuthUser {
         return retData;
     }
 
-
+    public void populateAuthData(UserAuthData authData) {
+        authData.userId = userId;
+        authData.account = account;
+        authData.userGroup = groupName;
+        authData.authId = authId;
+        authData.roles = roles;
+        authData.authRules = authRules;
+    }
 }

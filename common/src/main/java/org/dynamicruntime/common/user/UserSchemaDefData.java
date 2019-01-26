@@ -77,7 +77,7 @@ public class UserSchemaDefData {
             .setSimpleIndexes(mList(mList(CT_CONTACT_ID),mList(USER_ID, AUTH_ACTION_EXPIRATION, AUTH_CODE)));
 
     //
-    // AuthLoginSources - Location from where authentication originated.
+    // AuthLoginSources - Location from where successful password validation originated.
     //
     static public DnRawField sourceGuid = mkReqField(LS_SOURCE_GUID, "Login Source GUID",
             "A generated unique identifier attached to the requesting agent. For browsers, the GUID is " +
@@ -97,7 +97,28 @@ public class UserSchemaDefData {
     static public DnRawTable authLoginSourcesTable = mkStdUserTable(UT_TB_AUTH_LOGIN_SOURCES,
             "Sources or devices from which logins originate.",
             mList(sourceGuid, sourceData, sourceAuthCode, sourceAuthExpiration, sourceVerified, verifyExpiration),
-            mList(LS_SOURCE_GUID));
+            mList(USER_ID, LS_SOURCE_GUID))
+            .setSimpleIndexes(mList(mList(LS_SOURCE_GUID)));
+
+    //
+    // AuthTokens - Tokens that are used by batch and test scripts to do simple authentication as a user,
+    //  usually an administrative user. The number of rows in this table should be small.
+    //
+    static public DnRawField authId = mkReqField(AUTH_ID, "Authentication Id",
+            "Unique identifier of token to apply.");
+    static public DnRawField authToken = mkReqField(AUTH_TOKEN, "Authentication Token",
+            "Hash of token that can be supplied to act as a particular user.");
+    static public DnRawField userIdToken = mkReqIntField(USER_ID, "User ID",
+            "The user ID associated with the token.");
+    static public DnRawField rules = mkField(AUTH_RULES, "Auth Rules",
+            "Rules to apply to actions that can be taken by token and to limit access points.")
+            .setTypeRef(DNT_MAP);
+    static public DnRawField expireDate = mkReqDateField(EXPIRE_DATE, "Expiration Date",
+        "Date when token is no longer valid.");
+    static public DnRawTable authTokensTable = mkStdTable(UT_TB_AUTH_TOKENS,
+            "Authentication tokens to used for automated authenticated activity.",
+            mList(authId, authToken, userIdToken, rules, expireDate),
+            mList(AUTH_ID));
 
     //
     // UserProfiles - User profile information.
@@ -116,6 +137,7 @@ public class UserSchemaDefData {
 
     static public DnRawSchemaPackage getPackage() {
         return DnRawSchemaPackage.mkPackage("UserSchema", USER_NAMESPACE,
-                mList(authUserTable, authContactTable, authLoginSourcesTable, userProfileTable));
+                mList(authUserTable, authContactTable, authLoginSourcesTable, authTokensTable,
+                        userProfileTable));
     }
 }

@@ -44,11 +44,10 @@ We broke the application up into independently loadable components. The startup 
 more components depending on configuration and allows control over which components are loading. Components
 can extend or add schema. Testing uses this to control exactly what functionality is loaded for a particular test.
 
-We have reached our first major milestone in our AWS integration. The entry to the website uses a load 
-balancer which talks to multiple nodes running the base application.  At startup the nodes connect
-to an AWS postgres flavored Aurora database. The multiple nodes are automatically 
-updated (using AWS CodeDeploy) when code is contributed to the git repository. 
-The internet entry point is at [dynamicruntime.org](https://dynamicruntime.org).
+This application is deployed to [dynamicruntime.org](https://dynamicruntime.org). The entry to the website 
+uses an AWS load balancer which talks to multiple nodes running the base application.  At startup the nodes connect
+to an AWS postgres flavored Aurora database. The multiple nodes are automatically updated (using AWS CodeDeploy)
+when code is contributed to the git repository.
 
 
 # Near Future

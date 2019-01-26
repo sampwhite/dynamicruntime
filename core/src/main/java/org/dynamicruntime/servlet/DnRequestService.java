@@ -10,6 +10,7 @@ import org.dynamicruntime.schemadef.DnSchemaService;
 import org.dynamicruntime.schemadef.DnSchemaValidator;
 import org.dynamicruntime.schemadef.DnType;
 import org.dynamicruntime.startup.ServiceInitializer;
+import org.dynamicruntime.user.UserAuthHook;
 import org.dynamicruntime.user.UserConstants;
 import org.dynamicruntime.util.ConvertUtil;
 
@@ -24,9 +25,7 @@ import java.util.Map;
 /** This class performs top level request behavior. It allows per instance variations in behavior.
  * The top level authentication and authorization are done using the context root. For example,
  * every endpoint that shares a common context root will have the same basic security profile. Configuration
- * for this class will be supplied by other service objects from the various components that are loaded.
- * Not much of this class has been implemented, but it is a stake in the ground for future
- * development activity. */
+ * for this class will be supplied by other service objects from the various components that are loaded. */
 @SuppressWarnings("WeakerAccess")
 public class DnRequestService implements ServiceInitializer {
     public static String DN_REQUEST_SERVICE = DnRequestService.class.getSimpleName();
@@ -97,8 +96,24 @@ public class DnRequestService implements ServiceInitializer {
         // and in the JSON request body (if one is provided).
         handler.decodeRequestData();
 
-        // Eventually use the rules to do security and proxying.
-        //-----
+        // Call hook to fill in initial user information.
+        extractAuth(cxt, handler);
+
+        // Eventually there will be code here that forwards some requests to other nodes.
+        // This can be for two reasons.
+        // 1. The current node is a proxy node whose specific purpose is to forward to a particular
+        // node using *shard* and *userId* as criteria for choosing which node in a cluster. Requests
+        // to the same *userId* should tend to go to the same node so that user based caching can
+        // be most effective.  The request will forward the extracted user auth data as a header so it
+        // does not have to be queried for again.
+        // 2. This current node does not have access to the database that can handle the request (shard
+        // is used to determine this) and so the request is forwarded to one that does have access.
+        // In some cases we are receiving requests that were forwarded.
+        //
+        // After this point, we are committed to executing the request in this node.
+
+        // Call hook to load (or potentially create) profile record for user.
+        loadProfile(cxt, handler);
 
         // Handle content requests.
         int code = DnException.OK;
@@ -138,6 +153,27 @@ public class DnRequestService implements ServiceInitializer {
         }
     }
 
+    void extractAuth(DnCxt cxt, DnRequestHandler handler) throws DnException {
+        // Call hook to fill in initial user information.
+        // This allows the *core* component to be ignorant of some of the messier implementation
+        // details of authentication.
+        UserAuthHook.extractAuth.callHook(cxt, this, handler);
+        if (cxt.userProfile == null) {
+            var userAuthData = handler.userAuthData;
+            if (userAuthData != null && userAuthData.determinedUserId) {
+                cxt.userProfile = userAuthData.createProfile();
+            }
+        }
+    }
+
+    void loadProfile(DnCxt cxt, DnRequestHandler handler) throws DnException {
+        // In a mature implementation, the data for the profile will be pulled most of the time from
+        // cache.
+        if (cxt.userProfile != null) {
+            UserAuthHook.loadProfile.callHook(cxt, this, handler);
+        }
+    }
+
     void executeEndpoint(DnCxt cxt, DnRequestHandler handler,  DnEndpoint endpoint) throws DnException {
         // Coerce data using the input schema.
         DnSchemaService schemaService = DnSchemaService.get(cxt);
@@ -169,7 +205,7 @@ public class DnRequestService implements ServiceInitializer {
         requestCxt.webRequest = handler;
 
         // Get user-agent.
-        String userAgent = handler.request.getHeader("User-Agent");
+        String userAgent = handler.getRequestHeader("User-Agent");
         // Get X-Forwarded-By
         // Assume using AWS for now, use its user-agent for requests from load balancer.
         boolean isFromLoadBalancer = (userAgent != null && userAgent.contains("ELB-Health"));

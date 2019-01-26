@@ -23,9 +23,6 @@ public class DnCxt {
      * so that a working thread can shift between shards, but such changes should be done with
      * great care. */
     public String shard;
-    /** Login source GUID. Usually a cookie assigned to a browser to uniquely identify that browser. This is
-     * present purely for logging and auditing purposes. This is also called a *deviceId*. */
-    public String sourceId;
     /** Objects attached to this context only and not propagated down to sub context objects. This
      * map plays the role typically played by ThreadLocal storage, but with the advantage that a
      * context can be handed off to a worker thread and not break thread local session. Sql transaction
@@ -89,6 +86,11 @@ public class DnCxt {
     public double getDuration() {
         long diff = System.nanoTime() - nanoTime;
         return ((double)diff)/1000000;
+    }
+
+    public String getLogInfo() {
+        String authId = (userProfile != null) ? userProfile.authId : null;
+        return (authId != null) ? loggingId + "(" + authId + ")": loggingId + "%sys";
     }
 
     public Date now() {

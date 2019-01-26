@@ -223,6 +223,9 @@ public class DnSchemaDefConstants {
     public static final String MODIFIED_DATE = "modifiedDate";
     /** The external date for data. */
     public static final String SOURCE_DATE = "sourceDate";
+    /** The expiration date for the data. The row is treated as disabled if the current date is greater
+     * than this date. */
+    public static final String EXPIRE_DATE = "expireDate";
     /** Whether the data in the data or row has been verified. */
     public static final String VERIFIED = "verified";
     /** An authentication code sent to the user that is either played back by the user or attached to a later

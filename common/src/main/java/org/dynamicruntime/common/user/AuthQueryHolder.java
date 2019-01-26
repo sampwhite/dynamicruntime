@@ -19,6 +19,32 @@ import java.util.Map;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 
+/**
+ * The base tables for authenticated user functionality. If you contrast this implementation
+ * with Hibernate style solutions, you will notice two things.
+ *
+ * * There is a lot more code just to be able to execute some simple queries.
+ * * The design of the tables in this solution is not dictated by the design of Java classes.
+ * * The code has little reference to actual fields in the tables and places little expectations
+ * on the design of the tables.
+ *
+ * This code took multiple days to write while an equivalent hibernate solution might takes hours. But
+ * those days are paid only once and pay dividends for years. The profits are as follows.
+ *
+ * * The code can be tweaked in a fine tuned way. If you want to do something conditionally against one variable
+ * based on the contents of another, it is much easier to add it here.
+ * * The code can run successfully against two (slightly) different designed versions without change, especially
+ * if you add conditional code to do the necessary tweaks to be compatible with the different versions
+ * simultaneously. This is the primary justification for writing the code this way.
+ * * The code can be easily modified to add temporary debug console output focused on a very particular
+ * event.
+ * * It is easier to add application specific metrics to the code. Auditing authentication activity is
+ * a popular thing to do and having complete control over how its done for large mature applications
+ * can be a winner.
+ * * When there are errors, the errors are reported more explicitly. For example, if the database is
+ * having problems with a particular prepared statement, it can be easier to figure it out with this
+ * code.
+ */
 @SuppressWarnings("WeakerAccess")
 public class AuthQueryHolder extends SqlQueryHolderBase {
     public static String AUTH_QUERY_HOLDER = AuthQueryHolder.class.getSimpleName();
@@ -34,6 +60,11 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
     public DnSqlStatement qContactsByUser;
     public DnSqlStatement qContactByContactId;
     public DnSqlStatement uContact;
+    /** AuthTokens */
+    public DnTable authTokens;
+    public DnSqlStatement iAuthToken;
+    public DnSqlStatement uAuthToken;
+    public DnSqlStatement qAuthToken;
     /** Login sources. */
     public DnTable sources;
     public DnSqlStatement iSource;
@@ -55,6 +86,7 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
     @Override
     public void init(SqlCxt sqlCxt) throws DnException {
         boolean firstTime = initContacts(sqlCxt);
+        initAuthTokens(sqlCxt);
         initSources(sqlCxt);
         initExtraAuth(sqlCxt);
         if (firstTime) {
@@ -80,6 +112,17 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
         uContact = SqlTopicUtil.mkTableUpdateStmt(sqlCxt, contacts);
 
         return firstTime;
+    }
+
+    public void initAuthTokens(SqlCxt sqlCxt) throws DnException {
+        DnCxt cxt = sqlCxt.cxt;
+
+        authTokens = cxt.getSchema().getTable(UserTableConstants.UT_TB_AUTH_TOKENS);
+        SqlTableUtil.checkCreateTable(sqlCxt, authTokens);
+
+        iAuthToken = SqlTopicUtil.mkTableInsertStmt(sqlCxt, authTokens);
+        uAuthToken = SqlTopicUtil.mkTableUpdateStmt(sqlCxt, authTokens);
+        qAuthToken = SqlTopicUtil.mkTableSelectStmt(sqlCxt, authTokens);
     }
 
     public void initSources(SqlCxt sqlCxt) throws DnException {
@@ -116,10 +159,30 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
         // For now, only insert, not update (later may add update logic as schema evolves).
         if (existingRow == null) {
             sysUser.put(UserConstants.AUTH_USERNAME, "sysadmin");
-            SqlTopicUtil.prepForTranInsert(cxt, sysUser);
-            SqlTopicUtil.prepForStdExecute(cxt, sysUser);
-            sqlDb.executeDnStatement(cxt, sqlTopic.iTranLockQuery, sysUser);
+            insertAuthUser(cxt, sysUser);
         }
+    }
 
+    //
+    // Convenience methods for executing queries. These methods assume you are executing inside
+    // an SQL session.
+    //
+
+    public void insertAuthUser(DnCxt cxt, Map<String,Object> userDefData) throws DnException {
+        SqlTopicUtil.prepForTranInsert(cxt, userDefData);
+        SqlTopicUtil.prepForStdExecute(cxt, userDefData);
+        sqlDb.executeDnStatement(cxt, sqlTopic.iTranLockQuery, userDefData);
+    }
+
+    public AuthUser queryByUserId(DnCxt cxt, long userId) throws DnException {
+        var params = mMap(USER_ID, userId);
+        var row = sqlDb.queryOneDnStatement(cxt, sqlTopic.qTranLockQuery, params);
+        return (row != null) ? AuthUser.extract(row) : null;
+    }
+
+    public AuthUser queryByUsername(DnCxt cxt, String username) throws DnException {
+        var params = mMap(UserConstants.AUTH_USERNAME, username);
+        var row = sqlDb.queryOneDnStatement(cxt, qUsername, params);
+        return (row != null) ? AuthUser.extract(row) : null;
     }
 }

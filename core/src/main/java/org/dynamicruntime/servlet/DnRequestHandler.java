@@ -8,6 +8,8 @@ import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.request.DnServletHandler;
 import org.dynamicruntime.startup.InstanceRegistry;
+import org.dynamicruntime.user.UserAuthData;
+import org.dynamicruntime.util.EncodeUtil;
 import org.dynamicruntime.util.ParsingUtil;
 import org.dynamicruntime.util.StrUtil;
 
@@ -28,11 +30,10 @@ import java.util.Map;
 public class DnRequestHandler implements DnServletHandler {
     public static boolean enableLengthRounding = false;
     public static boolean logHttpHeaders = false;
+    public String instance;
     public String target;
     public String contextRoot;
     public String subTarget;
-    public HttpServletRequest request;
-    public HttpServletResponse response;
     public String method;
     public String uri;
     public String queryStr;
@@ -44,6 +45,27 @@ public class DnRequestHandler implements DnServletHandler {
     public ContextRootRules contextRules;
     public boolean logSuccess = true;
     public boolean sentResponse = false;
+    public DnCxt createdCxt;
+
+    //
+    // Set when the request originates as a socket connection to this ndde.
+    //
+    public HttpServletRequest request;
+    public HttpServletResponse response;
+
+    //
+    // Set for doing in-process test requests and some are set even if not doing test requests.
+    //
+    public String testPostData;
+    /* Test and report headers use lower case keys for both request and response headers. */
+    public Map<String,List<String>> testHeaders;
+    public int rptStatusCode;
+    public String rptResponseMimeType;
+    public Map<String,List<String>> rptResponseHeaders;
+    public String rptResponseData;
+
+    /** Attributes filled in by hooks. */
+    public UserAuthData userAuthData;
 
     public DnRequestHandler(String target, HttpServletRequest request, HttpServletResponse response) {
         this.target = target;
@@ -68,17 +90,63 @@ public class DnRequestHandler implements DnServletHandler {
             contentType = "application/none";
         }
         this.contentType = contentType;
-        String ff = request.getHeader("X-Forwarded-For");
+        String ff = getRequestHeader("X-Forwarded-For");
         this.forwardedFor = (ff != null && ff.length() > 0) ? ff : null;
-        URLEncodedUtils.parse(queryStr, StandardCharsets.UTF_8);
-        this.logRequestUri = method + ":" + uri + ((queryStr != null) ? "?" + queryStr : "");
+        computeLogRequestUri();
+    }
+
+    /** For internal testing. */
+    public DnRequestHandler(String instance, String method, String target, Map<String,List<String>> headers) {
+        this.instance = instance;
+        this.target = target;
+        if (target != null && target.length() > 1) {
+            int index = target.indexOf('/', 1);
+            if (index < 0) {
+                this.contextRoot = target.substring(1);
+                this.subTarget = "";
+            } else {
+                this.contextRoot = target.substring(1, index);
+                this.subTarget = target.substring(index + 1);
+            }
+        }
+        this.contextRoot = StrUtil.getToNextIndex(target, 1, "/");
+        this.method = method;
+        this.uri = target;
+        this.queryStr = "";
+        Map<String,List<String>> convertedHdrs = mMapT();
+        if (headers != null) {
+            for (String key: headers.keySet()) {
+                String k = key.toLowerCase();
+                var v = headers.get(key);
+                if (v != null) {
+                    convertedHdrs.put(k, v);
+                }
+            }
+        }
+        this.testHeaders = convertedHdrs;
+        this.rptResponseHeaders = mMapT();
+        String ct = getRequestHeader("content-type");
+        this.contentType = (ct != null) ? ct : "application/json";
+        computeLogRequestUri();
+    }
+
+    void computeLogRequestUri() {
+        logRequestUri = method + ":" + uri + ((queryStr != null) ? "?" + queryStr : "");
     }
 
     public void handleRequest() {
         DnCxt cxt = null;
         try {
+            if (instance == null) {
+                instance = InstanceRegistry.defaultInstance;
+            }
+
             // For now default to local instance and for getting cxt objects, eventually, we will do more.
-            cxt = InstanceRegistry.createCxt("request", InstanceRegistry.defaultInstance);
+            cxt = InstanceRegistry.createCxt("request", instance);
+            // Captured for tests.
+            createdCxt = cxt;
+
+            // Execute the request.
             var requestService = DnRequestService.get(cxt);
             if (requestService == null) {
                 throw new DnException("This node cannot handle endpoint requests.", null,
@@ -174,9 +242,12 @@ public class DnRequestHandler implements DnServletHandler {
     }
 
     public String readInputStream() throws IOException {
-        InputStream in = request.getInputStream();
-        byte[] bytes = IOUtils.toByteArray(in);
-        return new String(bytes, StandardCharsets.UTF_8);
+        if (request != null) {
+            InputStream in = request.getInputStream();
+            byte[] bytes = IOUtils.toByteArray(in);
+            return new String(bytes, StandardCharsets.UTF_8);
+        }
+        return testPostData != null ? testPostData : "";
      }
 
     public void handleException(DnCxt cxt, Throwable t) {
@@ -260,50 +331,113 @@ public class DnRequestHandler implements DnServletHandler {
     public void sendBinaryResponse(byte[] data, int code, String mimeType) throws IOException {
         response.setStatus(code);
         response.setContentType(mimeType);
-        response.setContentLength(data.length);
-        var output = response.getOutputStream();
-        output.write(data);
-        response.flushBuffer();
+        if (response != null) {
+            response.setContentLength(data.length);
+            var output = response.getOutputStream();
+            output.write(data);
+            response.flushBuffer();
+        } else {
+            rptResponseData = EncodeUtil.uuEncode(data);
+        }
     }
 
     public void sendStringResponse(String strResp, int code, String mimeType) throws IOException {
-        var bytes = strResp.getBytes(StandardCharsets.UTF_8);
-        response.setStatus(code);
-        response.setContentType(mimeType);
-        response.setContentLength(bytes.length);
-        if (enableLengthRounding) {
-            int roundToLen = 100 * ((bytes.length + 99)/100) - bytes.length;
-            if (roundToLen > 0) {
-                String pad = StringUtils.repeat('z', roundToLen);
-                // Make analysis looking at purely the length of the response difficult (some subtle SSL attacks
-                // use length analysis and time it takes to respond to extract meta information from packets).
-                response.setHeader("X-Padding", pad);
-            }
-        }
+        setStatusCode(code);
+        setResponseContentType(mimeType);
 
-        var output = response.getOutputStream();
-        output.write(bytes);
-        response.flushBuffer();
+        if  (response != null) {
+            var bytes = strResp.getBytes(StandardCharsets.UTF_8);
+            if (enableLengthRounding) {
+                int roundToLen = 100 * ((bytes.length + 99)/100) - bytes.length;
+                if (roundToLen > 0) {
+                    String pad = StringUtils.repeat('z', roundToLen);
+                    // Make analysis looking at purely the length of the response difficult (some subtle SSL attacks
+                    // use length analysis and time it takes to respond to extract meta information from packets).
+                    setResponseHeader("X-Padding", pad);
+                }
+            }
+            response.setContentLength(bytes.length);
+            var output = response.getOutputStream();
+            output.write(bytes);
+            response.flushBuffer();
+        }
+        rptResponseData = strResp;
+    }
+
+    public void setStatusCode(int code) {
+        if (response != null) {
+            response.setStatus(code);
+        }
+        rptStatusCode = code;
+    }
+
+    public void setResponseContentType(String mimeType) {
+        if (response != null) {
+            response.setContentType(mimeType);
+        }
+        rptResponseMimeType = mimeType;
+    }
+
+    public void setResponseHeader(String header, String value) {
+        if (response != null) {
+            response.setHeader(header, value);
+        }
+        if (rptResponseHeaders != null) {
+            rptResponseHeaders.put(header.toLowerCase(), mList(value));
+        }
+    }
+
+    @Override
+    public List<String> getHeaderNames() {
+        if (request != null) {
+            return Collections.list(request.getHeaderNames());
+        }
+        return (testHeaders != null) ? new ArrayList<>(testHeaders.keySet()) : mList();
+    }
+
+    @Override
+    public String getRequestHeader(String header) {
+        if (request != null) {
+            return request.getHeader(header);
+        } else {
+            var values = getRequestHeaders(header);
+            return (values.size() > 0) ? values.get(0) : null;
+        }
     }
 
     // Let auth code get cookies.
     @Override
-    public List<String> getRequestHeader(String header) {
-        var headers = request.getHeaders(header);
-        return Collections.list(headers);
+    public List<String> getRequestHeaders(String header) {
+        if (request != null) {
+            var headers = request.getHeaders(header);
+            return Collections.list(headers);
+        } else {
+            if (testHeaders != null) {
+                List<String> hdrs = testHeaders.get(header.toLowerCase());
+                return (hdrs != null) ? hdrs : mList();
+            }
+            return mList();
+        }
     }
 
     // Let auth code set cookies.
     @Override
     public void addResponseHeader(String header, String value) {
-        response.addHeader(header, value);
+        if (response != null) {
+            response.addHeader(header, value);
+        }
+        if (rptResponseHeaders != null) {
+            addToListMap(rptResponseHeaders, header.toLowerCase(), value);
+        }
     }
 
     @Override
     public void sendRedirect(String redirectUrl) throws IOException {
-        response.setStatus(303);
-        response.setHeader("Location", redirectUrl);
-        response.flushBuffer();
+        setStatusCode(303);
+        addResponseHeader("Location", redirectUrl);
+        if (response != null) {
+            response.flushBuffer();
+        }
         sentResponse = true;
     }
 

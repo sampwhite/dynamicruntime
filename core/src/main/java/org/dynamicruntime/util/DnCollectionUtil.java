@@ -185,4 +185,12 @@ public class DnCollectionUtil {
             }
         }
     }
+
+    public static <U,V> void addToListMap(Map<U,List<V>> listMap, U key, V val) {
+        if (key == null || val == null) {
+            return;
+        }
+        List<V> curList = listMap.computeIfAbsent(key, k -> mList());
+        curList.add(val);
+    }
 }

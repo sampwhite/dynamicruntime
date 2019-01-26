@@ -41,6 +41,7 @@ class SqlTopicTest extends Specification {
                 sqlTopic.table.columns, "select * from t:${sqlTopic.table.tableName}")
         List<Long> ids = []
         List<Map<String,Object>> rows = []
+        // Note, we use a value of *x* to make sure we are not losing precision during round trip with storage.
         def userData = [x: (long)Integer.MAX_VALUE + 1, y: 2]
         sqlDb.withSession(cxt) {
             long[] id = [-1] as long[]
@@ -68,7 +69,7 @@ class SqlTopicTest extends Specification {
         }
 
         // The user profile should dictate the row being edited.
-        cxt.userProfile = new UserProfile(2, "local", "local", [:])
+        cxt.userProfile = new UserProfile(2, "local", "local", ["admin"])
         SqlTopicTranProvider.executeTopicTran(sqlCxt, "testUpdateTran", "update2", [:]) {
             sqlCxt.tranData.userData.x += 1
         }

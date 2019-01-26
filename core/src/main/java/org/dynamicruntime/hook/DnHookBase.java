@@ -4,19 +4,17 @@ import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
 
 /**
- * This is a class that implements a general hook following patterns that have been successful over the
+ * This is an interface that implements a general hook following patterns that we have found to be successful over the
  * last few decades. Since the pattern of using hooks is critical in creating flexible architectures, we
- * give some additional thoughts on the subject here. First let us look at the generic types T, V, and V.
+ * give some additional thoughts on the subject here. First let us look at the generic types U and V.
  *
  * ### The Hook Parameters
  *
- * T -- The *parent* object. This object should supply API calls that the hook functions can use to
+ * U -- The *parent* object. This object should supply API calls that the hook functions can use to
  * interact with their surrounding context. In some cases, instead of making an API call directly
  * using a known internal function, the parent should supply an equivalent API call. This allows
  * the parent to create variations in implementations in internal calls. As a typical example of such
  * a call, the hook may want to query a database for information.
- *
- * U -- The *input* object. These are the invariant inputs that are driving the hook functions.
  *
  * V -- The *workData* object. In a typical scenario for how a hook gets created, some complex code, which
  * did not have a hook, adds a hook call to augment the behavior of the code. For example, a financial
@@ -27,10 +25,10 @@ import org.dynamicruntime.exception.DnException;
  * to the hook call. When the original code is modified to have more *local* variables, these variables are added
  * to the work object.
  *
- * When implementing hooks it is a good idea to reuse T, U, V patterns (use the same set of classes or interfaces).
+ * When implementing hooks it is a good idea to reuse U, V patterns (use the same set of classes or interfaces).
  * This approach may create burdens in packaging and un-packaging inputs, but it is worth
  * the additional labors. In the past we have discovered that certain types of repeated code patterns build
- * up around hook implementations. Reusing T, U, V patterns (or at least reusing shared interfaces) allows
+ * up around hook implementations. Reusing U, V patterns (or at least reusing shared interfaces) allows
  * us to reuse code instead of writing the same code repeatedly.
  *
  * ### When and How To Use Hooks
@@ -63,25 +61,28 @@ import org.dynamicruntime.exception.DnException;
  *
  * ### Notes
  *
- * The U, V parameters should have good *toString()* implementations so that they can be dumped to the log
+ * The V parameter should have good *toString()* implementations so that they can be dumped to the log
  * output if needed and viewed quickly during debug.
  *
- * Each subclass of this object should have a singleton instance created for it. Many times that singleton
- * instance is a static object in the code that calls the hook. When defining the subclass, declare it
- * as a real class (not anonymous). This way in a Java stack dump, the hook call shows up as an easily
+ * Each implementation of this interface should have singleton instances created for it. When defining the class,
+ * declare it as a real class (not anonymous). This way in a Java stack dump, the hook call shows up as an easily
  * visible line item, making it available to full text search engines that search aggregations of log files.
  *
  * The *DnHookTypeInterface* supplies the method *registerHookFunction* for registering hooks functions.
  */
-public abstract class DnHookBase<T,U,V> implements DnHookTypeInterface<DnHookFunction<T,U,V>> {
-    public boolean callHook(DnCxt cxt, T parent, U input, V workData) throws DnException {
+public interface DnHookBase<U,V> extends DnHookTypeInterface<DnHookFunction<U,V>> {
+    // The normal thing to do is implement this calling *callHookImpl*. This
+    // injects the method into the call stack attached to the object that implements the interface.
+    boolean callHook(DnCxt cxt, U parent, V workData) throws DnException;
+
+    default boolean callHookImpl(DnCxt cxt, U parent, V workData) throws DnException {
         var hook = cxt.instanceConfig.getHook(this);
         // First do executions and then notifications.
 
         // Only execute until one entry says that it took care of the task.
         boolean retVal = false;
         for (var entry : hook.entries) {
-            if (entry.function.execute(cxt, parent, input, workData)) {
+            if (entry.function.execute(cxt, parent, workData)) {
                 // Execution finished.
                 retVal = true;
                 break;
@@ -90,9 +91,8 @@ public abstract class DnHookBase<T,U,V> implements DnHookTypeInterface<DnHookFun
 
         // Unconditional execution.
         for (var entry: hook.entries) {
-            entry.function.notify(cxt, parent, input, workData);
+            entry.function.notify(cxt, parent, workData);
         }
         return retVal;
     }
-
 }

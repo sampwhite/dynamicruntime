@@ -27,7 +27,7 @@ public class SqlTopicService implements StartupServiceInitializer {
     public static SqlCxt mkSqlCxt(DnCxt cxt, String topic) throws DnException {
         var s = get(cxt);
         if (s == null) {
-            return null;
+            throw new DnException(String.format("Could not create Sql Context for topic %s.", topic));
         }
         var sqlTopic = s.getOrCreateTopic(cxt, topic);
         return new SqlCxt(cxt, sqlTopic);

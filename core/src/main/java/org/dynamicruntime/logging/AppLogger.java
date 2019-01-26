@@ -34,7 +34,7 @@ public class AppLogger {
             @SuppressWarnings("unused") Map<String,Object> data) {
         // Eventually the logging implementation will forward logging to a Fluentd style solution which will include
         // the data.
-        String msg = cxt != null ? "[" + cxt.instanceConfig.instanceName + ":"  + cxt.loggingId + "] " + message :
+        String msg = cxt != null ? "[" + cxt.instanceConfig.instanceName + ":"  + cxt.getLogInfo() + "] " + message :
                 message;
         logger.log(level, msg, t);
     }

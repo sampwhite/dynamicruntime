@@ -21,5 +21,4 @@ public class RandomUtil {
     public static Random getRandom() {
         return random.get();
     }
-
 }
