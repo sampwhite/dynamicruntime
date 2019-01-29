@@ -20,7 +20,6 @@ do
     fi
 done
 if [ ! -z $mainClass ]; then
-    cd ~/dev/dn1
     ./gradlew --console plain execute -PmainClass=$mainClass -PdnArgs=$result
 else
     echo "Script requires a mainClass to be specified"

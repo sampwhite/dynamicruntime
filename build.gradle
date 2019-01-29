@@ -119,7 +119,8 @@ task execute(type: JavaExec) {
         args(argsStr.split("\\^"))
     }
     workingDir = System.getProperty("user.dir")
-    // Make sure executable does not use up all the memory on a 1 GIG AWS node.
-    jvmArgs = ['-Xmx512m']
+    // Make sure executable does not use up all the memory on a 1 GIG AWS node, even if
+    // running gradle script on the side.
+    jvmArgs = ['-Xmx400m']
     classpath = sourceSets.main.runtimeClasspath
 }
