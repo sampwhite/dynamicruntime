@@ -9,6 +9,7 @@ import org.dynamicruntime.servlet.DnRequestService;
 public class UserAuthHook implements DnHookBase<DnRequestService, DnRequestHandler> {
     public static final UserAuthHook extractAuth = new UserAuthHook();
     public static final UserAuthHook loadProfile = new UserAuthHook();
+    public static final UserAuthHook prepAuthCookies = new UserAuthHook();
 
     // This method exists so that the stack trace in the logs can be full text searched for *UserAuthHook*.
     public boolean callHook(DnCxt cxt, DnRequestService reqService, DnRequestHandler reqHandler) throws DnException {

@@ -63,6 +63,10 @@ div.error {
     color: darkred;
 }
 
+.highlight {
+    color: #442222;
+}
+
 .formLabel {
     font-weight: bolder;
 }

@@ -8,7 +8,9 @@ import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.request.DnServletHandler;
 import org.dynamicruntime.startup.InstanceRegistry;
+import org.dynamicruntime.user.UserAuthCookie;
 import org.dynamicruntime.user.UserAuthData;
+import org.dynamicruntime.util.DnDateUtil;
 import org.dynamicruntime.util.EncodeUtil;
 import org.dynamicruntime.util.ParsingUtil;
 import org.dynamicruntime.util.StrUtil;
@@ -16,15 +18,13 @@ import org.dynamicruntime.util.StrUtil;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.util.ConvertUtil.*;
 
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @SuppressWarnings("WeakerAccess")
 public class DnRequestHandler implements DnServletHandler {
@@ -41,6 +41,7 @@ public class DnRequestHandler implements DnServletHandler {
     public String logRequestUri;
     public Map<String,Object> queryParams;
     public Map<String,Object> postData;
+    private Map<String,String> cookies;
     public String forwardedFor;
     public ContextRootRules contextRules;
     public boolean logSuccess = true;
@@ -48,7 +49,7 @@ public class DnRequestHandler implements DnServletHandler {
     public DnCxt createdCxt;
 
     //
-    // Set when the request originates as a socket connection to this ndde.
+    // Set when the request originates as a socket connection to this node.
     //
     public HttpServletRequest request;
     public HttpServletResponse response;
@@ -64,8 +65,11 @@ public class DnRequestHandler implements DnServletHandler {
     public Map<String,List<String>> rptResponseHeaders;
     public String rptResponseData;
 
-    /** Attributes filled in by hooks. */
+    /** Attributes filled or acted on by hooks. */
     public UserAuthData userAuthData;
+    public UserAuthCookie userAuthCookie;
+    public boolean setAuthCookie;
+    public boolean isLogout;
 
     public DnRequestHandler(String target, HttpServletRequest request, HttpServletResponse response) {
         this.target = target;
@@ -96,7 +100,8 @@ public class DnRequestHandler implements DnServletHandler {
     }
 
     /** For internal testing. */
-    public DnRequestHandler(String instance, String method, String target, Map<String,List<String>> headers) {
+    public DnRequestHandler(String instance, String method, String target, Map<String,List<String>> headers,
+            Map<String,String> cookies) {
         this.instance = instance;
         this.target = target;
         if (target != null && target.length() > 1) {
@@ -127,6 +132,7 @@ public class DnRequestHandler implements DnServletHandler {
         this.rptResponseHeaders = mMapT();
         String ct = getRequestHeader("content-type");
         this.contentType = (ct != null) ? ct : "application/json";
+        this.cookies = cookies;
         computeLogRequestUri();
     }
 
@@ -184,7 +190,8 @@ public class DnRequestHandler implements DnServletHandler {
         boolean isFirstTime = true;
         for (var key : postData.keySet()) {
             String result;
-            if (!key.toLowerCase().contains("password")) {
+            String k = key.toLowerCase();
+            if (!k.contains("password") && !k.endsWith("token")) {
                 Object v = postData.get(key);
                 if (v instanceof Number || v instanceof Boolean) {
                     result = fmtObject(v);
@@ -205,7 +212,7 @@ public class DnRequestHandler implements DnServletHandler {
                     result = "#";
                 }
             } else {
-                result = "***";
+                result = "****";
             }
             if (!isFirstTime) {
                 sb.append('&');
@@ -228,8 +235,20 @@ public class DnRequestHandler implements DnServletHandler {
             while (names.hasMoreElements()) {
                 var name = names.nextElement();
                 var hdrValues = Collections.list(request.getHeaders(name));
-                headers.put(name, new ArrayList<>(hdrValues));
+                if (!name.toLowerCase().equals("cookie")) {
+                    headers.put(name, new ArrayList<>(hdrValues));
+                }
             }
+            Map<String,String> cookies = getRequestCookies();
+            List<String> cookieVals = mList();
+            if (cookies.size() > 0) {
+                for (var key : cookies.keySet()) {
+                    var val = cookies.get(key);
+                    var valLimited = StrUtil.limitStringSize(val, 16);
+                    cookieVals.add(key + "=" + valLimited);
+                }
+            }
+            headers.put("Cookies", cookieVals);
             String remoteAddr = request.getRemoteAddr();
             logReqData = remoteAddr + " " + logReqData + " " + headers.toString();
         } else {
@@ -429,6 +448,60 @@ public class DnRequestHandler implements DnServletHandler {
         if (rptResponseHeaders != null) {
             addToListMap(rptResponseHeaders, header.toLowerCase(), value);
         }
+    }
+
+    @Override
+    public UserAuthData getUserAuthData() {
+        return userAuthData;
+    }
+
+    @Override
+    public void setUserAuthData(UserAuthData userAuthData) {
+        this.userAuthData = userAuthData;
+    }
+
+
+    @Override
+    public void setAuthCookieOnResponse(boolean setAuthCookie) {
+        this.setAuthCookie = setAuthCookie;
+    }
+
+    @Override
+    public void setIsLogout(boolean isLogout) {
+        this.isLogout = isLogout;
+    }
+
+    @Override
+   public Map<String,String> getRequestCookies() {
+        if (cookies == null) {
+            cookies = mMapT();
+            if (request != null) {
+                Cookie[] rCookies = request.getCookies();
+                for (var cookie : rCookies) {
+                    String v = cookie.getValue();
+                    if (v != null && v.length() > 0) {
+                        cookies.put(cookie.getName(), v);
+                    }
+                }
+            }
+        }
+        return cookies;
+    }
+
+    @Override
+    public void addResponseCookie(String cookieName, String cookieValue, Date expireDate) {
+        List<String> cookieVals = mList(cookieName + "=" + cookieValue);
+        if (forwardedFor != null) {
+            cookieVals.add("Secure");
+        }
+        cookieVals.add("HttpOnly");
+        cookieVals.add("Path=/");
+        if (expireDate != null) {
+            String expireStr = DnDateUtil.formatCookieDate(expireDate);
+            cookieVals.add("Expired=" + expireStr);
+        }
+        String cookieVal = String.join("; ", cookieVals);
+        addResponseHeader("Set-Cookie", cookieVal);
     }
 
     @Override

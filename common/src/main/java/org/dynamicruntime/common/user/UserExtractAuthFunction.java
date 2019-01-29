@@ -5,8 +5,10 @@ import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.hook.DnHookFunction;
 import org.dynamicruntime.servlet.DnRequestHandler;
 import org.dynamicruntime.servlet.DnRequestService;
+import org.dynamicruntime.user.UserAuthCookie;
 import org.dynamicruntime.user.UserAuthData;
 
+import java.util.Date;
 import java.util.List;
 
 import static org.dynamicruntime.user.UserConstants.*;
@@ -33,14 +35,25 @@ public class UserExtractAuthFunction implements DnHookFunction<DnRequestService,
             }
             String name = token.substring(0, index);
             String tokenData = token.substring(index + 1);
-            AuthUser authUser = userService.queryToken(cxt, name, tokenData);
-            if (authUser == null) {
-                throw DnException.mkConv("Authentication token is not valid.");
-            }
-            if (workData.userAuthData == null) {
-                workData.userAuthData = new UserAuthData();
-                authUser.populateAuthData(workData.userAuthData);
-                workData.userAuthData.determinedUserId = true;
+            AuthUserUtil.computeUserAuthDataFromToken(cxt, userService, name, tokenData, workData);
+            return;
+        }
+
+        UserAuthCookie authCookie = workData.userAuthCookie;
+        if (authCookie != null) {
+            Date expireDate = authCookie.expireDate;
+            if (cxt.now().before(expireDate)) {
+                UserAuthData authData = new UserAuthData();
+                authData.grantingUserId = authCookie.grantingUserId;
+                authData.userId = authCookie.userId;
+                authData.publicName = authCookie.publicName;
+                authData.account = authCookie.account;
+                authData.userGroup = authCookie.groupName;
+                authData.shard = authCookie.shard;
+                authData.roles = authCookie.roles;
+                authData.authId = authCookie.authId;
+                authData.determinedUserId = true;
+                workData.setUserAuthData(authData);
             }
         }
     }

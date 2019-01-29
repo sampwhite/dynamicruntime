@@ -187,8 +187,13 @@ class DnEndpointForm extends Component {
         if (fields) {
             for (let fld of fields) {
                 const fldName = "fld_" + fld.name;
-                const val = this.state[fldName];
+                let val = this.state[fldName];
                 if (val) {
+                    const {isPassword} = fld;
+                    if (isPassword) {
+                        val = val.replace(/./g, '*');
+                    }
+
                     params.push(fld.name + "=" + encodeURIComponent(val));
                 }
             }
@@ -275,7 +280,7 @@ class DnEndpointForm extends Component {
             return <DnMessage>Did not get back an endpoint definition for endpoint {endpoint}.</DnMessage>
         }
         else {
-            const {endpointInputType, httpMethod} = items[0];
+            const {endpointInputType, httpMethod, description} = items[0];
             if (!endpointInputType) {
                 return <DnMessage>Endpoint definition for endpoint {endpoint} did not return a
                     input type.</DnMessage>
@@ -285,12 +290,13 @@ class DnEndpointForm extends Component {
             const {baseType: inputBaseType} = endpointInputType;
 
             const formFields = fields.map(fld => {
-                const {coreType, name, label, description} = fld;
+                const {coreType, isPassword, required, name, label, description} = fld;
+                const labelClassName = required ? "highlight" : "standard";
                 const fldName = "fld_" + name;
                 if (coreType === "Map") {
                     return [
                         <tr key={"label_" + name}>
-                            <td className="formLabel"><label>{label}</label></td>
+                            <td className="formLabel"><label className={labelClassName}>{label}</label></td>
                             <td className="formDescription" colSpan="2">{description}</td>
                         </tr>,
                         <tr key={"textarea_"+ name}>
@@ -301,10 +307,11 @@ class DnEndpointForm extends Component {
                         </tr>
                     ]
                 } else {
-                    const inputType = DnEndpointForm.toFormType(coreType);
+                    const inputType = (isPassword) ? "password" : DnEndpointForm.toFormType(coreType);
                     return (
                         <tr key={"row_" + name}>
-                            <td key={"label_" + name} className="formLabel"><label>{label}:</label></td>
+                            <td key={"label_" + name} className="formLabel">
+                                <label className={labelClassName}>{label}:</label></td>
                             <td key={"input_" + name} className="formInput">
                                 <input name={fldName} type={inputType} value={this.state[fldName]}
                                        onChange={this.handleInputChange}/>
@@ -324,7 +331,7 @@ class DnEndpointForm extends Component {
                 if (fields.length > 0) {
                     linkStr = <div><p>Endpoint <b>{endpoint}</b> has only intrinsic defined input parameters.</p></div>
                 } else {
-                    linkStr = <div>Endpoint <b>{endpoint}</b> has no input parameters.</div>
+                    linkStr = <div><p>Endpoint <b>{endpoint}</b> has no input parameters.</p></div>
                 }
             }
             const mainTable = (fields.length > 0) ?
@@ -335,6 +342,7 @@ class DnEndpointForm extends Component {
                 </table> : "";
             return (
                 <div>
+                    <i>{description}</i>
                     {linkStr}
                     <form key="mainForm" onSubmit={this.onSubmit}>
                         {mainTable}

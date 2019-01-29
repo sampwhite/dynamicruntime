@@ -2,6 +2,8 @@ package org.dynamicruntime.common.user
 
 import org.dynamicruntime.CoreComponent
 import org.dynamicruntime.common.CommonComponent
+import org.dynamicruntime.common.node.DnNodeSchemaDefData
+import org.dynamicruntime.common.node.DnNodeService
 import org.dynamicruntime.endpoint.NodeEndpoints
 import org.dynamicruntime.node.DnCoreNodeService
 import org.dynamicruntime.schemadata.NodeCoreSchema
@@ -35,7 +37,7 @@ class UserServiceTest extends Specification {
         sqlDb.withSession(cxt) {
             sysadminData = sqlDb.queryOneEnabled(cxt, qh.qUsername, [username : "sysadmin"])
         }
-        def sysAuthUser = AuthUser.extract(sysadminData)
+        def sysAuthUser = AuthUserRow.extract(sysadminData)
 
         then: "Should get initial sysadmin user"
 
@@ -53,7 +55,7 @@ class UserServiceTest extends Specification {
 
         def sysAuthUser2 = null
         sqlDb.withSession(cxt) {
-            sysAuthUser2 = AuthUser.extract(sqlDb.queryOneEnabled(cxt, sqlCxt.sqlTopic.qTranLockQuery,
+            sysAuthUser2 = AuthUserRow.extract(sqlDb.queryOneEnabled(cxt, sqlCxt.sqlTopic.qTranLockQuery,
                     [userId : sysAuthUser.userId]))
         }
 
@@ -66,7 +68,7 @@ class UserServiceTest extends Specification {
         def sqlCxt = createSqlCxt("validateAuthTokens")
         def cxt = sqlCxt.cxt
         // Go back 61 days.
-        cxt.nowTimeOffsetInSeconds = -61*24*1000;
+        cxt.nowTimeOffsetInSeconds = -61*24*1000
         def userService = UserService.get(cxt)
 
         when: "Adding an auth token for sysadmin 61 days ago"
@@ -88,7 +90,7 @@ class UserServiceTest extends Specification {
         ua3 == null
     }
 
-    def "Validate request execution can use token to become sysadmin"() {
+    def "Validate request execution can use token header to become sysadmin"() {
         String token = "xyz"
         def sqlCxt = createSqlCxt("validateAuthTokens")
         def cxt = sqlCxt.cxt
@@ -109,12 +111,51 @@ class UserServiceTest extends Specification {
         ParsingUtil.toJsonMap(reqHandler.rptResponseData)?.requestUri?.contains("/health/info")
     }
 
+    def "Validate token can be used to login and verify logout"() {
+        String token = "uvw"
+        def sqlCxt = createSqlCxt("validateAuthTokens")
+        def cxt = sqlCxt.cxt
+        def userService = UserService.get(cxt)
+
+        when: "Logging in using a token"
+        userService.addToken(cxt, "sysadmin", "loginUsingToken", token, [:], null)
+        def servletClient = new DnTestServletClient(cxt.instanceConfig)
+        def reqLogin = servletClient.sendEditRequest("/auth/token/login", [:], [authId:"loginUsingToken",
+            authToken:"uvw"], false)
+
+        then: "Should have successfully logged in"
+        reqLogin.createdCxt?.userProfile?.userId == 1
+        servletClient.cookies.DnAuthCookie != null
+
+        when: "Doing a request as an authenticated user"
+        def reqLoginTest = servletClient.sendGetRequest("/health/info", [:])
+
+        then: "Should be logged in"
+        reqLoginTest.createdCxt?.userProfile?.userId == 1
+        servletClient.cookies.DnAuthCookie != null
+
+        when: "Doing a logout"
+        def reqLogout = servletClient.sendEditRequest("/auth/logout", [:], [:], false)
+
+        then: "Logout should succeed and should no longer have valid cookie"
+        ParsingUtil.toJsonMap(reqLogout.rptResponseData).loggedOutUser
+        servletClient.cookies.DnAuthCookie?.equals("cleared")
+
+        when: "Doing a request after a logout"
+        def reqAfterLogoutTest = servletClient.sendGetRequest("/health/info", [:])
+
+        then: "Should not be logged in"
+        reqAfterLogoutTest.createdCxt.userProfile == null
+    }
+
     SqlCxt createSqlCxt(String cxtName, String shard = "primary") {
         // Create a component to load.
         List<ComponentDefinition> compList = []
-        def tc = new TestComponent([UserSchemaDefData.getPackage(), NodeCoreSchema.getPackage()],
-                [UserService.class, DnRequestService.class, DnCoreNodeService.class])
+        def tc = new TestComponent([UserSchemaDefData.getPackage(), NodeCoreSchema.getPackage(),
+                                    DnNodeSchemaDefData.getPackage()],
+                [UserService.class, DnRequestService.class, DnCoreNodeService.class, DnNodeService.class])
         tc.endpointFunctions.addAll(NodeEndpoints.getFunctions())
+        tc.endpointFunctions.addAll(AuthUserEndpoints.getFunctions())
         compList.addAll([tc])
         if (executeAsIntegrationTest) {
             // Test will use postgresql instance on local machine that is assumed to have appropriate

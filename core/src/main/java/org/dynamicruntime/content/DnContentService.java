@@ -12,6 +12,7 @@ import org.dynamicruntime.util.IoUtil;
 import org.dynamicruntime.util.PageUtil;
 import org.dynamicruntime.util.StrUtil;
 
+import static org.dynamicruntime.util.ConvertUtil.*;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 
 import java.io.File;
@@ -74,7 +75,7 @@ public class DnContentService implements ServiceInitializer {
                 return new DnTemplates.DnOutput(null, mMap("title", title, "body", body));
             }));
             // Eventually we may augment *baseParams*.
-            return applyHtmlLayout(t.baseParams);
+            return applyHtmlLayout(cxt, t.baseParams);
         }
         if ("html".equals(ext)) {
             DnTemplates.DnTemplate t = templates.checkGetTemplate(resourcePath, f, (content -> {
@@ -91,7 +92,7 @@ public class DnContentService implements ServiceInitializer {
             if (t.template != null) {
                 return DnContentData.mkHtml(templates.evalTemplate(t, mMap()).output);
             } else {
-                return applyHtmlLayout(t.baseParams);
+                return applyHtmlLayout(cxt, t.baseParams);
             }
         }
 
@@ -119,10 +120,17 @@ public class DnContentService implements ServiceInitializer {
         }
     }
 
-    public DnContentData applyHtmlLayout(Map<String,Object> params) throws DnException {
+    public DnContentData applyHtmlLayout(DnCxt cxt, Map<String,Object> baseParams) throws DnException {
         var layoutFile = getFileResource("layout/layout.ftl");
         DnTemplates.DnTemplate layoutTemplate = templates.checkGetTemplate("layout/layout.ftl",
                 layoutFile, null);
+        var params = cloneMap(baseParams);
+        if (cxt.userProfile != null) {
+            String name = !isEmpty(cxt.userProfile.publicName) ? cxt.userProfile.publicName : cxt.userProfile.authId;
+            if (name != null) {
+                params.put("username", name);
+            }
+        }
 
         var output = templates.evalTemplate(layoutTemplate, params);
         return DnContentData.mkHtml(output.output);

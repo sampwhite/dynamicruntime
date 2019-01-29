@@ -131,6 +131,8 @@ public class DnSchemaDefConstants {
     public static final String EP_OUTPUT_TYPE_REF = "outputTypeRef";
     /** Indicates whether response data is put into a list of items. */
     public static final String EP_IS_LIST_RESPONSE = "isListResponse";
+    /** Whether field holds password information or other secure data. */
+    public static final String EP_IS_PASSWORD = "isPassword";
     /** The maximum number of items to return. */
     public static final String EPF_LIMIT = "limit";
     /** The *from* date for a date range query. Returns everything after or equal to this date. */

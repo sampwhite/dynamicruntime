@@ -6,6 +6,7 @@ import org.dynamicruntime.hook.DnHookFunction;
 import org.dynamicruntime.servlet.DnRequestHandler;
 import org.dynamicruntime.servlet.DnRequestService;
 
+@SuppressWarnings("WeakerAccess")
 public class UserLoadProfileFunction implements DnHookFunction<DnRequestService, DnRequestHandler> {
     public final UserService userService;
 

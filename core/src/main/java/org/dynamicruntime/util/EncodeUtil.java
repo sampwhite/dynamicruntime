@@ -17,6 +17,7 @@ import java.util.Base64;
 public class EncodeUtil {
     public static final int NUM_HASH_BITS = 128;
     public static final int NUM_HASH_ITERATORS = 100000;
+    public static final int NUM_RANDOM_ENCRYPT_BYTES = 12;
     public static final String PASSWORD_ENCODE_ALG = "pbkdf2";
     public static final String PASSWORD_ENCODE_ALG_PARAM = "PBKDF2WithHmacSHA512";
 
@@ -164,7 +165,7 @@ public class EncodeUtil {
      * https://proandroiddev.com/security-best-practices-symmetric-encryption-with-aes-in-java-7616beaaade9 */
     public static String encrypt(String key, String plainText) throws DnException {
         SecureRandom sr = RandomUtil.getSecureRandom();
-        byte[] iv = new byte[12];
+        byte[] iv = new byte[NUM_RANDOM_ENCRYPT_BYTES];
         sr.nextBytes(iv);
         byte[] keyBytes = getKeyBytes(key);
         SecretKey secretKey = new SecretKeySpec(keyBytes, "AES");
@@ -175,8 +176,7 @@ public class EncodeUtil {
 
         try {
             byte[] encodedBytes = cipher.doFinal(textBytes);
-            ByteBuffer byteBuffer = ByteBuffer.allocate(4 + iv.length + encodedBytes.length);
-            byteBuffer.putInt(iv.length);
+            ByteBuffer byteBuffer = ByteBuffer.allocate(NUM_RANDOM_ENCRYPT_BYTES + encodedBytes.length);
             byteBuffer.put(iv);
             byteBuffer.put(encodedBytes);
             byte[] cipherMessage = byteBuffer.array();
@@ -209,11 +209,7 @@ public class EncodeUtil {
         byte[] keyBytes = getKeyBytes(key);
         byte[] encryptedBytes = uuDecode(encryptedText.substring(ENCRYPTION_SIG.length()));
         ByteBuffer byteBuffer = ByteBuffer.wrap(encryptedBytes);
-        int ivLength = byteBuffer.getInt();
-        if(ivLength < 12 || ivLength >= 16) { // check input parameter
-            throw new IllegalArgumentException("Invalid iv length");
-        }
-        byte[] iv = new byte[ivLength];
+        byte[] iv = new byte[NUM_RANDOM_ENCRYPT_BYTES];
         byteBuffer.get(iv);
         byte[] cipherText = new byte[byteBuffer.remaining()];
         byteBuffer.get(cipherText);

@@ -151,7 +151,7 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
         String sysadminEmail = DnConfigUtil.getConfigString(cxt, "user.sysadmin.email",
                 "sysadmin@dynamicruntime.org",
                 "Password given to *sysadmin* user at initial provisioning");
-        Map<String,Object> sysUser = AuthUser.mkInitialUser(sysadminEmail, DnCxtConstants.AC_LOCAL,
+        Map<String,Object> sysUser = AuthUserRow.mkInitialUser(sysadminEmail, DnCxtConstants.AC_LOCAL,
                 DnCxtConstants.AC_LOCAL, UserConstants.ROLE_ADMIN);
 
         // Use the initial data to do a query for the user.
@@ -174,15 +174,15 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
         sqlDb.executeDnStatement(cxt, sqlTopic.iTranLockQuery, userDefData);
     }
 
-    public AuthUser queryByUserId(DnCxt cxt, long userId) throws DnException {
+    public AuthUserRow queryByUserId(DnCxt cxt, long userId) throws DnException {
         var params = mMap(USER_ID, userId);
         var row = sqlDb.queryOneDnStatement(cxt, sqlTopic.qTranLockQuery, params);
-        return (row != null) ? AuthUser.extract(row) : null;
+        return (row != null) ? AuthUserRow.extract(row) : null;
     }
 
-    public AuthUser queryByUsername(DnCxt cxt, String username) throws DnException {
+    public AuthUserRow queryByUsername(DnCxt cxt, String username) throws DnException {
         var params = mMap(UserConstants.AUTH_USERNAME, username);
         var row = sqlDb.queryOneDnStatement(cxt, qUsername, params);
-        return (row != null) ? AuthUser.extract(row) : null;
+        return (row != null) ? AuthUserRow.extract(row) : null;
     }
 }

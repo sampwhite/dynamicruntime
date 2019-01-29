@@ -48,6 +48,9 @@ public class UserProfile {
     /** Authentication ID, used for logging and identifying the user to external parties. If doing token
      * based authentication, this is the ID of the token. */
     public String authId;
+    /** Outward facing name of user, usable for doing logins. It is the username if it is a valid
+     * name, otherwise it is the email address. */
+    public String publicName;
     /** Login source GUID. Usually a cookie assigned to a browser to uniquely identify that browser. This is
      * present purely for logging and auditing purposes. This is also called a *deviceId*. */
     public String sourceId;

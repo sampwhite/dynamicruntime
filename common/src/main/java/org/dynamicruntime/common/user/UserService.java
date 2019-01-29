@@ -8,10 +8,12 @@ import org.dynamicruntime.context.Priority;
 import org.dynamicruntime.context.UserProfile;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.function.DnPointer;
+import org.dynamicruntime.request.DnServletHandler;
 import org.dynamicruntime.sql.DnSqlStatement;
 import org.dynamicruntime.sql.SqlCxt;
 import org.dynamicruntime.sql.topic.*;
 import org.dynamicruntime.startup.ServiceInitializer;
+import org.dynamicruntime.user.UserAuthData;
 import org.dynamicruntime.user.UserAuthHook;
 import org.dynamicruntime.util.EncodeUtil;
 
@@ -67,6 +69,9 @@ public class UserService implements ServiceInitializer {
         // been created.
         UserAuthHook.loadProfile.registerHookFunction(cxt, "stdLoadProfile", Priority.STANDARD,
                 new UserLoadProfileFunction(this));
+        // Put in hook to prep auth cookie data.
+        UserAuthHook.prepAuthCookies.registerHookFunction(cxt, "stdPrepAuthCookies",
+                Priority.EARLY, new UserSetAuthCookiesFunction(this));
     }
 
     public void addToken(DnCxt cxt, String username, String authId, String authToken, Map<String,Object> rules,
@@ -74,8 +79,8 @@ public class UserService implements ServiceInitializer {
         if (StringUtils.containsWhitespace(authId)) {
             throw DnException.mkConv(String.format("Auth ID %s cannot have whitespace.", authId));
         }
-        if (authId.contains("#")) {
-            throw DnException.mkConv(String.format("Auth ID %s cannot have a hash ('#').", authId));
+        if (authId.contains("#") || authId.contains(",")) {
+            throw DnException.mkConv(String.format("Auth ID %s cannot have a hash ('#') or comma (',').", authId));
         }
 
         if (expireDate == null) {
@@ -86,7 +91,7 @@ public class UserService implements ServiceInitializer {
         var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.AUTH_TOPIC);
         AuthQueryHolder aqh = AuthQueryHolder.get(sqlCxt);
         aqh.sqlDb.withSession(cxt, () -> {
-            AuthUser au = aqh.queryByUsername(cxt, username);
+            AuthUserRow au = aqh.queryByUsername(cxt, username);
             if (au == null) {
                 throw new DnException(String.format("User %s does not exist in database.", username),
                         null, DnException.NOT_FOUND, DnException.DATABASE, DnException.IO);
@@ -113,11 +118,11 @@ public class UserService implements ServiceInitializer {
         });
     }
 
-    public AuthUser queryToken(DnCxt cxt, String authId, String authToken) throws DnException {
+    public AuthUserRow queryToken(DnCxt cxt, String authId, String authToken) throws DnException {
         var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.AUTH_TOPIC);
         AuthQueryHolder aqh = AuthQueryHolder.get(sqlCxt);
 
-        AuthUser[] authUser = {null};
+        AuthUserRow[] authUser = {null};
         aqh.sqlDb.withSession(cxt, () -> {
             var tokenRow = aqh.sqlDb.queryOneDnStatement(cxt, aqh.qAuthToken, mMap(AUTH_ID, authId));
             if (tokenRow != null) {
@@ -126,7 +131,7 @@ public class UserService implements ServiceInitializer {
                 String hashToken = getReqStr(tokenRow, AUTH_TOKEN);
                 if (cxt.now().before(expireDate) && EncodeUtil.checkPassword(authToken, hashToken)) {
                     long userId = getReqLong(tokenRow, USER_ID);
-                    AuthUser au = aqh.queryByUserId(cxt, userId);
+                    AuthUserRow au = aqh.queryByUserId(cxt, userId);
                     if (au != null) {
                         au.authId = authId;
                         au.authRules = getMapDefaultEmpty(tokenRow, AUTH_RULES);
@@ -138,7 +143,7 @@ public class UserService implements ServiceInitializer {
         return authUser[0];
     }
 
-    public AuthUser queryUserId(DnCxt cxt, long userId) throws DnException {
+    public AuthUserRow queryUserId(DnCxt cxt, long userId) throws DnException {
         var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.AUTH_TOPIC);
         AuthQueryHolder aqh = AuthQueryHolder.get(sqlCxt);
         return aqh.queryByUserId(cxt, userId);
@@ -176,6 +181,14 @@ public class UserService implements ServiceInitializer {
         profile.locale = LocaleUtils.toLocale(getReqStr(row, UP_USER_LOCALE));
         profile.profileData = getMapDefaultEmpty(row, UP_USER_DATA);
         profile.data = row;
+    }
+
+    public void authUsingToken(DnCxt cxt, String authId, String tokenData, DnServletHandler servletHandler)
+        throws DnException {
+        UserAuthData userAuthData = AuthUserUtil.computeUserAuthDataFromToken(cxt, this, authId,
+                tokenData, servletHandler);
+        cxt.userProfile = userAuthData.createProfile();
+        loadProfileRecord(cxt);
     }
 
     @Override

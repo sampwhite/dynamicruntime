@@ -16,7 +16,7 @@ import static org.dynamicruntime.user.UserConstants.*;
  * If the data schema for auth users changes over time, it is the responsibility of the class to be able to
  * support both old and new schemas simultaneously by mapping or providing defaults as appropriate. */
 @SuppressWarnings({"WeakerAccess", "unused"})
-public class AuthUser {
+public class AuthUserRow {
     public final long userId;
     public final String account;
     public final String primaryId;
@@ -38,13 +38,13 @@ public class AuthUser {
     public String authId;
     public Map<String,Object> authRules;
 
-    public AuthUser(long userId, String account, String primaryId) {
+    public AuthUserRow(long userId, String account, String primaryId) {
         this.userId = userId;
         this.account = account;
         this.primaryId = primaryId;
     }
 
-    public static AuthUser extract(Map<String,Object> data) throws DnException {
+    public static AuthUserRow extract(Map<String,Object> data) throws DnException {
         // Manually extract fields. We deliberately avoid reflection magic since it can impose large restrictions,
         // add layers of obfuscation, and make it difficult to chase down data problems just to save a few minutes
         // of extra coding. Note how we promote fields out of the *authUserData* map object into top level fields.
@@ -52,7 +52,7 @@ public class AuthUser {
         long userId = getReqLong(data, USER_ID);
         String account = getReqStr(data, USER_ACCOUNT);
         String primaryId = getReqStr(data, AUTH_USER_PRIMARY_ID);
-        AuthUser au = new AuthUser(userId, account, primaryId);
+        AuthUserRow au = new AuthUserRow(userId, account, primaryId);
         au.username = getReqStr(data, AUTH_USERNAME);
         au.groupName = getReqStr(data, USER_GROUP);
         au.shard = getOptStr(data, USER_SHARD);
@@ -82,6 +82,10 @@ public class AuthUser {
         return username.startsWith("@");
     }
 
+    public String getPublicName() {
+        return needsRealUsername() ? primaryId : username;
+    }
+
     public Map<String,Object> toMap() {
         // Take advantage of the fact that *mMap()* removes nulls.
         var newAuthUserData = mMap(AUTH_ROLES, roles, AUTH_ENCODED_PASSWORD, encodedPassword,
@@ -105,7 +109,9 @@ public class AuthUser {
         authData.userId = userId;
         authData.account = account;
         authData.userGroup = groupName;
+        authData.shard = shard;
         authData.authId = authId;
+        authData.publicName = getPublicName();
         authData.roles = roles;
         authData.authRules = authRules;
     }

@@ -1,14 +1,14 @@
 package org.dynamicruntime.common.user;
 
-import org.dynamicruntime.schemadef.DnRawField;
-import org.dynamicruntime.schemadef.DnRawSchemaPackage;
-import org.dynamicruntime.schemadef.DnRawTable;
+import org.dynamicruntime.schemadef.*;
 
 import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.user.UserConstants.*;
 import static org.dynamicruntime.schemadef.DnRawField.*;
+import static org.dynamicruntime.schemadef.DnRawType.*;
 import static org.dynamicruntime.schemadef.DnRawTable.*;
+import static org.dynamicruntime.schemadef.DnRawEndpoint.*;
 import static org.dynamicruntime.common.user.UserTableConstants.*;
 
 @SuppressWarnings("WeakerAccess")
@@ -135,9 +135,37 @@ public class UserSchemaDefData {
             mList(USER_ID))
             .setTopLevel();
 
+    static public DnRawField authTokenPwd = mkReqField(AUTH_TOKEN, "Authentication Token",
+            "Authentication token for doing token based login.")
+            .setAttribute(EP_IS_PASSWORD, true);
+    static public DnRawType tokenLoginRequest = mkType("AuthTokenLoginRequest", mList(authId, authTokenPwd));
+    static public DnRawField publicUsername = mkField(AUTH_USERNAME, "Username",
+            "Currently preferred choice of username.");
+    static public DnRawType tokenLoginResponse = mkType("AuthTokenLoginResponse",
+            mList(authId, userId, publicUsername));
+    static public DnRawEndpoint tokenLoginEndpoint = mkEndpoint("/auth/token/login", AUTH_EP_TOKEN_LOGIN,
+            "Login using auth identifier and token. Response sets authentication cookie. " +
+                    "Reload page to see effect of login.",
+            tokenLoginRequest.name, tokenLoginResponse.name).setMethod(EPH_POST);
+
+    //static public DnRawType authLogoutRequest = mkType("AuthLogoutRequest", mList());
+    static public DnRawField userAuthId = mkField(AUTH_ID, "Authentication Id",
+            "Internal identifier for user used when doing logging.");
+    static public DnRawField sessionUserId = mkField(USER_ID, "User Id",
+            "The internal ID for the user.").setTypeRef(DNT_COUNT);
+    static public DnRawField loggedOutUser = mkReqBoolField(AUTH_LOGGED_OUT_USER, "Logged Out the User",
+            "Whether there was a user to log out.");
+    static public DnRawType authLogoutResponse = mkType("AuthLogoutResponse",
+            mList(userAuthId, sessionUserId, publicUsername, loggedOutUser));
+    static public DnRawEndpoint authLogoutEndpoint = mkEndpoint("/auth/logout", AUTH_EP_LOGOUT,
+            "Logs out the current user session. Reload page to see effects.",
+            DNT_NONE, authLogoutResponse.name).setMethod(EPH_POST);
+
+
     static public DnRawSchemaPackage getPackage() {
         return DnRawSchemaPackage.mkPackage("UserSchema", USER_NAMESPACE,
                 mList(authUserTable, authContactTable, authLoginSourcesTable, authTokensTable,
-                        userProfileTable));
+                        userProfileTable, tokenLoginRequest, tokenLoginResponse, tokenLoginEndpoint,
+                        authLogoutResponse, authLogoutEndpoint));
     }
 }

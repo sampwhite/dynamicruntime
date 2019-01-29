@@ -3,6 +3,7 @@ package org.dynamicruntime.servlet;
 import org.dynamicruntime.content.DnContentService;
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
+import org.dynamicruntime.node.DnCoreNodeService;
 import org.dynamicruntime.request.DnRequestCxt;
 import org.dynamicruntime.request.DnRequestInfo;
 import org.dynamicruntime.schemadef.DnEndpoint;
@@ -10,17 +11,22 @@ import org.dynamicruntime.schemadef.DnSchemaService;
 import org.dynamicruntime.schemadef.DnSchemaValidator;
 import org.dynamicruntime.schemadef.DnType;
 import org.dynamicruntime.startup.ServiceInitializer;
+import org.dynamicruntime.user.UserAuthCookie;
 import org.dynamicruntime.user.UserAuthHook;
 import org.dynamicruntime.user.UserConstants;
 import org.dynamicruntime.util.ConvertUtil;
+import org.dynamicruntime.util.DnDateUtil;
 
+import static org.dynamicruntime.user.UserConstants.AUTH_COOKIE_NAME;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.util.ConvertUtil.*;
 import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** This class performs top level request behavior. It allows per instance variations in behavior.
  * The top level authentication and authorization are done using the context root. For example,
@@ -33,8 +39,9 @@ public class DnRequestService implements ServiceInitializer {
 
     public final Map<String,ContextRootRules> contextRulesMap = mMapT();
 
-    public List<String> anonRoots = mList(CONTENT_ROOT, "health", "schema");
+    public List<String> anonRoots = mList(CONTENT_ROOT, "auth", "health", "schema");
     public List<String> adminRoots = mList("node");
+    public DnCoreNodeService coreNode;
     public boolean isInit = false;
 
     public static DnRequestService get(DnCxt cxt) {
@@ -52,6 +59,9 @@ public class DnRequestService implements ServiceInitializer {
         if (isInit) {
             return;
         }
+        // We are node state aware.
+        coreNode = Objects.requireNonNull(DnCoreNodeService.get(cxt));
+
         // Eventually we will look at our configuration and make decisions about how
         // various context roots should be handled. This will allow deployment and instance
         // configuration to control top level behaviors. It will also determine which node does
@@ -72,8 +82,13 @@ public class DnRequestService implements ServiceInitializer {
         String subTarget = handler.subTarget;
         String method = handler.method;
         // Redirect top level request to current preferred location.
-        if (target.equals("/")) {
+        if (target.equals("/") || target.equals("/logout")) {
+            if (target.equals("/logout")) {
+                handler.setIsLogout(true);
+                checkAddAuthCookies(cxt, handler);
+            }
             handler.sendRedirect("/" + CONTENT_ROOT + "/html/endpoints.html");
+            handler.logSuccess(cxt, handler.rptStatusCode);
             return;
         }
         if (target.equals("/favicon.ico")) {
@@ -118,13 +133,14 @@ public class DnRequestService implements ServiceInitializer {
         // Handle content requests.
         int code = DnException.OK;
 
-        // First up we, handle the serving up of files.
+        // First up, we handle the serving up of files.
         if (method.equals("GET") && contextRoot.equals(CONTENT_ROOT)) {
             DnContentService contentService = DnContentService.get(cxt);
             if (contentService != null) {
                 var content = contentService.getContent(cxt, CONTENT_ROOT + "/" + subTarget);
-                //if (handler.query)
+
                 handler.sentResponse = true;
+                checkAddAuthCookies(cxt, handler);
                 if (content.isBinary) {
                     handler.sendBinaryResponse(content.binaryContent, code, content.mimeType);
                } else {
@@ -146,6 +162,7 @@ public class DnRequestService implements ServiceInitializer {
             throw new DnException("Path had no endpoint handler.", null, DnException.NOT_FOUND, DnException.SYSTEM,
                     DnException.CODE);
         }
+
         // Eventually for certain context roots we will not log requests. Otherwise log will get filled with
         // meaningless data. The logging also takes about 0.1 to 0.2 milliseconds of time.
         if (handler.logSuccess) {
@@ -154,6 +171,19 @@ public class DnRequestService implements ServiceInitializer {
     }
 
     void extractAuth(DnCxt cxt, DnRequestHandler handler) throws DnException {
+        // Check for auth cookie.
+        Map<String,String> cookies = handler.getRequestCookies();
+        String encryptedCookie = cookies.get(AUTH_COOKIE_NAME);
+        if (encryptedCookie != null && encryptedCookie.length() > 10) {
+            // A valid auth cookie.
+            try {
+                String decodedCookie = coreNode.decryptString(encryptedCookie);
+                handler.userAuthCookie = UserAuthCookie.extract(decodedCookie);
+            } catch (DnException e) {
+                LogServlet.log.debug(cxt, "Failed to decrypt and unpack cookie. " + e.getFullMessage());
+            }
+        }
+
         // Call hook to fill in initial user information.
         // This allows the *core* component to be ignorant of some of the messier implementation
         // details of authentication.
@@ -171,6 +201,18 @@ public class DnRequestService implements ServiceInitializer {
         // cache.
         if (cxt.userProfile != null) {
             UserAuthHook.loadProfile.callHook(cxt, this, handler);
+        }
+    }
+
+    public void checkAddAuthCookies(DnCxt cxt, DnRequestHandler handler) throws DnException {
+        UserAuthHook.prepAuthCookies.callHook(cxt, this, handler);
+        if (handler.setAuthCookie && handler.userAuthCookie != null) {
+            var authCookie = handler.userAuthCookie;
+            String cookieString = authCookie.toString();
+            String cookieVal = coreNode.encryptString(cookieString);
+            // Let old cookies hang out for 400 days.
+            Date cookieExpireDate = DnDateUtil.addDays(authCookie.modifiedDate, 400);
+            handler.addResponseCookie(AUTH_COOKIE_NAME, cookieVal, cookieExpireDate);
         }
     }
 
@@ -233,6 +275,7 @@ public class DnRequestService implements ServiceInitializer {
         }
     }
 
+
     public void prepareAndSendResponse(DnRequestCxt requestCxt, DnType out, DnRequestHandler handler)
             throws DnException {
         var response = requestCxt.mapResponse;
@@ -267,6 +310,8 @@ public class DnRequestService implements ServiceInitializer {
                 }
             }
         }
+
+        checkAddAuthCookies(requestCxt.cxt, handler);
 
         int code = requestCxt.didCreation ? DnException.OK_CREATED : DnException.OK;
         handler.sendJsonResponse(response, code);

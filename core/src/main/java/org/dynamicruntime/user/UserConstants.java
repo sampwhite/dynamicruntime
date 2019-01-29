@@ -32,6 +32,10 @@ public class UserConstants {
     public static final String AUTH_RULES = "authRules";
     /** Name of HTTP header used to define a token parameter. */
     public static final String AUTH_HDR_TOKEN = "DnAuthToken";
+    /** Name of cookie used to store authentication credentials. */
+    public static final String AUTH_COOKIE_NAME = "DnAuthCookie";
+    /** Boolean to indicate whether logout was done. */
+    public static final String AUTH_LOGGED_OUT_USER = "loggedOutUser";
 
     /** Fields extracted from *authUserData*. */
     public static final String AUTH_ROLES = "roles";
@@ -75,6 +79,12 @@ public class UserConstants {
     public static final String UP_USER_TIMEZONE = "userTimezone";
     /** The general user profile data, including preferences and contacts information. */
     public static final String UP_USER_DATA = "userProfileData";
+
+    //
+    // Endpoint functions.
+    //
+    public static final String AUTH_EP_TOKEN_LOGIN = "tokenLogin";
+    public static final String AUTH_EP_LOGOUT = "authLogout";
 
 
 }

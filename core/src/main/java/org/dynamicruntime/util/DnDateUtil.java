@@ -18,6 +18,8 @@ public class DnDateUtil {
     public static final DateTimeFormatter systemFormatter = mkSystemDateFormatter(SYSTEM_DATE_TIME_FORMAT);
     public static final DateTimeFormatter shortSystemFormatter =
             mkSystemDateFormatter("yyyy-MM-dd'T'HH:mm:ss'Z'");
+    public static final DateTimeFormatter cookieDateFormatter = DateTimeFormatter.RFC_1123_DATE_TIME
+            .withZone(UTC_TIME_ZONE);
 
     /** The static timezone of the the server running the code.
      * This is mostly used to determine a shared concept of day start and day end that is somewhat aligned with
@@ -109,8 +111,21 @@ public class DnDateUtil {
         return dayOnlyFormatter.format(date.toInstant());
     }
 
+    public static String formatCookieDate(Date date) {
+        return cookieDateFormatter.format(date.toInstant());
+    }
+
     public static Date toStartOfDay(Date date) {
         var ld = LocalDate.ofInstant(date.toInstant(), serverTimeZone);
         return Date.from(ld.atStartOfDay(serverTimeZone).toInstant());
+    }
+
+    /** Does simple moving forward of days, does not take into account daylight savings. */
+    public static Date addDays(Date date, int numDays) {
+        return new Date(date.getTime() + numDays * 24 * 3600 * 1000L);
+    }
+
+    public static Date addHours(Date date, int numHours) {
+        return new Date(date.getTime() + numHours * 3600 * 1000L);
     }
 }

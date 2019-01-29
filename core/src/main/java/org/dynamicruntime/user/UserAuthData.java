@@ -19,8 +19,12 @@ public class UserAuthData {
     public String account;
     /** The functional and security group for the user. */
     public String userGroup;
+    /** The application shard of data and nodes. */
+    public String shard;
     /** Logging ID for user (can be an auth token name). */
     public String authId;
+    /** Outward facing name of user, usable for doing logins. */
+    public String publicName;
     /** The roles assigned to user. */
     public List<String> roles;
     /** Indicates whether we have determined a userId. */
@@ -35,6 +39,7 @@ public class UserAuthData {
     public UserProfile createProfile() {
         var up = new UserProfile(userId, account, userGroup, roles);
         up.authId = authId != null ? authId : "" + userId;
+        up.publicName = publicName;
         up.authData = userData;
         up.authRules = authRules;
         return up;
