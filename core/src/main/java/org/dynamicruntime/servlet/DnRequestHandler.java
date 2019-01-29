@@ -477,10 +477,12 @@ public class DnRequestHandler implements DnServletHandler {
             cookies = mMapT();
             if (request != null) {
                 Cookie[] rCookies = request.getCookies();
-                for (var cookie : rCookies) {
-                    String v = cookie.getValue();
-                    if (v != null && v.length() > 0) {
-                        cookies.put(cookie.getName(), v);
+                if (rCookies != null) {
+                    for (var cookie : rCookies) {
+                        String v = cookie.getValue();
+                        if (v != null && v.length() > 0) {
+                            cookies.put(cookie.getName(), v);
+                        }
                     }
                 }
             }
