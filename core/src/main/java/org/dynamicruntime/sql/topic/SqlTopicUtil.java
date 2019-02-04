@@ -108,8 +108,8 @@ public class SqlTopicUtil {
     }
 
 
-    /** Adds standard protocol date fields to the row data about to be executed on. This call will
-     * modify the contents of *rowValues*. */
+    /** Adds standard protocol date fields to the row data about to be executed on. This call
+     * modifies the contents of *rowValues*. */
     public static void prepForStdExecute(DnCxt cxt, Map<String,Object> rowValues) throws DnException {
         prepForDatesExecute(cxt, rowValues);
         rowValues.put(ENABLED, true);
@@ -128,7 +128,7 @@ public class SqlTopicUtil {
             long n = now.getTime();
             if (n >= l - 2000 && n <= l) {
                 // Not advancing by at least one millisecond AND within two seconds of prior date,
-                // we may either being executing queries too quickly or have node date synchronization issues.
+                // we may either be executing queries too quickly or have node date synchronization issues.
                 now = new Date(l + 1);
             }
         }

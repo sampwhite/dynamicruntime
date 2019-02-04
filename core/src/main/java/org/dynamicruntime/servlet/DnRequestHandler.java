@@ -150,10 +150,10 @@ public class DnRequestHandler implements DnServletHandler {
                 instance = InstanceRegistry.defaultInstance;
             }
 
-            // For now default to local instance and for getting cxt objects, eventually, we will do more.
+            // For now, default to the local instance for getting cxt objects. Eventually, we will do more.
             cxt = InstanceRegistry.createCxt("request", instance);
 
-            // See if request is being forwarded from a client that knows to supply a request path.
+            // See if the request is being forwarded from a client that knows how to supply a request path.
             String reqPath = getRequestHeader(NDH_HDR_REQUEST_PATH);
             if (reqPath != null && reqPath.length() > 0) {
                 cxt.parentLoggingIds.addAll(StrUtil.splitString(reqPath, ":"));
@@ -178,7 +178,7 @@ public class DnRequestHandler implements DnServletHandler {
         // Get user-agent.
         userAgent = getRequestHeader("User-Agent");
 
-        // Assume using AWS for now, use its user-agent for requests from load balancer.
+        // Assume using AWS for now; use its user-agent for requests from load balancer.
         isFromLoadBalancer = (userAgent != null && userAgent.contains("ELB-Health"));
 
         List<NameValuePair> params = URLEncodedUtils.parse(queryStr, StandardCharsets.UTF_8);
@@ -333,7 +333,7 @@ public class DnRequestHandler implements DnServletHandler {
                             String.format("%d Request %s had target that did not exist (%s ms). %s",
                                     code, logRequestData, durStr, msg));
                 } else if (code == DnException.NOT_SUPPORTED && DnException.CONNECTION.equals(activity)) {
-                    // We give log message a four letter acronym so we can find it easily using full text
+                    // We give a log message a four letter acronym so we can find it easily using full text
                     // search. This is not an error because we are trying to answer the question:
                     // Can this node allow connection over the network from a particular agent for a
                     // particular task.
@@ -358,8 +358,8 @@ public class DnRequestHandler implements DnServletHandler {
             String strResp = ParsingUtil.toJsonString(data);
             sendStringResponse(strResp, code, "application/json");
        } catch (Throwable t) {
-            // Not much we can do here. This is so out of norm, we do not report it to standard logging.
-            // One scenario where this happens is if VM is in the middle of being shutdown.
+            // Not much we can do here. This is so out of the norm, we do not report it to standard logging.
+            // One scenario where this happens is if the VM is in the middle of shutting down.
             System.err.println(t.getMessage());
             t.printStackTrace(System.err);
         }
@@ -388,8 +388,8 @@ public class DnRequestHandler implements DnServletHandler {
                 int roundToLen = 100 * ((bytes.length + 99)/100) - bytes.length;
                 if (roundToLen > 0) {
                     String pad = StringUtils.repeat('z', roundToLen);
-                    // Make analysis looking at purely the length of the response difficult (some subtle SSL attacks
-                    // use length analysis and time it takes to respond to extract meta information from packets).
+                    // Make analysis looking at purely the length of the response difficult. (Some subtle SSL attacks
+                    // use length analysis and the time it takes to respond to extract meta information from packets).
                     setResponseHeader("X-Padding", pad);
                 }
             }

@@ -9,7 +9,7 @@ import java.util.Date;
 import java.util.List;
 
 /** Represents the extracted contents of an authentication cookie. This may also be the extraction of
- * a temporary authentication token as well which was passed in as a parameter.
+ * a temporary authentication token as well, which was passed in as a parameter.
  * This is a convenience class for encoding and decoding the authentication cookie. This
  * definition is in the core class because when the cookie definition changes, it tends
  * to have an impact system wide.
@@ -137,7 +137,7 @@ public class UserAuthCookie {
         Date modifiedDate = getDateWithDiff(creationDate, entries[12]);
         Date expireDate = getDateWithDiff(modifiedDate, entries[13]);
 
-        // Additional entries can be added as cookie grows in data that is put into it.
+        // Additional entries can be added as the cookie grows in data that is put into it.
         //....
 
         var uac = new UserAuthCookie(code, version, grantingUserId, userId, account, roles, authId, creationDate);

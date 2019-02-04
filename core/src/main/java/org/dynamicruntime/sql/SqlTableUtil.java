@@ -39,7 +39,7 @@ public class SqlTableUtil {
         return true;
     }
 
-    /** Creates a table and adds columns and/or indexes if they are missing. This call should be done
+    /** Creates a table and adds columns and/or indexes, if they are missing. This call should be done
      * inside a SqlSession. Returns false if we already have asked to create this table. Caller can
      * use return value to determine if row provisioning logic needs to be run. */
     public static void createTable(SqlCxt sqlCxt, DnTable tableDef) throws DnException {
@@ -98,7 +98,7 @@ public class SqlTableUtil {
                     }
                 }
                 if (missingFields.size() > 0) {
-                    // Note that we cannot add required fields. ALso, different databases
+                    // Note that we cannot add required fields. Also, different databases
                     // handle multiple fields differently, so to keep things simple
                     // we do a separate *add* for each column. In theory, we should be
                     // adding columns fairly rarely so efficiency should not matter.
@@ -172,13 +172,12 @@ public class SqlTableUtil {
                     String shortenedName = EncodeUtil.mkUniqueShorterStr(tbIndexName, 60);
                     boolean isUnique = getBoolWithDefault(index.indexProperties, TBI_UNIQUE_INDEX, false);
                     String uniqueStr = (isUnique) ? " UNIQUE" : "";
-                    // Currently our building of index is simple. But eventually we may support more indexProperties
+                    // Currently our building of the index is simple. But eventually we may support more indexProperties
                     // and tweak the entries in the *index.columns* based on which database we are creating the
                     // index for.
                     String stmt = "CREATE" + uniqueStr + " INDEX " + shortenedName + " ON " + dbTableName + "(" +
                             SqlStmtUtil.createColumnList(sqlCxt, index.fieldDeclarations) + ")";
                     sqlDb.executeSchemaChangeSql(cxt, stmt);
-
                 }
             }
 

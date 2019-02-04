@@ -11,8 +11,8 @@ public class DnRequestCxt {
     /** The DnCxt object attached to this request. This object is registered in the *locals* of the
      * DnCxt under the key *DN_REQUEST_CXT*. */
     public final DnCxt cxt;
-    /** Acting userId, we are going to assume it is a *long* because userId is used as a the beginning part
-     * of so many primary keys for a database, it makes sense that it optimize storage.  If this
+    /** Acting userId. We are going to assume it is a *long* because userId is used as a the beginning part
+     * of so many primary keys for a database and it makes sense to optimize storage.  If this
      * value is zero, then the user is assumed to the system user. This attribute can be modified
      * when doing requests for authentication. */
     public long userId;
@@ -21,10 +21,10 @@ public class DnRequestCxt {
      * must be determined inside the endpoint function. */
     public Set<String> userRoles = new HashSet<>();
 
-    /** The raw web request. The endpoint function should allow for this being null so that one endpoint
+    /** The raw web request. The endpoint function should allow for this to be null so that one endpoint
      * can call another endpoint locally without having to make an actual HTTP request. */
     public DnServletHandler webRequest;
-    /** Extra information about the request if request came through an endpoint. */
+    /** Extra information about the request if the request came through an endpoint. */
     public DnRequestInfo requestInfo;
 
     /** Schema validated and coerced request data. This is the *meat* of the request. */
@@ -33,8 +33,8 @@ public class DnRequestCxt {
     /** The endpoint definition being applied to this request. */
     public final DnEndpoint endpoint;
 
-    /** Map part of a response. These are populated initially by the endpoint function
-     * and then more fully populated by protocol handlers. */
+    /** Map part of a response. This is populated initially by the endpoint function
+     * and then more fully by protocol handlers. */
     public Map<String,Object> mapResponse = new HashMap<>();
 
     /** The *items* data for a list response. */
@@ -61,13 +61,13 @@ public class DnRequestCxt {
         this.cxt.locals.put(DN_REQUEST_CXT, this);
     }
 
-    /** Allows low level calls to get at request information if they need it. */
+    /** Allows low level calls to get at request information, if they need it. */
     public static DnRequestCxt get(DnCxt cxt) {
         Object obj = cxt.locals.get(DN_REQUEST_CXT);
         return (obj instanceof DnRequestCxt) ? (DnRequestCxt)obj : null;
     }
 
-    /** Indicates whether request was forwarded from an HTTPS web site. If so, then
+    /** Indicates whether the request was forwarded from an HTTPS web site. If so, then
      * the authentication layer can be applied. */
     public boolean isProxied() {
         return (requestInfo != null && requestInfo.isProxied);

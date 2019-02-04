@@ -102,7 +102,7 @@ public class UserSchemaDefData {
 
     //
     // AuthTokens - Tokens that are used by batch and test scripts to do simple authentication as a user,
-    //  usually an administrative user. The number of rows in this table should be small.
+    // usually an administrative user. The number of rows in this table should be small.
     //
     static public DnRawField authId = mkReqField(AUTH_ID, "Authentication Id",
             "Unique identifier of token to apply.");

@@ -28,22 +28,21 @@ import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
  * * The code has little reference to actual fields in the tables and places little expectations
  * on the design of the tables.
  *
- * This code took multiple days to write while an equivalent hibernate solution might takes hours. But
+ * This code took multiple days to write while an equivalent hibernate solution might have taken hours. But
  * those days are paid only once and pay dividends for years. The profits are as follows.
  *
- * * The code can be tweaked in a fine tuned way. If you want to do something conditionally against one variable
- * based on the contents of another, it is much easier to add it here.
+ * * The code can be fine tuned by simply tweaking the code. If you want to do something conditionally against one
+ * variable based on the contents of another, it is much easier to add it here.
  * * The code can run successfully against two (slightly) different designed versions without change, especially
  * if you add conditional code to do the necessary tweaks to be compatible with the different versions
  * simultaneously. This is the primary justification for writing the code this way.
  * * The code can be easily modified to add temporary debug console output focused on a very particular
  * event.
  * * It is easier to add application specific metrics to the code. Auditing authentication activity is
- * a popular thing to do and having complete control over how its done for large mature applications
+ * a popular thing to do and having complete control over how it's done for large mature applications
  * can be a winner.
  * * When there are errors, the errors are reported more explicitly. For example, if the database is
- * having problems with a particular prepared statement, it can be easier to figure it out with this
- * code.
+ * having problems with a particular prepared statement, it can be easier to figure it out.
  */
 @SuppressWarnings("WeakerAccess")
 public class AuthQueryHolder extends SqlQueryHolderBase {

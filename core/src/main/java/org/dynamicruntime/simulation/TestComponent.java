@@ -15,9 +15,9 @@ import static org.dynamicruntime.util.DnCollectionUtil.*;
 import java.util.Collection;
 import java.util.List;
 
-/** Code use for tests and simulations. In general in this application test *fixtures* are
- * turn into simulation code so they can be available at runtime of the app when it is run
- * in special simulation modes. It also makes it simpler to share between projects. */
+/** Code used for tests and simulations. In general, in this application, test *fixtures* are
+ * turned into simulation code so they can be available at runtime when the app is run
+ * in special simulation modes. This also makes it simpler to share code between projects. */
 @SuppressWarnings({"WeakerAccess", "unused"})
 public class TestComponent implements ComponentDefinition {
     public List<DnRawSchemaPackage> schemaPackages;

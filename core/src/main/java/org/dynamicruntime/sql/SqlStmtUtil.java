@@ -39,16 +39,16 @@ public class SqlStmtUtil {
     }
 
     /**
-     * Parses the query for convertible elements using old school parsing algorithm written by an old school
+     * Parses the query for convertible elements using an old school parsing algorithm written by an old school
      * programmer.
      *
      * -----
      * Small break for Java advertisement. This implementation is blazing fast and this is where
      * Java is an optimal fit. Languages such as C/C++ cannot do this type of coding without creating
      * security holes (assuming your programmers are not gods) and almost all other languages cannot create code
-     * that executes any where near as fast.
+     * that executes anywhere near as fast.
      *
-     * Go and Rust maybe can be this fast and do it safely, but they do not have access to the large Maven library
+     * Go and Rust can maybe be this fast and do it safely, but they do not have access to the large Maven library
      * or full virtual machine capabilities making them a poor fit for large team enterprise software creation.
      * -----
      *
@@ -99,7 +99,7 @@ public class SqlStmtUtil {
                     char ch2 = query.charAt(startWordIndex + 1);
                     int wordLen = i - startWordIndex;
                     if ((ch1 == ':' && wordLen > 1) || (ch2 == ':' && wordLen > 2)) {
-                        // Cannot avoid it, we create a substring creating a new Java object, a slight performance
+                        // Cannot avoid it, we create a substring creating a new Java object - a slight performance
                         // hit.
                         String word = query.substring(startWordIndex, i);
                         if (ch1 == ':') {
@@ -117,7 +117,7 @@ public class SqlStmtUtil {
                             String tbName = sqlCxt.sqlDb.mkSqlTableName(sqlCxt, tableDefName);
                             sb.append(tbName);
                         } else {
-                            // A strange expression which is likely to cause final query to fail to execute.
+                            // A strange expression which is likely to cause the final query to fail to execute.
                             sb.append(word);
                         }
                     } else {

@@ -31,9 +31,9 @@ import java.util.*;
 
 /**
  * A convenience wrapper for using the Apache Http Client. In two projects we have switched to this
- * API from other APIs because the Apache api behaved better under stress condition and gave us more
+ * API from other APIs because the Apache api behaved better under stress conditions and gave us more
  * tuning knobs. One particular scenario has been particularly problematic: secure HTTPS connections
- * uploading files using a connection pool with keep-alives. If you have an ill-behaved router or
+ * uploading files using a connection pool with keep-alive. If you have an ill-behaved router or
  * firewalls that timeout long running connections, you can get some undesired behavior. I personally
  * remember one scenario with hyper-visor machines that had a bug in their virtual DNS routers that was
  * particularly painful.

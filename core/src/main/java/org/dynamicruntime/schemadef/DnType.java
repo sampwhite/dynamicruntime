@@ -66,8 +66,8 @@ public class DnType {
 
         // Note that we could try to use Collections.unmodifiableCollection, but the unmodifiable objects
         // are unfriendly in IntelliJ when inspecting them in the debugger, so we don't do that.
-        // So we do not use code to enforce the fact that the collections and maps should not be modified, we will
-        // trust future programmers to read the comments and not do this.
+        // We do not use code to enforce the fact that the collections and maps should not be modified and
+        // trust future programmers to read the above comments not do this.
         this.fields = fields;
         this.model = model;
         this.isSimple = this.fields == null;

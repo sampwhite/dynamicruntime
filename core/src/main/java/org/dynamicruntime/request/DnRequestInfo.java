@@ -6,9 +6,9 @@ import java.util.Map;
 public class DnRequestInfo {
     public final String userAgent;
     public final String forwardedFor;
-    /** Whether request is proxied. This is set if forwardedFor is non-empty; */
+    /** Whether the request is proxied. This is set if forwardedFor is non-empty; */
     public final boolean isProxied;
-    /** Whether request is from the load balancer. This is set if the user agent contains the string.
+    /** Whether the request is from the load balancer. This is set if the user agent contains the string.
      * Elb-Health. */
     public final boolean isFromLoadBalancer;
 

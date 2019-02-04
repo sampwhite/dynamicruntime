@@ -136,8 +136,8 @@ public class ConvertUtil {
         return l1 == l2;
     }
 
-    /** Converts to string and returns null is string is an empty string. Follows database
-     * convention that empty string and null string are the same. */
+    /** Converts to string and returns null if the string is empty. Follows the database
+     * convention that an empty string and null string are the same. */
     public static String toOptStr(Object o) {
         if (o instanceof CharSequence) {
             String s = o.toString();
@@ -145,7 +145,6 @@ public class ConvertUtil {
         }
         return null;
     }
-
 
     public static String toTrimmedOptStr(Object o) {
         String s = toOptStr(o);
@@ -419,7 +418,7 @@ public class ConvertUtil {
                 return null;
             }
         }
-        // We are going to assume that lists of maps have all string keys, its gets expensive on the CPU
+        // We are going to assume that lists of maps have all string keys, it gets expensive on the CPU
         // to verify this.
         return (List<Map<String,Object>>)l;
     }

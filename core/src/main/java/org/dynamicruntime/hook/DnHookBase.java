@@ -45,14 +45,14 @@ import org.dynamicruntime.exception.DnException;
  * to the code and create a *workData* object as described above to capture all the "working locals". Adding
  * the hook is minimally invasive and allows other writers to come along and add their own custom behaviors. We
  * call this approach a "hook on demand" approach and it has been quite successful. Also, changes to add hooks
- * can be quickly reviewed and approved because the hook by itself (normally, their are exceptions for
+ * can be quickly reviewed and approved because the hook by itself (normally, there are exceptions for
  * larger changes) does not change functionality or behavior in the base code (in particular it does not
  * need new tests, existing tests can be used to verify that nothing was broken by adding the hook).
  *
  * Once you start using hooks, they become a good place to add metric reporting and *timing* (how long did
  * a hook take to execute) code. Over time, for this project, we expect to add such instrumentation. Hooks are
  * also good places to have debug flags (that can be turned on) to turn on dumping of the current work data to
- * the log. And as a last point, but not minor, hooks are a great place to put debug break points.
+ * the log. And as a last point, but not minor, hooks are a great place to put debug breakpoints.
  *
  * There is one other advantage of hooks. If code is misbehaving, many times it is possible to turn off hooks
  * at various places in the application and see if the code continues misbehavior or can be isolated to a particular
@@ -61,7 +61,7 @@ import org.dynamicruntime.exception.DnException;
  *
  * ### Notes
  *
- * The V parameter should have good *toString()* implementations so that they can be dumped to the log
+ * The V parameter should have good *toString()* implementations so that it can be dumped to the log
  * output if needed and viewed quickly during debug.
  *
  * Each implementation of this interface should have singleton instances created for it. When defining the class,

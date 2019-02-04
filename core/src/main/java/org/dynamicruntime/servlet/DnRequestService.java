@@ -27,10 +27,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** This class performs top level request behavior. It allows per instance variations in behavior.
- * The top level authentication and authorization are done using the context root. For example,
- * every endpoint that shares a common context root will have the same basic security profile. Configuration
- * for this class will be supplied by other service objects from the various components that are loaded. */
+/** This class performs top-level request behavior. It allows per instance variations in behavior.
+ * The top-level authentication and authorization are done using the context root. For example,
+ * every endpoint that shares a common context root has the same basic security profile. Configuration
+ * for this class is supplied by other service objects from the various components that are loaded. */
 @SuppressWarnings("WeakerAccess")
 public class DnRequestService implements ServiceInitializer {
     public static String DN_REQUEST_SERVICE = DnRequestService.class.getSimpleName();
@@ -64,7 +64,7 @@ public class DnRequestService implements ServiceInitializer {
 
         // Eventually we will look at our configuration and make decisions about how
         // various context roots should be handled. This will allow deployment and instance
-        // configuration to control top level behaviors. It will also determine which node does
+        // configuration to control top-level behavior. It will also determine which node does
         // what type of functionality.
         for (var anonRoot : anonRoots) {
             contextRulesMap.put(anonRoot, new ContextRootRules(anonRoot, false, null));
@@ -81,7 +81,7 @@ public class DnRequestService implements ServiceInitializer {
         String contextRoot = handler.contextRoot;
         String subTarget = handler.subTarget;
         String method = handler.method;
-        // Redirect top level request to current preferred location.
+        // Redirect top-level request to current preferred location.
         if (target.equals("/") || target.equals("/logout")) {
             if (target.equals("/logout")) {
                 handler.setIsLogout(true);
@@ -129,7 +129,7 @@ public class DnRequestService implements ServiceInitializer {
             }
             if (!allowed) {
                 // If request is being made directly to this node and it does not change state, then we let
-                // it through, otherwise we throw and exception.
+                // it through. Otherwise, we throw an exception.
                 // Temporary code to always throw an exception.
                 //if (handler.isFromLoadBalancer || handler.method == null || !handler.method.equals(EPH_GET)) {
                     throw new DnException("Current acting user (if any) does not have the privilege " +
@@ -142,13 +142,13 @@ public class DnRequestService implements ServiceInitializer {
         // Eventually there will be code here that forwards some requests to other nodes.
         // This can be for two reasons.
         // 1. The current node is a proxy node whose specific purpose is to forward to a particular
-        // node using *shard* and *userId* as criteria for choosing which node in a cluster. Requests
+        // node using *shard* and *userId* as criteria for choosing which node in a cluster to target. Requests
         // to the same *userId* should tend to go to the same node so that user based caching can
         // be most effective.  The request will forward the extracted user auth data as a header so it
         // does not have to be queried for again.
         // 2. This current node does not have access to the database that can handle the request (shard
         // is used to determine this) and so the request is forwarded to one that does have access.
-        // In some cases we are receiving requests that were forwarded.
+        // In some cases, we are receiving requests that were forwarded.
         //
         // After this point, we are committed to executing the request in this node.
 
@@ -188,7 +188,7 @@ public class DnRequestService implements ServiceInitializer {
                     DnException.CODE);
         }
 
-        // Eventually for certain context roots we will not log requests. Otherwise log will get filled with
+        // Eventually, for certain context roots, we will not log requests. Otherwise, the log will get filled with
         // meaningless data. The logging also takes about 0.1 to 0.2 milliseconds of time.
         if (handler.logSuccess) {
             handler.logSuccess(cxt, code);

@@ -1,6 +1,6 @@
 package org.dynamicruntime.servlet;
 
-/** Place holder class for doing proxying and specifying whether certain security needs to be applied. */
+/** Placeholder class for doing proxying and specifying whether certain security needs to be applied. */
 @SuppressWarnings("WeakerAccess")
 public class ContextRootRules {
     public String contextRoot;

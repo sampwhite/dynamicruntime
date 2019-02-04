@@ -58,7 +58,4 @@ public class SqlCxt {
         }
         return sqlTopic.shardsShareDatabase && sqlTopic.topicInfo.shardsHaveSeparateStorage;
     }
-
-
-
 }

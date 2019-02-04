@@ -25,8 +25,8 @@ public class InstanceRegistry {
     // active.
     static private final Map<String,ComponentDefinition> componentDefinitions = new LinkedHashMap<>();
     static private final Map<String, InstanceConfig> instanceConfigs = new ConcurrentHashMap<>();
-    // These will get changed during initialization process. But once the first instance has been created,
-    // these values should not change and will be global to all instances. We default to assuming
+    // These get changed during the initialization process. But once the first instance has been created,
+    // these values should not change and are global to all instances. We default to assuming
     // code is running in-memory databases doing unit tests.
     static public String envName = UNIT;
     static public String envType = TEST_TYPE;
@@ -103,7 +103,7 @@ public class InstanceRegistry {
             configEnvType = (configEnvType != null) ? configEnvType : envType;
             InstanceConfig config = new InstanceConfig(instanceName, envName, configEnvType);
 
-            // Overlay config is used twice. Once during the initialization of components and then
+            // Overlay config is used twice: once during the initialization of components and then
             // applied again at the end.
             var flattenedOverlay = collapseMaps(overlayConfig);
             config.putAll(flattenedOverlay);
@@ -114,8 +114,8 @@ public class InstanceRegistry {
 
             if (!config.envName.equals(UNIT)) {
                 // Search for file that has secrets. This allows us to have much of our configuration
-                // stored as source code files. In particular, database passwords will be given
-                // by a lookup key that will extract it from the private data. Eventually we will
+                // stored as source code files. In particular, database passwords are given
+                // by a lookup key that extract it from the private data. Eventually we will
                 // also have code to pull secrets from AWS.
                 Map<String,Object> privateData = ConfigLoadUtil.findAndReadYamlFile(cxt, "private/dnConfig.yaml");
                 if (privateData != null) {
@@ -160,7 +160,7 @@ public class InstanceRegistry {
             mergeMapRecursively(configData, overlayConfig);
 
             // Resolve config and set it as the instance config. Resolving performs
-            // some complicated activities, look at implementation.
+            // some complicated activities; look at implementation.
             var resolvedConfig = ConfigLoadUtil.resolveConfig(cxt, configData);
             config.putAll(resolvedConfig);
 
@@ -243,6 +243,4 @@ public class InstanceRegistry {
             service.checkReady(cxt);
         }
     }
-
-
 }

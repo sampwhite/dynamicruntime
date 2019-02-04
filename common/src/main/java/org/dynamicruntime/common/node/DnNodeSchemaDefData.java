@@ -16,7 +16,7 @@ public class DnNodeSchemaDefData {
 
     //
     // InstanceConfig - General configuration about this instance. This is considered to be private data
-    // and in full deployments, this data should be in its own database with other private data, so it cannot
+    // and in full deployments. This data should be in its own database with other private data, so it cannot
     // be casually found when administrators are inspecting user data tables. Generally the contents
     // of this table should be small and entirely cached in memory at node start.
     //

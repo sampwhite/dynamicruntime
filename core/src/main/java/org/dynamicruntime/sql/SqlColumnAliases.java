@@ -14,7 +14,7 @@ public class SqlColumnAliases {
     /** Fields whose names are reserved for particular common activities. Example entries are
      * *limit*, *from*, and *until*. */
     public final Map<String, DnField> reservedFields;
-    /** Use a column name, get the value it should become in a  Map. This should be treated as an
+    /** Use a column name, get the value it should become in a map. This should be treated as an
      * immutable map. */
     public final Map<String,String> colNameToFieldName;
     /** Take a named value from a map and give it a column name. This should be treated as an immutable map. */

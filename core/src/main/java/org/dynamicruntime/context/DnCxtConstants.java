@@ -2,7 +2,7 @@ package org.dynamicruntime.context;
 
 @SuppressWarnings({"WeakerAccess", "unused"})
 public class DnCxtConstants {
-    /* Note the lack of usage of enums. In dynamic runtime, an enum list is a compiler time enforced mechanism on
+    /* Note the lack of enums. In dynamic runtime, an enum list is a compiler time enforced mechanism on
      * choice values, not consistent with the goals of dynamic modification of model at runtime. */
 
     /* Environment names */

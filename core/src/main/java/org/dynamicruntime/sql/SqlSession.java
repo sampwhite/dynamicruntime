@@ -31,8 +31,8 @@ public class SqlSession {
         return (obj instanceof SqlSession) ? (SqlSession)obj : null;
     }
 
-    /** Should be called whenever there is connection issue when executing a query, but only when
-     * session is being released (for example if an exception was thrown because a query was running too long). */
+    /** Should be called whenever there is a connection issue when executing a query, but only when the
+     * session is being released. (For example, if an exception was thrown because a query was running too long). */
     @SuppressWarnings("unused")
     public void setInvalid() {
         synchronized (this) {

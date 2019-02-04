@@ -46,10 +46,10 @@ public class SqlTopic {
      * Such logic should have at least one retry loop. Note, that this may end put leaving behind placeholder
      * rows that never get filled out, but it is worth the extra smoothness it adds to the overall transaction. */
     public DnSqlStatement iTranLockQuery;
-    /** Queries from top level tran query. Not used to initiate lock, but done immediately after successfully
+    /** Queries from top-level tran query. Not used to initiate a lock, but done immediately after successfully
      * taking a lock. */
     public DnSqlStatement qTranLockQuery;
-    /** Updates the tran lock table. Performed only if transaction actually modified state. */
+    /** Updates the tran lock table. Performed only if transaction actually modifies state. */
     public DnSqlStatement uTranLockQuery;
     /** Takes a lock by updating *touchedDate* in table. Taking a transaction lock by doing an
      * update instead of using *select for update* has certain advantages when using a load balance
