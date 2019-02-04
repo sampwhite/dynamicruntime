@@ -12,7 +12,11 @@ import java.util.List;
  * a temporary authentication token as well which was passed in as a parameter.
  * This is a convenience class for encoding and decoding the authentication cookie. This
  * definition is in the core class because when the cookie definition changes, it tends
- * to have an impact system wide. */
+ * to have an impact system wide.
+ *
+ * The current definition could probably just have the grantingId. userId, and date fields with no other fields,
+ * but in prior projects there has been utility in embedding additional information in the cookie.
+ * For this reason, we give an example of what that might look like here.*/
 @SuppressWarnings("WeakerAccess")
 public class UserAuthCookie {
     // Every cookie starts with a single letter code. As the cookie encodes more data over
@@ -20,13 +24,14 @@ public class UserAuthCookie {
     // Using a different code does not obsolete the usage of other codes.
     public static String STD_AUTH_COOKIE_CODE = "S";
 
-    // Current active version.
+    // Current active version. Incrementing the version does obsolete prior versions (new cookies should
+    // be produced with the latest version).
     public static final int CURRENT_VERSION = 1;
 
     /** The single letter code identifying the type of cookie. */
     public final String code;
-    /** The extracted version of the cookie. This follows the code terminated by a '#'. Versions with lesser
-     * numbers are obsoleted and will generally tend not to get renewed. */
+    /** The extracted version of the cookie. This follows the single character code and the version part of
+     * the string is terminated by a '#'. */
     public final int version;
     public final long grantingUserId;
     public final long userId;

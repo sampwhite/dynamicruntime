@@ -19,6 +19,6 @@ public class UserLoadProfileFunction implements DnHookFunction<DnRequestService,
         if (cxt.userProfile == null) {
             return;
         }
-        userService.loadProfileRecord(cxt);
+        userService.loadProfileRecord(cxt, cxt.userProfile, false);
     }
 }

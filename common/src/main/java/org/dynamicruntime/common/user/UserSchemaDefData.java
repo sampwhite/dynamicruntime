@@ -161,11 +161,24 @@ public class UserSchemaDefData {
             "Logs out the current user session. Reload page to see effects.",
             DNT_NONE, authLogoutResponse.name).setMethod(EPH_POST);
 
+    static public DnRawField userIdParam = mkField(USER_ID, "User ID", "The database row " +
+            "identifier for user.").setTypeRef(DNT_COUNT);
+    static public DnRawField primaryIdParam = mkField(AUTH_USER_PRIMARY_ID, "Primary Identifier for User",
+            "The primary key for the user, usually an email address.");
+    static public DnRawField usernameParam = mkField(AUTH_USERNAME, "Username",
+            "The user's chosen public identifier.");
+    static public DnRawType userInfoRequest = mkType("AdminUserInfoRequest",
+            mList(userIdParam, primaryIdParam, usernameParam));
+    static public DnRawEndpoint adminUserInfoEndpoint = mkSimpleListEndpoint("/admin/user/info",
+            ADMIN_USER_INFO,
+            "Retrieves user information using one of three different options for " +
+                    "identifying the user.", userInfoRequest.name, DNT_MAP);
+
 
     static public DnRawSchemaPackage getPackage() {
         return DnRawSchemaPackage.mkPackage("UserSchema", USER_NAMESPACE,
                 mList(authUserTable, authContactTable, authLoginSourcesTable, authTokensTable,
                         userProfileTable, tokenLoginRequest, tokenLoginResponse, tokenLoginEndpoint,
-                        authLogoutResponse, authLogoutEndpoint));
+                        authLogoutResponse, authLogoutEndpoint, userInfoRequest, adminUserInfoEndpoint));
     }
 }

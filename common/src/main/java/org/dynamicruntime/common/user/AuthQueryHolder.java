@@ -174,10 +174,18 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
         sqlDb.executeDnStatement(cxt, sqlTopic.iTranLockQuery, userDefData);
     }
 
+
     public AuthUserRow queryByUserId(DnCxt cxt, long userId) throws DnException {
         var params = mMap(USER_ID, userId);
         var row = sqlDb.queryOneDnStatement(cxt, sqlTopic.qTranLockQuery, params);
         return (row != null) ? AuthUserRow.extract(row) : null;
+    }
+
+    public AuthUserRow queryByPrimaryId(DnCxt cxt, String primaryId) throws DnException {
+        var params = mMap(UserConstants.AUTH_USER_PRIMARY_ID, primaryId);
+        var row = sqlDb.queryOneDnStatement(cxt, qPrimaryId, params);
+        return (row != null) ? AuthUserRow.extract(row) : null;
+
     }
 
     public AuthUserRow queryByUsername(DnCxt cxt, String username) throws DnException {

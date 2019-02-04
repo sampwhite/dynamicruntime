@@ -79,12 +79,15 @@ public class UserConstants {
     public static final String UP_USER_TIMEZONE = "userTimezone";
     /** The general user profile data, including preferences and contacts information. */
     public static final String UP_USER_DATA = "userProfileData";
+    /** The public username for the user. */
+    public static final String UP_PUBLIC_NAME = "publicName";
 
     //
     // Endpoint functions.
     //
     public static final String AUTH_EP_TOKEN_LOGIN = "tokenLogin";
     public static final String AUTH_EP_LOGOUT = "authLogout";
+    public static final String ADMIN_USER_INFO = "adminUserInfo";
 
 
 }

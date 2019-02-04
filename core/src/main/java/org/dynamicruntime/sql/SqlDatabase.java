@@ -128,7 +128,7 @@ public class SqlDatabase {
             } catch (InterruptedException e) {
                 throw new DnException(
                         String.format("Interrupted while waiting for SQL connection in database %s.", dbName),
-                        null, DnException.INTERNAL_ERROR, DnException.DATABASE, DnException.INTERRUPTED);
+                        e, DnException.INTERNAL_ERROR, DnException.DATABASE, DnException.INTERRUPTED);
             }
             if (sqlSession == null) {
                 throw new DnException(String.format("Unable to get database connection for " +

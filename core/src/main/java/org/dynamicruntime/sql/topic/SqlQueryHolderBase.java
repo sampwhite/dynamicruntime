@@ -23,5 +23,4 @@ public abstract class SqlQueryHolderBase {
 
     /** Called within an sql session. */
     abstract public void init(SqlCxt cxt) throws DnException;
-
 }

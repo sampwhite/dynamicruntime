@@ -10,7 +10,7 @@ public class AuthUserUtil {
     public static UserAuthData computeUserAuthDataFromToken(DnCxt cxt, UserService userService, String name,
             String tokenData, DnServletHandler servletHandler) throws DnException {
 
-        AuthUserRow authUser = userService.queryToken(cxt, name, tokenData);
+        AuthUserRow authUser = userService.queryCacheToken(cxt, name, tokenData);
         if (authUser == null) {
             throw DnException.mkInput("Authentication token is not valid.");
         }

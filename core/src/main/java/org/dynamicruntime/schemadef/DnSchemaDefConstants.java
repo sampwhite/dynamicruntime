@@ -131,6 +131,8 @@ public class DnSchemaDefConstants {
     public static final String EP_OUTPUT_TYPE_REF = "outputTypeRef";
     /** Indicates whether response data is put into a list of items. */
     public static final String EP_IS_LIST_RESPONSE = "isListResponse";
+    /** Indicates whether request with list response should *not* allow a limit parameter. */
+    public static final String EP_NO_LIMIT_PARAMETER = "noLimitParameter";
     /** Whether field holds password information or other secure data. */
     public static final String EP_IS_PASSWORD = "isPassword";
     /** The maximum number of items to return. */

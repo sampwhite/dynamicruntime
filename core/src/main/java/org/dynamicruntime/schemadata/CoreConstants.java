@@ -30,6 +30,11 @@ public class CoreConstants {
     /** The configuration data package. */
     public static final String ND_CONFIG_DATA = "configData";
 
+    //
+    // Inter node communication http headers.
+    //
+    public static final String NDH_HDR_REQUEST_PATH = "DnRequestPath";
+
     // Currently known node configuration types.
     /** Auth data type. */
     public static final String NDC_AUTH_CONFIG = "authConfig";

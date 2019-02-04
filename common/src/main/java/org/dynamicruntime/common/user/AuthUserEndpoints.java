@@ -51,5 +51,4 @@ public class AuthUserEndpoints {
                 mkEndpoint(AUTH_EP_TOKEN_LOGIN, AuthUserEndpoints::authUsingToken),
                 mkEndpoint(AUTH_EP_LOGOUT, AuthUserEndpoints::logout));
     }
-
 }

@@ -13,7 +13,17 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** The container object that holds code to create and update tables and provide queries for execution. There is
- * one instance of a topic per topic name and shard. */
+ * one instance of a topic per topic name and shard. Each topic and shard can potentially have its own
+ * dedicated database, but also all the topics can be in a single database. This is a deployment option,
+ * not a coding option. Bound to each topic are query holders {@link SqlQueryHolderBase}. Query holders
+ * create and maintain tables and define the queries that can be executed. Query holders attached to a topic
+ * only manage and query tables in that topic.
+ *
+ * Note that this generates a lot of boilerplate code compared to other solutions such as Hibernate. But
+ * it comes with a lot of flexibility and the ability to instrument the code in fine tuned ways. It also
+ * allows code to be ignorant of concerns that are not directly relevant to that code. For an example of
+ * that look at the generic transaction logic that this class supports, which means other code
+ * does not have to deal with these types of details. */
 @SuppressWarnings("WeakerAccess")
 public class SqlTopic {
     /** Name of topic. */

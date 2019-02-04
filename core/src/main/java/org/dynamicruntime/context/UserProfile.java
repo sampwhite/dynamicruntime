@@ -1,10 +1,7 @@
 package org.dynamicruntime.context;
 
 import java.time.ZoneId;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 /** The user profile data. This data is loaded in two rounds. The first loads the auth data from the database
  * that holds userId authentication records (in some cases this first round uses a 3rd party authentication
@@ -62,6 +59,8 @@ public class UserProfile {
     /** Auth rules, not yet fully defined. */
     public Map<String,Object> authRules;
 
+    /** Last cookie change date. */
+    public Date cookieModifiedDate;
 
     //
     // User profile data.

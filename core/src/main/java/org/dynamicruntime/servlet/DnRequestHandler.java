@@ -15,6 +15,7 @@ import org.dynamicruntime.util.EncodeUtil;
 import org.dynamicruntime.util.ParsingUtil;
 import org.dynamicruntime.util.StrUtil;
 
+import static org.dynamicruntime.schemadata.CoreConstants.*;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.util.ConvertUtil.*;
 
@@ -42,6 +43,8 @@ public class DnRequestHandler implements DnServletHandler {
     public Map<String,Object> queryParams;
     public Map<String,Object> postData;
     private Map<String,String> cookies;
+    public String userAgent;
+    public boolean isFromLoadBalancer;
     public String forwardedFor;
     public ContextRootRules contextRules;
     public boolean logSuccess = true;
@@ -149,6 +152,13 @@ public class DnRequestHandler implements DnServletHandler {
 
             // For now default to local instance and for getting cxt objects, eventually, we will do more.
             cxt = InstanceRegistry.createCxt("request", instance);
+
+            // See if request is being forwarded from a client that knows to supply a request path.
+            String reqPath = getRequestHeader(NDH_HDR_REQUEST_PATH);
+            if (reqPath != null && reqPath.length() > 0) {
+                cxt.parentLoggingIds.addAll(StrUtil.splitString(reqPath, ":"));
+            }
+
             // Captured for tests.
             createdCxt = cxt;
 
@@ -165,6 +175,12 @@ public class DnRequestHandler implements DnServletHandler {
     }
 
     public void decodeRequestData() throws IOException, DnException {
+        // Get user-agent.
+        userAgent = getRequestHeader("User-Agent");
+
+        // Assume using AWS for now, use its user-agent for requests from load balancer.
+        isFromLoadBalancer = (userAgent != null && userAgent.contains("ELB-Health"));
+
         List<NameValuePair> params = URLEncodedUtils.parse(queryStr, StandardCharsets.UTF_8);
         Map<String,Object> parsed = mMapT();
         for (var param : params) {
@@ -229,33 +245,10 @@ public class DnRequestHandler implements DnServletHandler {
     public void logSuccess(DnCxt cxt, int code) {
         double duration = cxt.getDuration();
         String logReqData = logRequestUri;
-        if (logHttpHeaders) {
-            Map<String, List<String>> headers = mMapT();
-            var names = request.getHeaderNames();
-            while (names.hasMoreElements()) {
-                var name = names.nextElement();
-                var hdrValues = Collections.list(request.getHeaders(name));
-                if (!name.toLowerCase().equals("cookie")) {
-                    headers.put(name, new ArrayList<>(hdrValues));
-                }
-            }
-            Map<String,String> cookies = getRequestCookies();
-            List<String> cookieVals = mList();
-            if (cookies.size() > 0) {
-                for (var key : cookies.keySet()) {
-                    var val = cookies.get(key);
-                    var valLimited = StrUtil.limitStringSize(val, 16);
-                    cookieVals.add(key + "=" + valLimited);
-                }
-            }
-            headers.put("Cookies", cookieVals);
-            String remoteAddr = request.getRemoteAddr();
-            logReqData = remoteAddr + " " + logReqData + " " + headers.toString();
-        } else {
-            if (forwardedFor != null) {
-                logReqData = forwardedFor + " " + logReqData;
-            }
+        if (forwardedFor != null) {
+            logReqData = forwardedFor + " " + logReqData;
         }
+
         LogServlet.log.debug(cxt, String.format("%d Request %s (%s ms)",
                 code, logReqData, fmtDouble(duration)));
     }
@@ -303,9 +296,34 @@ public class DnRequestHandler implements DnServletHandler {
                     responseData.put("duration", durStr);
                 }
                 String logRequestData = logRequestUri;
-                if (forwardedFor != null) {
-                    logRequestData = forwardedFor + " " + logRequestData;
+                if (logHttpHeaders) {
+                    Map<String, List<String>> headers = mMapT();
+                    var names = request.getHeaderNames();
+                    while (names.hasMoreElements()) {
+                        var name = names.nextElement();
+                        var hdrValues = Collections.list(request.getHeaders(name));
+                        if (!name.toLowerCase().equals("cookie")) {
+                            headers.put(name, new ArrayList<>(hdrValues));
+                        }
+                    }
+                    Map<String,String> cookies = getRequestCookies();
+                    List<String> cookieVals = mList();
+                    if (cookies.size() > 0) {
+                        for (var key : cookies.keySet()) {
+                            var val = cookies.get(key);
+                            var valLimited = StrUtil.limitStringSize(val, 16);
+                            cookieVals.add(key + "=" + valLimited);
+                        }
+                    }
+                    headers.put("Cookies", cookieVals);
+                    String remoteAddr = request.getRemoteAddr();
+                    logRequestData = remoteAddr + " " + logRequestData + " " + headers.toString();
+                } else {
+                    if (forwardedFor != null) {
+                        logRequestData = forwardedFor + " " + logRequestData;
+                    }
                 }
+
                 if (code == DnException.BAD_INPUT) {
                     LogServlet.log.debug(cxt,
                             String.format("%d User input on request %s was in error (%s ms). ", code,

@@ -14,7 +14,6 @@ import org.dynamicruntime.startup.ServiceInitializer;
 import org.dynamicruntime.user.UserAuthCookie;
 import org.dynamicruntime.user.UserAuthHook;
 import org.dynamicruntime.user.UserConstants;
-import org.dynamicruntime.util.ConvertUtil;
 import org.dynamicruntime.util.DnDateUtil;
 
 import static org.dynamicruntime.user.UserConstants.AUTH_COOKIE_NAME;
@@ -36,11 +35,12 @@ import java.util.Objects;
 public class DnRequestService implements ServiceInitializer {
     public static String DN_REQUEST_SERVICE = DnRequestService.class.getSimpleName();
     public static String CONTENT_ROOT = "content";
+    public static String USER_ROOT = "user";
 
     public final Map<String,ContextRootRules> contextRulesMap = mMapT();
 
     public List<String> anonRoots = mList(CONTENT_ROOT, "auth", "health", "schema");
-    public List<String> adminRoots = mList("node");
+    public List<String> adminRoots = mList("node", "admin");
     public DnCoreNodeService coreNode;
     public boolean isInit = false;
 
@@ -113,6 +113,31 @@ public class DnRequestService implements ServiceInitializer {
 
         // Call hook to fill in initial user information.
         extractAuth(cxt, handler);
+
+        // Apply security rules to context rules. Note that this security check is done before
+        // we forward to other nodes. This means other non-proxy nodes do not have to worry about
+        // basic security issues, simplifying their implementations to focus purely on their
+        // own concerns.
+        String rRole = handler.contextRules.requiredRole;
+        if (rRole != null) {
+            List<String> userRoles = handler.userAuthData != null ? handler.userAuthData.roles : null;
+            boolean allowed = false;
+            if (userRoles != null) {
+                if (userRoles.contains(rRole) || userRoles.contains(UserConstants.ROLE_ADMIN)) {
+                    allowed = true;
+                }
+            }
+            if (!allowed) {
+                // If request is being made directly to this node and it does not change state, then we let
+                // it through, otherwise we throw and exception.
+                // Temporary code to always throw an exception.
+                //if (handler.isFromLoadBalancer || handler.method == null || !handler.method.equals(EPH_GET)) {
+                    throw new DnException("Current acting user (if any) does not have the privilege " +
+                            "to execute this request", null, DnException.NOT_AUTHORIZED, DnException.SYSTEM,
+                            DnException.AUTH);
+                //}
+            }
+        }
 
         // Eventually there will be code here that forwards some requests to other nodes.
         // This can be for two reasons.
@@ -246,23 +271,8 @@ public class DnRequestService implements ServiceInitializer {
         var requestCxt = new DnRequestCxt(cxt, requestData, endpoint);
         requestCxt.webRequest = handler;
 
-        // Get user-agent.
-        String userAgent = handler.getRequestHeader("User-Agent");
-        // Get X-Forwarded-By
-        // Assume using AWS for now, use its user-agent for requests from load balancer.
-        boolean isFromLoadBalancer = (userAgent != null && userAgent.contains("ELB-Health"));
-        requestCxt.requestInfo = new DnRequestInfo(userAgent, handler.forwardedFor, isFromLoadBalancer,
+        requestCxt.requestInfo = new DnRequestInfo(handler.userAgent, handler.forwardedFor, handler.isFromLoadBalancer,
                 handler.queryParams, handler.postData);
-
-        // Put in hook to do authentication. For now, do not let admin requests make it through using
-        // a proxy.
-        if (handler.contextRules.requiredRole != null) {
-            if (requestCxt.isProxied()) {
-                throw new DnException("Current acting user (if any) does not have the privilege " +
-                        "to execute this request", null, DnException.NOT_AUTHORIZED, DnException.SYSTEM,
-                        DnException.AUTH);
-            }
-        }
 
         // Execute request.
         endpoint.endpointFunction.executeRequest(requestCxt);
@@ -282,7 +292,7 @@ public class DnRequestService implements ServiceInitializer {
         if (out.fieldsByName != null) {
             if (out.fieldsByName.containsKey(EPR_DURATION)) {
                 double duration = requestCxt.cxt.getDuration();
-                response.put(EPR_DURATION, ConvertUtil.fmtDouble(duration));
+                response.put(EPR_DURATION, duration);
             }
             if (out.fieldsByName.containsKey(EPR_REQUEST_URI)) {
                 response.put(EPR_REQUEST_URI, handler.logRequestUri);

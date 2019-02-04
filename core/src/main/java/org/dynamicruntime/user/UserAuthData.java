@@ -2,6 +2,7 @@ package org.dynamicruntime.user;
 
 import org.dynamicruntime.context.UserProfile;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -36,12 +37,17 @@ public class UserAuthData {
     /** Auth rules, not yet fully defined. */
     public Map<String,Object> authRules;
 
+    /** Last time cookie was modified (or will be modified). If this is null, then user client side
+     * auth data is not involved in authentication caching. */
+    public Date cookieModifiedDate;
+
     public UserProfile createProfile() {
         var up = new UserProfile(userId, account, userGroup, roles);
         up.authId = authId != null ? authId : "" + userId;
         up.publicName = publicName;
         up.authData = userData;
         up.authRules = authRules;
+        up.cookieModifiedDate = cookieModifiedDate;
         return up;
     }
 }

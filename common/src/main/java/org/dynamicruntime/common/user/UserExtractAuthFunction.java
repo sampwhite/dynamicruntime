@@ -11,10 +11,14 @@ import org.dynamicruntime.user.UserAuthData;
 import java.util.Date;
 import java.util.List;
 
+import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 import static org.dynamicruntime.user.UserConstants.*;
 
 @SuppressWarnings("WeakerAccess")
 public class UserExtractAuthFunction implements DnHookFunction<DnRequestService, DnRequestHandler> {
+    // Using short cache since it is easier to test during development.
+    public static final int AUTH_CACHE_TIMEOUT_SECS = 10;
+
     public final UserService userService;
 
     public UserExtractAuthFunction(UserService userService) {
@@ -42,18 +46,48 @@ public class UserExtractAuthFunction implements DnHookFunction<DnRequestService,
         UserAuthCookie authCookie = workData.userAuthCookie;
         if (authCookie != null) {
             Date expireDate = authCookie.expireDate;
-            if (cxt.now().before(expireDate)) {
-                UserAuthData authData = new UserAuthData();
-                authData.grantingUserId = authCookie.grantingUserId;
-                authData.userId = authCookie.userId;
-                authData.publicName = authCookie.publicName;
-                authData.account = authCookie.account;
-                authData.userGroup = authCookie.groupName;
-                authData.shard = authCookie.shard;
-                authData.roles = authCookie.roles;
-                authData.authId = authCookie.authId;
-                authData.determinedUserId = true;
-                workData.setUserAuthData(authData);
+            Date now = cxt.now();
+            if (now.before(expireDate)) {
+                // Query for auth data from database. Eventually we may do some type of caching
+                // with notifications sent by other nodes to the proxy nodes to notify when
+                // the cache is invalidated. Also, certain types of high volume requests also may
+                // be able to live with what is encoded in the cookie as being good enough. An example
+                // may be requests for semi-static resources or client based logging.
+                long userId = authCookie.userId;
+
+                // Closer cookie modification date is to current time, the quicker we need to expire cache.
+                Date cookieDate = authCookie.modifiedDate;
+                int secondsDiff = (int)((now.getTime() - cookieDate.getTime())/1000);
+                if (secondsDiff > AUTH_CACHE_TIMEOUT_SECS) {
+                    secondsDiff = AUTH_CACHE_TIMEOUT_SECS;
+                }
+                AuthUserRow curAuthData = userService.queryCacheUserId(cxt, userId, secondsDiff);
+                if (curAuthData != null && curAuthData.enabled) {
+                    UserAuthData authData = new UserAuthData();
+                    // At some point, we will look for differences between the row record and the cookie
+                    // to see if transitioning is occurring.
+                    authData.grantingUserId = authCookie.grantingUserId;
+                    authData.userId = userId;
+                    authData.publicName = curAuthData.getPublicName();
+                    authData.account = curAuthData.account;
+                    authData.userGroup = curAuthData.groupName;
+                    authData.shard = curAuthData.shard;
+                    authData.roles = curAuthData.roles;
+                    authData.authId = curAuthData.authId;
+                    authData.determinedUserId = true;
+                    authData.cookieModifiedDate = cookieDate;
+                    workData.setUserAuthData(authData);
+                    // Use cookie update to tell other nodes that their user and profile caches need
+                    // to be updated.
+                    boolean isUserEdit = DnRequestService.USER_ROOT.equals(workData.target) &&
+                            (workData.method.equals(EPH_POST) || workData.method.equals(EPH_PUT));
+                    if (curAuthData.modifiedDate.after(cookieDate) || isUserEdit) {
+                        workData.setAuthCookieOnResponse(true);
+                    }
+                } else {
+                    // Proactively logout so that we do not keep asking for user records that do not exist.
+                    workData.isLogout = true;
+                }
             }
         }
     }

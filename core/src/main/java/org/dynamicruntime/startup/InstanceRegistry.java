@@ -51,12 +51,17 @@ public class InstanceRegistry {
 
     // Call only during initialization of VM (and it is assumed at this point that the start up is single threaded).
     public static void addComponentDefinitions(List<ComponentDefinition> definitions) {
-        if (isFirstTime) {
-            isFirstTime = false;
-            doVmInit();
-        }
-        for (ComponentDefinition definition : definitions) {
-            componentDefinitions.put(definition.getComponentName(), definition);
+        synchronized (componentDefinitions) {
+            if (isFirstTime) {
+                isFirstTime = false;
+                doVmInit();
+            }
+            for (ComponentDefinition definition : definitions) {
+                String cName = definition.getComponentName();
+                if (!componentDefinitions.containsKey(cName)) {
+                    componentDefinitions.put(definition.getComponentName(), definition);
+                }
+            }
         }
     }
 

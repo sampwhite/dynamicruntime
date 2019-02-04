@@ -137,12 +137,14 @@ public class DnSchemaService implements StartupServiceInitializer {
             // More complex result.
             var inputType = DnRawType.mkSubType(inputTypeRef);
             var limitType = DnRawType.mkSubType(DNT_COUNT).setAttribute(DN_MAX, 20000);
-            DnRawField limit = DnRawField.mkField(EPF_LIMIT, "Limit On Results",
-                    "The maximum number of items that can be returned.")
-                    .setTypeDef(limitType)
-                    .setAttribute(DN_DEFAULT_VALUE, defaultLimit);
+            if (!getBoolWithDefault(inModel, EP_NO_LIMIT_PARAMETER, false)) {
+                DnRawField limit = DnRawField.mkField(EPF_LIMIT, "Limit On Results",
+                        "The maximum number of items that can be returned.")
+                        .setTypeDef(limitType)
+                        .setAttribute(DN_DEFAULT_VALUE, defaultLimit);
+                inputType.addField(limit);
+            }
 
-            inputType.addField(limit);
             inputField.setTypeDef(inputType);
 
             DnRawField numItems = DnRawField.mkReqField(EPR_NUM_ITEMS, "Number of Items",

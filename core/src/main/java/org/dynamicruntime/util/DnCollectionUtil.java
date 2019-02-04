@@ -118,6 +118,15 @@ public class DnCollectionUtil {
         return map;
     }
 
+    public static <U,V> CacheMap<U,V> mCacheMap(int maxItems) {
+        return new CacheMap<>(maxItems, true /* Sorted by least recently accessed to most recently. */);
+    }
+
+    public static <U,V> CacheMap<U,V> mBoundedMap(int maxItems) {
+        return new CacheMap<>(maxItems, false /* Standard linked list order. */);
+    }
+
+
     public static <T> T findItem(Collection<T> list, Function<T,Boolean> testFunction) {
         for (T item : list) {
             if (item != null && testFunction.apply(item)) {

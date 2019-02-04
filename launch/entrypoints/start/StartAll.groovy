@@ -1,9 +1,9 @@
 package start
 
 import config.ConfigLoader
-import org.dynamicruntime.common.CommonComponent
-import org.dynamicruntime.CoreComponent
+import org.dynamicruntime.common.startup.StartupCommon
 import org.dynamicruntime.context.DnCxt
+import org.dynamicruntime.context.DnCxtConstants
 import org.dynamicruntime.servlet.DnRequestHandler
 import org.dynamicruntime.servlet.DnServer
 import org.dynamicruntime.startup.InstanceRegistry
@@ -20,21 +20,22 @@ class StartAll {
         DnCxt cxt = null
         try {
             def fileConfig = ConfigLoader.loadGroovyConfig()
-            // Eventually the *common* project may provide some utility functions for this part of the start up code,
-            // once the concept of *deploy* option is implemented.
-            InstanceRegistry.setDevMode()
-            InstanceRegistry.addComponentDefinitions([new CoreComponent(), new CommonComponent()])
+            // Deployment configuration loading is driven by three key boot choices,
+            // environment type (general, stage, prod, etc.), environment name (dev, integration, unit, deployed),
+            // and instance name (defaults to local which is for non-permanent instances).
+            String envType = fileConfig.envType ?: DnCxtConstants.GENERAL_TYPE
+            String envName = fileConfig.envName ?: DnCxtConstants.DEV
             String instanceName = fileConfig.instanceName ?: "local"
+            InstanceRegistry.setEnvType(envType)
+            InstanceRegistry.setEnvName(envName)
             InstanceRegistry.setDefaultInstance(instanceName)
-            String envName = fileConfig.envName
-            if (envName) {
-                InstanceRegistry.setEnvName(envName)
-            }
+
             if (fileConfig.logHeaders) {
                 DnRequestHandler.logHttpHeaders = true
             }
-            def config = InstanceRegistry.getOrCreateInstanceConfig(instanceName, fileConfig)
-            cxt = InstanceRegistry.createCxt("startServer", config)
+
+            // Use a convenience method to load the two components we have defined so far.
+            cxt = StartupCommon.mkBootCxt("startServer", instanceName, fileConfig)
             DnServer.launch(cxt)
         } catch (Throwable t) {
             LogStartup.log.error(cxt, t, "Failed to execute full startup")

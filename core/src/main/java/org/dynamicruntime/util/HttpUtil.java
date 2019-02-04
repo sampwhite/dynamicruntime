@@ -9,14 +9,19 @@ import static org.dynamicruntime.util.DnCollectionUtil.*;
 import java.util.List;
 import java.util.Map;
 
+@SuppressWarnings("WeakerAccess")
 public class HttpUtil {
     public static String encodeHttpArgs(Map<String,Object> args) {
         List<NameValuePair> pairs = mList();
         for (String key : args.keySet()) {
             Object v = args.get(key);
-            String e = ParsingUtil.toJsonString(v, true);
+            String e = fmtArg(v);
             pairs.add(new BasicNameValuePair(key, e));
         }
         return URLEncodedUtils.format(pairs, "utf-8");
+    }
+
+    public static String fmtArg(Object obj) {
+        return (obj instanceof CharSequence) ? obj.toString() : ParsingUtil.toJsonString(obj, true);
     }
 }

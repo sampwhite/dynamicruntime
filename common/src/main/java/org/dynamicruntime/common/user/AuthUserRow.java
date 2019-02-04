@@ -3,6 +3,7 @@ package org.dynamicruntime.common.user;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.user.UserAuthData;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +21,8 @@ public class AuthUserRow {
     public final long userId;
     public final String account;
     public final String primaryId;
+    // Whether user is actually active.
+    public boolean enabled;
     // Can be mutated, but only if it stays unique.
     public String username;
     // Can be mutated.
@@ -31,12 +34,17 @@ public class AuthUserRow {
     public String passwordEncodingRule;
     // Data from the userData column.
     public Map<String,Object> authUserData;
+    // When row was last modified. Used to determine when caches and cookies need to be refreshed.
+    public Date modifiedDate;
     /* Original source data from AuthUser table and data that will get put back. */
     public Map<String,Object> data;
 
     // Additional data from various authentication methods.
     public String authId;
     public Map<String,Object> authRules;
+
+    // Date when this row was queried.
+    public Date queryDate;
 
     public AuthUserRow(long userId, String account, String primaryId) {
         this.userId = userId;
@@ -53,6 +61,7 @@ public class AuthUserRow {
         String account = getReqStr(data, USER_ACCOUNT);
         String primaryId = getReqStr(data, AUTH_USER_PRIMARY_ID);
         AuthUserRow au = new AuthUserRow(userId, account, primaryId);
+        au.enabled = getBoolWithDefault(data, ENABLED, false);
         au.username = getReqStr(data, AUTH_USERNAME);
         au.groupName = getReqStr(data, USER_GROUP);
         au.shard = getOptStr(data, USER_SHARD);
@@ -61,10 +70,18 @@ public class AuthUserRow {
         if (au.roles == null) {
             au.roles = mList(ROLE_USER);
         }
+        // Note that we are packaging password into *userData* so they do *not* appear as
+        // actual columns in the database table.
         au.encodedPassword = getOptStr(userData, AUTH_ENCODED_PASSWORD);
+        if (au.encodedPassword != null) {
+            // Do not let password get captured down stream using AuthUserRow#data.
+            userData.remove(AUTH_ENCODED_PASSWORD);
+        }
         au.passwordEncodingRule = getOptStr(userData, AUTH_PASSWORD_ENCODING_RULE);
         au.authUserData = userData;
+        au.modifiedDate = getReqDate(data, MODIFIED_DATE);
         au.data = data;
+        au.queryDate = new Date();
 
         return au;
     }

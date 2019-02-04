@@ -1,5 +1,6 @@
 package org.dynamicruntime;
 
+import org.dynamicruntime.common.mail.DnMailService;
 import org.dynamicruntime.content.DnContentService;
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.context.Priority;
@@ -59,7 +60,8 @@ public class CoreComponent implements ComponentDefinition {
 
     @Override
     public Collection<Class> getServiceInitializers(DnCxt cxt) {
-        return mList(DnRequestService.class, DnContentService.class, DnCoreNodeService.class);
+        return mList(DnRequestService.class, DnContentService.class, DnCoreNodeService.class,
+            DnMailService.class);
     }
 
     @Override

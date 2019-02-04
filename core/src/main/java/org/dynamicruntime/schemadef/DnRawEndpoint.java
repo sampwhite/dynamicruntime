@@ -52,6 +52,12 @@ public class DnRawEndpoint implements DnRawTypeInterface {
                 .setAttribute(EP_IS_LIST_RESPONSE, true);
     }
 
+    public static DnRawEndpoint mkSimpleListEndpoint(String path, String function, String description,
+            String inTypeRef, String outTypeRef) {
+        return mkEndpoint(path, function, description, inTypeRef, outTypeRef)
+                .setAttribute(EP_IS_LIST_RESPONSE, true).setAttribute(EP_NO_LIMIT_PARAMETER, true);
+    }
+
     public DnRawEndpoint setMethod(String method) {
         epModel.put(EP_HTTP_METHOD, method);
         return this;

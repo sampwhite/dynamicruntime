@@ -88,6 +88,15 @@ public class DnCxt {
         return ((double)diff)/1000000;
     }
 
+    public String getExePath() {
+        List<String> elts = mList();
+        if (parentLoggingIds != null) {
+            elts.addAll(parentLoggingIds);
+        }
+        elts.add(loggingId);
+        return String.join(":", elts);
+    }
+
     public String getLogInfo() {
         String authId = (userProfile != null) ? userProfile.authId : null;
         return (authId != null) ? loggingId + "(" + authId + ")": loggingId + "%sys";

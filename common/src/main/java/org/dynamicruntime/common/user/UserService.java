@@ -7,6 +7,7 @@ import org.dynamicruntime.context.DnCxtConstants;
 import org.dynamicruntime.context.Priority;
 import org.dynamicruntime.context.UserProfile;
 import org.dynamicruntime.exception.DnException;
+import org.dynamicruntime.function.DnFunction;
 import org.dynamicruntime.function.DnPointer;
 import org.dynamicruntime.request.DnServletHandler;
 import org.dynamicruntime.sql.DnSqlStatement;
@@ -29,8 +30,12 @@ import java.util.Objects;
 
 @SuppressWarnings("WeakerAccess")
 public class UserService implements ServiceInitializer {
+    /** Short timeout to allow testing. This is catering to scenarios when there is more than one request per second
+     * for a user in short bursts. */
+    public static final int PROFILE_CACHE_TIMEOUT_IN_SECS = 10;
     public static final String USER_SERVICE = UserService.class.getSimpleName();
     public SqlTopicService topicService;
+    public final UserCache userCache = new UserCache();
 
     public static UserService get(DnCxt cxt) {
         var obj = cxt.instanceConfig.get(USER_SERVICE);
@@ -48,6 +53,8 @@ public class UserService implements ServiceInitializer {
         if (topicService == null) {
             throw new DnException("UserService requires SqlTopicService.");
         }
+
+        // Register the topics this service interfaces with.
         topicService.registerTopicContainer(SqlTopicConstants.AUTH_TOPIC,
                 new SqlTopicInfo(UserTableConstants.UT_TB_AUTH_USERS));
         topicService.registerTopicContainer(SqlTopicConstants.USER_PROFILE_TOPIC,
@@ -59,7 +66,8 @@ public class UserService implements ServiceInitializer {
         // Force *primary* shard of all auth tables to be created and populated with *sysadmin* user.
         AuthQueryHolder.get(sqlCxt);
 
-        // Force table creation of userprofile topic at startup.
+        // Force table creation of userprofile topic at startup. Currently there is only one
+        // table in the profile and it is the table that also does transactions.
         topicService.getOrCreateTopic(cxt, SqlTopicConstants.USER_PROFILE_TOPIC);
 
         // Register hook for doing auth extraction.
@@ -96,6 +104,10 @@ public class UserService implements ServiceInitializer {
                 throw new DnException(String.format("User %s does not exist in database.", username),
                         null, DnException.NOT_FOUND, DnException.DATABASE, DnException.IO);
             }
+            if (!au.enabled) {
+                throw new DnException(String.format("User %s is no longer active.", username), null,
+                        DnException.NOT_FOUND, DnException.SYSTEM, DnException.CODE);
+            }
             String hashedToken = EncodeUtil.hashPassword(authToken);
             Map<String,Object> tokenInfo = mMap(AUTH_ID, authId, AUTH_TOKEN, hashedToken,
                     USER_ID, au.userId, AUTH_RULES, rules, EXPIRE_DATE, ed);
@@ -118,6 +130,12 @@ public class UserService implements ServiceInitializer {
         });
     }
 
+    public AuthUserRow queryCacheToken(DnCxt cxt, String authId, String authToken) throws DnException {
+        String tokenKey = authId + ":" + authToken;
+        return userCache.getAuthDataByToken(tokenKey, PROFILE_CACHE_TIMEOUT_IN_SECS,
+                datedItem -> queryToken(cxt, authId, authToken));
+    }
+
     public AuthUserRow queryToken(DnCxt cxt, String authId, String authToken) throws DnException {
         var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.AUTH_TOPIC);
         AuthQueryHolder aqh = AuthQueryHolder.get(sqlCxt);
@@ -132,7 +150,7 @@ public class UserService implements ServiceInitializer {
                 if (cxt.now().before(expireDate) && EncodeUtil.checkPassword(authToken, hashToken)) {
                     long userId = getReqLong(tokenRow, USER_ID);
                     AuthUserRow au = aqh.queryByUserId(cxt, userId);
-                    if (au != null) {
+                    if (au != null && au.enabled) {
                         au.authId = authId;
                         au.authRules = getMapDefaultEmpty(tokenRow, AUTH_RULES);
                         authUser[0] = au;
@@ -143,44 +161,99 @@ public class UserService implements ServiceInitializer {
         return authUser[0];
     }
 
-    public AuthUserRow queryUserId(DnCxt cxt, long userId) throws DnException {
-        var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.AUTH_TOPIC);
-        AuthQueryHolder aqh = AuthQueryHolder.get(sqlCxt);
-        return aqh.queryByUserId(cxt, userId);
+    public AuthUserRow queryCacheUserId(DnCxt cxt, long userId, int timeoutSeconds) throws DnException {
+        return userCache.getAuthUserRow(userId, timeoutSeconds, datedItem -> queryUserId(cxt, userId));
     }
 
-    public void loadProfileRecord(DnCxt cxt) throws DnException {
-        UserProfile profile = cxt.userProfile;
+
+    public AuthUserRow queryUser(DnCxt cxt, DnFunction<AuthQueryHolder,AuthUserRow> function)
+            throws DnException {
+        var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.AUTH_TOPIC);
+        AuthQueryHolder aqh = AuthQueryHolder.get(sqlCxt);
+        var userRowPtr = new DnPointer<AuthUserRow>();
+        aqh.sqlDb.withSession(cxt, () -> userRowPtr.value = function.apply(aqh));
+        return userRowPtr.value;
+    }
+
+    public AuthUserRow queryUserId(DnCxt cxt, long userId) throws DnException {
+        return queryUser(cxt, aqh -> aqh.queryByUserId(cxt, userId));
+    }
+
+    public AuthUserRow queryUsername(DnCxt cxt, String username) throws DnException {
+        return queryUser(cxt, aqh -> aqh.queryByUsername(cxt, username));
+    }
+
+    public AuthUserRow queryPrimaryId(DnCxt cxt, String primaryId) throws DnException {
+        return queryUser(cxt, aqh -> aqh.queryByPrimaryId(cxt, primaryId));
+    }
+
+    public void loadProfileRecord(DnCxt cxt, UserProfile profile, boolean forceRefresh) throws DnException {
         if (profile == null || profile.userId <= DnCxtConstants.AC_SYSTEM_USER_ID) {
             return;
         }
         long userId = profile.userId;
+        Date cookieDate = profile.cookieModifiedDate;
+        int timeout = forceRefresh ? -1 : PROFILE_CACHE_TIMEOUT_IN_SECS;
+        if (cookieDate != null) {
+            int secondsDiff = (int)((cxt.now().getTime() - cookieDate.getTime())/1000);
+            if (secondsDiff < timeout) {
+                timeout = secondsDiff;
+            }
+        }
+        var row = userCache.getProfileData(userId, timeout, datedItem -> getOrCreateProfileRow(cxt, profile));
+        profile.timezone = ZoneId.of(getReqStr(Objects.requireNonNull(row), UP_USER_TIMEZONE));
+        profile.locale = LocaleUtils.toLocale(getReqStr(row, UP_USER_LOCALE));
+        profile.profileData = getMapDefaultEmpty(row, UP_USER_DATA);
+        profile.data = row;
+    }
+
+    public Map<String,Object> getOrCreateProfileRow(DnCxt cxt, UserProfile profile) throws DnException {
+        long userId = profile.userId;
         var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.USER_PROFILE_TOPIC);
-        var profileTopic = sqlCxt.sqlTopic;
+        var profileTopic = Objects.requireNonNull(sqlCxt.sqlTopic);
         var sqlDb = profileTopic.sqlDb;
         var profileRowPtr = new DnPointer<Map<String,Object>>();
         sqlDb.withSession(cxt, () -> {
             var dbParams = mMap(USER_ID, userId);
             // All the queries we need are at the transaction level of the topic.
-            profileRowPtr.value = sqlDb.queryOneDnStatement(cxt, profileTopic.qTranLockQuery, dbParams);
-            if (profileRowPtr.value == null) {
+            var row = sqlDb.queryOneDnStatement(cxt, profileTopic.qTranLockQuery, dbParams);
+            boolean needsUpdate = false;
+            Map<String,Object> profileUserData;
+            if (row != null) {
+                profileUserData = getMapDefaultEmpty(row, UP_USER_DATA);
+                String username = getOptStr(profileUserData, UP_PUBLIC_NAME);
+                if (profile.publicName != null && (username == null || !username.equals(profile.publicName))) {
+                    needsUpdate = true;
+                    profileUserData.clear();
+                    profileUserData.put(UP_PUBLIC_NAME, profile.publicName);
+                }
+            } else {
+                profileUserData = mMap(UP_PUBLIC_NAME, profile.publicName);
+            }
+            boolean doUpdate = needsUpdate;
+
+            if (row == null || doUpdate) {
                 // Need to create a new row.  Note that the transaction will populate the data with userId,
                 // userGroup, and a number of other protocol fields.
                 Map<String, Object> insertData = mMap(UP_USER_TIMEZONE, profile.timezone.toString(),
-                        UP_USER_LOCALE, profile.locale.toString(), UP_USER_DATA, mMap());
+                        UP_USER_LOCALE, profile.locale.toString(), UP_USER_DATA, profileUserData);
                 SqlTopicTranProvider.executeTopicTran(sqlCxt, "addUserProfile", null,
                         insertData, () -> {
-                            // We did this transaction only to get the record inserted.
-                            sqlCxt.tranAlreadyDone = true;
+                            if (doUpdate) {
+                                // Update profile data with data extracted from auth data. This is
+                                // meant as a motivating example, not a real useful usage.
+                                sqlCxt.tranData.put(UP_USER_DATA, profileUserData);
+                            } else {
+                                // We did this transaction only to get the record inserted, skip the update.
+                                sqlCxt.tranAlreadyDone = true;
+                            }
                             profileRowPtr.value = sqlCxt.tranData;
                         });
+            } else {
+                profileRowPtr.value = row;
             }
         });
-        var row = profileRowPtr.value;
-        profile.timezone = ZoneId.of(getReqStr(Objects.requireNonNull(row), UP_USER_TIMEZONE));
-        profile.locale = LocaleUtils.toLocale(getReqStr(row, UP_USER_LOCALE));
-        profile.profileData = getMapDefaultEmpty(row, UP_USER_DATA);
-        profile.data = row;
+        return profileRowPtr.value;
     }
 
     public void authUsingToken(DnCxt cxt, String authId, String tokenData, DnServletHandler servletHandler)
@@ -188,7 +261,7 @@ public class UserService implements ServiceInitializer {
         UserAuthData userAuthData = AuthUserUtil.computeUserAuthDataFromToken(cxt, this, authId,
                 tokenData, servletHandler);
         cxt.userProfile = userAuthData.createProfile();
-        loadProfileRecord(cxt);
+        loadProfileRecord(cxt, cxt.userProfile, false);
     }
 
     @Override

@@ -46,7 +46,7 @@ structure of the DnType is as follows.
   the same as the base type for many purposes. Also, since the *baseType* attribute is a reference string to
   the name of a type, this gives a way of pulling in other types by name.  The *baseType*
   is optional. In many cases, the base type refers to one of the known primitive types. Note that a type is not
-  allowed recursively extend itself. If that happens an error will occur during the processing.
+  allowed to recursively extend itself. If that happens an error will occur during the processing.
  * *dnFields* - A list of DnField objects. If no fields are given then the type is assumed to essentially
   be the base type with extra supplementary data. or if there is no base type, then it is considered to represent
   a simple string value with supplementary data. If the base type also has fields, then these dnFields are
@@ -263,7 +263,7 @@ a command line utility that uses the schema to create a report of what columns o
 by an administrator before the code can be deployed.
 
 Note: We are skipping the implementation of foreign keys for now. We will get back to them when they prove useful.
-In this application, rows are never deleted, they are only disabled. Rows get deleted (byt not copying them) when 
+In this application, rows are never deleted, they are only disabled. Rows get deleted (by not copying them) when 
 the entire table is copied from one database to another during a *data* refresh process. 
 
 The builder is named *table* and it has the following inputs.

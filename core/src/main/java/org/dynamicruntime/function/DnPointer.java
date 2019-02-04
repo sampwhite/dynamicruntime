@@ -1,6 +1,6 @@
 package org.dynamicruntime.function;
 
-/** Used to pass in and retrieve values from closure blocks. */
+/** Used to retrieve values from closure blocks. */
 @SuppressWarnings("WeakerAccess")
 public class DnPointer<T> {
     public T value;
