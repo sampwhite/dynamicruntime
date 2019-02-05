@@ -290,10 +290,10 @@ class DnEndpointForm extends Component {
             const {baseType: inputBaseType} = endpointInputType;
 
             const formFields = fields.map(fld => {
-                const {coreType, isPassword, required, name, label, description} = fld;
+                const {coreType, isPassword, isLargeString, required, name, label, description} = fld;
                 const labelClassName = required ? "highlight" : "standard";
                 const fldName = "fld_" + name;
-                if (coreType === "Map") {
+                if (coreType === "Map" || isLargeString) {
                     return [
                         <tr key={"label_" + name}>
                             <td className="formLabel"><label className={labelClassName}>{label}</label></td>
@@ -301,7 +301,7 @@ class DnEndpointForm extends Component {
                         </tr>,
                         <tr key={"textarea_"+ name}>
                             <td colSpan="3">
-                                <textarea className="jsonInput" name={fldName} cols="100" rows="10"
+                                <textarea className="largeString" name={fldName} cols="100" rows="10"
                                           value={this.state[fldName]} onChange={this.handleInputChange}/>
                             </td>
                         </tr>

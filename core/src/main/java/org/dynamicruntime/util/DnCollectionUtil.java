@@ -118,10 +118,12 @@ public class DnCollectionUtil {
         return map;
     }
 
+    /** Creates map for doing last access order caching. */
     public static <U,V> CacheMap<U,V> mCacheMap(int maxItems) {
         return new CacheMap<>(maxItems, true /* Sorted by least recently accessed to most recently. */);
     }
 
+    /** Creates map for doing simple bounded size caching. */
     public static <U,V> CacheMap<U,V> mBoundedMap(int maxItems) {
         return new CacheMap<>(maxItems, false /* Standard linked list order. */);
     }

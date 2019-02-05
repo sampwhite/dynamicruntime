@@ -25,6 +25,7 @@ import static org.dynamicruntime.schemadata.CoreConstants.*;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -121,6 +122,8 @@ public class DnHttpClient implements Runnable {
                 hReq.addHeader(new BasicScheme().authenticate(upAuth, hReq, null));
             }
             if (request.cxt != null) {
+                // When doing inter-node calls, pass along execution paths so that we can
+                // chase down the cross node call stack.
                 hReq.addHeader(NDH_HDR_REQUEST_PATH, request.cxt.getExePath());
             }
             if (hReq instanceof HttpEntityEnclosingRequest && request.values != null) {
@@ -146,6 +149,9 @@ public class DnHttpClient implements Runnable {
                 request.activeRequest = hReq;
                 activeRequests.add(request);
             }
+
+            // In the past, there has been profit in attempting to connect more than once, but not more
+            // than once.
             int maxAttempts = 2;
             CloseableHttpResponse resp;
             while (true) {
@@ -155,7 +161,7 @@ public class DnHttpClient implements Runnable {
                     request.response = resp;
                     break;
                 } catch (IOException io) {
-                    if (request.numAttempts + 1 < maxAttempts &&
+                    if (request.numAttempts < maxAttempts &&
                             request.duration(new Date()) < retryTimeout) {
                         Thread.sleep(waitBetweenRetries);
                     } else {
@@ -172,11 +178,17 @@ public class DnHttpClient implements Runnable {
             request.respCode = code;
             boolean isSuccess = (code == 200 || code == 201);
             if (!request.isBinary && ((code >= 200 && code < 300) || (code >= 400 && code <= 503))) {
+                InputStream in = null;
                 try {
-                    request.responseStr = IOUtils.toString(resp.getEntity().getContent(), StandardCharsets.UTF_8);
+                    in = resp.getEntity().getContent();
+                    request.responseStr = IOUtils.toString(in, StandardCharsets.UTF_8);
                 } catch (IOException e) {
                     throw new DnException("Failed to read response from " + request + ".",
                             e, DnException.INTERNAL_ERROR, DnException.NETWORK, DnException.IO);
+                } finally {
+                    if (in != null) {
+                        SystemUtil.close(in);
+                    }
                 }
                 if (request.hasJsonResponse) {
                     try {
@@ -199,11 +211,11 @@ public class DnHttpClient implements Runnable {
                     String.format("Interrupted while executing %s.", request.toString()),
                     ie, DnException.INTERNAL_ERROR, DnException.NETWORK, DnException.INTERRUPTED);
         } finally {
+            synchronized (activeRequests) {
+                activeRequests.remove(request);
+            }
             if (request.response != null) {
-                synchronized (activeRequests) {
-                    activeRequests.remove(request);
-                }
-                SystemUtil.close(request.response);
+               SystemUtil.close(request.response);
             }
         }
     }
@@ -266,7 +278,7 @@ public class DnHttpClient implements Runnable {
                 for (var req : activeRequests) {
                     if (req.duration(now) > totalRequestTimeout) {
                         // Clone so we do not have any thread issues.
-                        requestsToTerminate.add(req.clone());
+                        requestsToTerminate.add(req.cloneRequest());
                     }
                 }
             }

@@ -57,6 +57,9 @@ public class DnSchemaDefConstants {
     public static final String DN_NO_TRIMMING = "noTrimming";
     /** Whether type represents an endpoint. */
     public static final String DN_IS_ENDPOINT = "isEndpoint";
+    /** Whether value is large and requires multiple lines of input and likely to have more than 255
+     * characters. */
+    public static final String DN_IS_LARGE_STRING = "isLargeString";
     /** Whether type represents the definition of a table. */
     public static final String DN_IS_TABLE = "isTable";
     /** Whether values for type do not allow a comma. If true, then values can be put into a

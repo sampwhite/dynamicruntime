@@ -12,12 +12,13 @@ import org.dynamicruntime.sql.topic.SqlQueryHolderBase;
 import org.dynamicruntime.sql.topic.SqlTopic;
 import org.dynamicruntime.sql.topic.SqlTopicConstants;
 import org.dynamicruntime.sql.topic.SqlTopicUtil;
-import org.dynamicruntime.user.UserConstants;
 
 import java.util.Map;
 
+import static org.dynamicruntime.util.ConvertUtil.*;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
+import static org.dynamicruntime.user.UserConstants.*;
 
 /**
  * The base tables for authenticated user functionality. If you contrast this implementation
@@ -46,7 +47,7 @@ import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
  */
 @SuppressWarnings("WeakerAccess")
 public class AuthQueryHolder extends SqlQueryHolderBase {
-    public static String AUTH_QUERY_HOLDER = AuthQueryHolder.class.getSimpleName();
+    public static final String AUTH_QUERY_HOLDER = AuthQueryHolder.class.getSimpleName();
 
     /** AuthUsers, additional queries. */
     public DnSqlStatement qUsername;
@@ -105,7 +106,7 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
         qContactsByUser = SqlTopicUtil.mkNamedTableSelectStmt(sqlCxt, "qByUser" + contacts.tableName,
                 contacts, mList(USER_ID, VERIFIED, ENABLED));
         qContactByContactId = SqlTopicUtil.mkNamedTableSelectStmt(sqlCxt, "qByContactId" + contacts.tableName,
-                contacts, mList(UserConstants.CT_CONTACT_ID));
+                contacts, mList(CT_CONTACT_ID));
         // Note that this is *not* an update based on contactId but on the primary key of userId, contactType,
         // and contactAddress.
         uContact = SqlTopicUtil.mkTableUpdateStmt(sqlCxt, contacts);
@@ -139,26 +140,39 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
     public void initExtraAuth(SqlCxt sqlCxt) {
         var authTable = sqlTopic.table;
         qUsername = SqlTopicUtil.mkNamedTableSelectStmt(sqlCxt, "qUsername" + authTable.tableName,
-                authTable, mList(UserConstants.AUTH_USERNAME));
+                authTable, mList(AUTH_USERNAME));
         qPrimaryId = SqlTopicUtil.mkNamedTableSelectStmt(sqlCxt, "qPrimaryId" + authTable.tableName,
-                authTable, mList(UserConstants.AUTH_USER_PRIMARY_ID));
+                authTable, mList(AUTH_USER_PRIMARY_ID));
     }
 
     public void addInitialRows(SqlCxt sqlCxt) throws DnException {
         // Add initial sysadmin user if it is missing.
         var cxt = sqlCxt.cxt;
         String sysadminEmail = DnConfigUtil.getConfigString(cxt, "user.sysadmin.email",
-                "sysadmin@dynamicruntime.org",
+                "sysadmin@mg.dynamicruntime.org",
                 "Password given to *sysadmin* user at initial provisioning");
         Map<String,Object> sysUser = AuthUserRow.mkInitialUser(sysadminEmail, DnCxtConstants.AC_LOCAL,
-                DnCxtConstants.AC_LOCAL, UserConstants.ROLE_ADMIN);
+                DnCxtConstants.AC_LOCAL, ROLE_ADMIN);
 
-        // Use the initial data to do a query for the user.
-        var existingRow = sqlDb.queryOneDnStatement(cxt, qPrimaryId, sysUser);
-        // For now, only insert, not update (later may add update logic as schema evolves).
-        if (existingRow == null) {
-            sysUser.put(UserConstants.AUTH_USERNAME, "sysadmin");
-            insertAuthUser(cxt, sysUser);
+        var byUsernameRow = sqlDb.queryOneDnStatement(cxt, qUsername, mMap(AUTH_USERNAME, "sysadmin"));
+        if (byUsernameRow != null) {
+            // Email has changed, update it.
+            String curEmail = getReqStr(byUsernameRow, AUTH_USER_PRIMARY_ID);
+            if (!curEmail.equals(sysadminEmail)) {
+                byUsernameRow.put(LAST_TRAN_ID, "emailTo:" + sysadminEmail);
+
+                byUsernameRow.put(AUTH_USER_PRIMARY_ID, sysadminEmail);
+                SqlTopicUtil.prepForStdExecute(cxt, byUsernameRow);
+                sqlDb.executeDnStatement(cxt, sqlTopic.uTranLockQuery, byUsernameRow);
+            }
+        } else {
+            // Use the initial data to do a query for the user.
+            var existingRow = sqlDb.queryOneDnStatement(cxt, qPrimaryId, sysUser);
+
+            if (existingRow == null) {
+                sysUser.put(AUTH_USERNAME, "sysadmin");
+                insertAuthUser(cxt, sysUser);
+            }
         }
     }
 
@@ -173,22 +187,23 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
         sqlDb.executeDnStatement(cxt, sqlTopic.iTranLockQuery, userDefData);
     }
 
-
     public AuthUserRow queryByUserId(DnCxt cxt, long userId) throws DnException {
         var params = mMap(USER_ID, userId);
         var row = sqlDb.queryOneDnStatement(cxt, sqlTopic.qTranLockQuery, params);
         return (row != null) ? AuthUserRow.extract(row) : null;
     }
 
+    @SuppressWarnings("Duplicates")
     public AuthUserRow queryByPrimaryId(DnCxt cxt, String primaryId) throws DnException {
-        var params = mMap(UserConstants.AUTH_USER_PRIMARY_ID, primaryId);
+        var params = mMap(AUTH_USER_PRIMARY_ID, primaryId);
         var row = sqlDb.queryOneDnStatement(cxt, qPrimaryId, params);
         return (row != null) ? AuthUserRow.extract(row) : null;
 
     }
 
+    @SuppressWarnings("Duplicates")
     public AuthUserRow queryByUsername(DnCxt cxt, String username) throws DnException {
-        var params = mMap(UserConstants.AUTH_USERNAME, username);
+        var params = mMap(AUTH_USERNAME, username);
         var row = sqlDb.queryOneDnStatement(cxt, qUsername, params);
         return (row != null) ? AuthUserRow.extract(row) : null;
     }

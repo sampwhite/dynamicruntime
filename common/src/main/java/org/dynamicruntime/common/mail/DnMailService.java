@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.dynamicruntime.util.ConvertUtil.*;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
+import static org.dynamicruntime.common.mail.DnMailConstants.*;
 
 @SuppressWarnings("WeakerAccess")
 public class DnMailService implements ServiceInitializer {
@@ -61,12 +62,12 @@ public class DnMailService implements ServiceInitializer {
 
     public Map<String,Object> createMailData(String to, String from, String subject, String text,
             String html) {
-        return mMap("to", to, "from", from, "subject", subject, "text", text, "html", html);
+        return mMap(MC_TO, to, MC_FROM, from, MC_SUBJECT, subject, MC_TEXT, text, MC_HTML, html);
     }
 
     @SuppressWarnings("unused")
     public DnMailService addBcc(Map<String,Object> data, String bcc) {
-        data.put("bcc", bcc);
+        data.put(MC_BCC, bcc);
         return this;
     }
 
@@ -86,7 +87,7 @@ public class DnMailService implements ServiceInitializer {
             }
             Map<String,Object> respData = request.responseData;
             if (respData == null) {
-                throw new DnException(String.format("Not response from mailgun for email %s", rpt(mailData)));
+                throw new DnException(String.format("No response from mailgun for email %s", rpt(mailData)));
             }
             resp = DnMailResponse.extract(respData);
             if (resp.id == null) {

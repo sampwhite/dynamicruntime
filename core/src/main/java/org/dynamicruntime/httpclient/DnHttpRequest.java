@@ -69,14 +69,15 @@ public class DnHttpRequest {
         return now.getTime() - startDate.getTime();
     }
 
-    public DnHttpRequest clone() {
-        // Clone only the parts that do not change after being put into synchronized tracking.
+    public DnHttpRequest cloneRequest() {
+       // Clone only the parts that do not change after being put into synchronized tracking.
         var retVal = new DnHttpRequest(cxt, method, uri);
         retVal.authType = authType;
         retVal.username = username;
         retVal.args = args;
         retVal.useFormEncoded = useFormEncoded;
         retVal.values = values;
+        retVal.isBinary = isBinary;
         retVal.activeRequest = activeRequest;
         retVal.startDate = startDate;
         return retVal;

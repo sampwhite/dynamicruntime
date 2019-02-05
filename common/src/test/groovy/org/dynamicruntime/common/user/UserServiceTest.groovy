@@ -75,19 +75,36 @@ class UserServiceTest extends Specification {
         userService.addToken(cxt, "sysadmin", "testTokenId", "abc", [:], null)
 
         then: "Should get nothing if provide wrong token value"
-        def ua1 = userService.queryToken(cxt, "testTokenId", "xyz")
+        def ua1 = userService.queryCacheToken(cxt, "testTokenId", "xyz")
         ua1 == null
 
         then: "Should get something if provide correct token value"
-        def ua2 = userService.queryToken(cxt, "testTokenId", "abc")
+        def ua2 = userService.queryCacheToken(cxt, "testTokenId", "abc")
         ua2?.username == "sysadmin"
+
+        when: "Modifying auth token"
+        userService.addToken(cxt, "sysadmin", "testTokenId", "xyz", [:], null)
+
+        // We assume test code runs in under 10 seconds. We do not actually test the 10 second timeout.
+        then: "Cache should still allow login for prior token and new token for 10 seconds"
+        def ua3 = userService.queryCacheToken(cxt, "testTokenId", "xyz")
+        def ua4 = userService.queryCacheToken(cxt, "testTokenId", "abc")
+        ua3 != null
+        ua4 != null
+
+        when: "Clearing cache"
+        userService.userCache.clearCache(userService.userCache.tokenCache)
+
+        then: "Login on old token should not work anymore"
+        def ua5 = userService.queryCacheToken(cxt, "testTokenId", "abc")
+        ua5 == null
 
         when: "Advancing to current time"
         cxt.nowTimeOffsetInSeconds = 0
 
         then: "Should not get something even if provide correct token value"
-        def ua3 = userService.queryToken(cxt, "testTokenId", "abc")
-        ua3 == null
+        def ua6 = userService.queryCacheToken(cxt, "testTokenId", "xyz")
+        ua6== null
     }
 
     def "Validate request execution can use token header to become sysadmin"() {

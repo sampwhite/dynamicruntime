@@ -37,7 +37,7 @@ public class AdminUserEndpoints {
         if (row == null) {
             return;
         }
-        UserProfile up = new UserProfile(userId, row.account, row.groupName, row.roles);
+        UserProfile up = new UserProfile(row.userId, row.account, row.groupName, row.roles);
 
         userService.loadProfileRecord(cxt, up, true);
         Map<String,Object> result = cloneMap(row.data);

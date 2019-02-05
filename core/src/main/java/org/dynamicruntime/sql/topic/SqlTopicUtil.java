@@ -53,7 +53,8 @@ public class SqlTopicUtil {
     public static DnSqlStatement mkTableUpdateStmt(SqlCxt sqlCxt, DnTable table) {
         String qName = "u" + table.tableName;
         List<DnField> relevantColumns = nMapSimple(table.columns, (col ->
-                (!col.name.equals(TOUCHED_DATE) && !col.isAutoIncrementing()) ? col : null));
+                (!col.name.equals(TOUCHED_DATE) && !col.isAutoIncrementing() && !col.name.equals(CREATED_DATE)) ?
+                        col : null));
         String query = SqlStmtUtil.mkUpdateQuery(table.tableName, relevantColumns, table.primaryKey.fieldNames);
         return SqlStmtUtil.prepareSql(sqlCxt, qName, table.columns, query);
     }

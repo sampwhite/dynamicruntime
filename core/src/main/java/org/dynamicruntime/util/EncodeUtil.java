@@ -63,7 +63,6 @@ public class EncodeUtil {
         int start = leftover/2;
         int end = leftover - start;
         return text.substring(0, start) + h + text.substring(l - end, l);
-
     }
 
     public static SecretKeyFactory mkSecretKeyFactory() {
