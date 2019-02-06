@@ -7,6 +7,7 @@ import org.dynamicruntime.schemadef.DnEndpointFunction;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.dynamicruntime.schemadef.DnEndpointFunction.mkEndpoint;
 import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
@@ -14,16 +15,17 @@ import static org.dynamicruntime.user.UserConstants.*;
 import static org.dynamicruntime.util.ConvertUtil.*;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 
-public class AdminUserEndpoints {
-    public static void queryUserInfo(DnRequestCxt requestCxt) throws DnException {
+@SuppressWarnings("WeakerAccess")
+public class UserEndpoints {
+    public static void adminQueryInfo(DnRequestCxt requestCxt) throws DnException {
         var cxt = requestCxt.cxt;
         var data = requestCxt.requestData;
         var userId = getOptLong(data, USER_ID);
         var username = getOptStr(data, AUTH_USERNAME);
         var primaryId = getOptStr(data, AUTH_USER_PRIMARY_ID);
 
-        var userService = UserService.get(cxt);
-        AuthUserRow row = null;
+        var userService = Objects.requireNonNull(UserService.get(cxt));
+        AuthUserRow row;
         if (userId != null) {
             row = userService.queryUserId(cxt, userId);
         } else if (username != null) {
@@ -47,9 +49,23 @@ public class AdminUserEndpoints {
         requestCxt.listResponse = mList(result);
     }
 
+    public static void selfQueryInfo(DnRequestCxt requestCxt) throws DnException {
+        var cxt = requestCxt.cxt;
+        if (cxt.userProfile == null) {
+            throw new DnException("User profile not present when expected.");
+        }
+
+        // This call is based on what we got during the request initialization process,
+        // which means there is a good chance that no database requests were made,
+        // making this is cheap call.
+        var profileReport = cxt.userProfile.toMap();
+        requestCxt.mapResponse.putAll(profileReport);
+    }
+
     public static List<DnEndpointFunction> getFunctions() {
         return mList(
-                mkEndpoint(ADMIN_USER_INFO, AdminUserEndpoints::queryUserInfo));
+                mkEndpoint(ADMIN_USER_INFO, UserEndpoints::adminQueryInfo),
+                mkEndpoint(SELF_USER_INFO, UserEndpoints::selfQueryInfo));
     }
 
 }

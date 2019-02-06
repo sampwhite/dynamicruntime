@@ -52,6 +52,9 @@ public class DnRawType implements DnRawTypeInterface {
         // See if reference to base type needs to have a namespace applied to it.
         DnTypeUtils.updateTypeIfChanged(namespace, DN_BASE_TYPE, newModel, false);
 
+        // See if references to traits need to have namespace applied to them./
+        DnTypeUtils.updateTypesIfChanged(namespace, DN_TYPE_REFS_FIELDS_ONLY, newModel, false);
+
         var fields = getOptListOfMaps(newModel, DN_FIELDS);
         if (fields != null) {
             var newFields = nMapSimple(fields, (fld -> {
@@ -61,6 +64,7 @@ public class DnRawType implements DnRawTypeInterface {
 
                 if (namespace != null) {
                     DnTypeUtils.updateTypeIfChanged(namespace, DN_TYPE_REF, m, false);
+                    DnTypeUtils.updateTypesIfChanged(namespace, DN_TYPE_REFS_FIELDS_ONLY, m, false);
                     applyNamespaceToInlineType(namespace, m, 0, false);
                 }
                 return m;
@@ -89,12 +93,22 @@ public class DnRawType implements DnRawTypeInterface {
         if (fields == null) {
             return null;
         }
+        // If changed becomes true, then we need to clone.
         boolean[] changed = {false};
         var newFields = nMapSimple(fields, (fld -> {
+            // We want to clone if there is a change, but once field has been cloned, it does not need to be
+            // cloned again.
             var newFld = DnTypeUtils.updateTypeIfChanged(namespace, DN_TYPE_REF, fld, true);
             if (newFld != null) {
                 changed[0] = true;
             }
+            // If newFld is null, then we have not already cloned.
+            newFld = DnTypeUtils.updateTypesIfChanged(namespace, DN_TYPE_REFS_FIELDS_ONLY,
+                    newFld != null ? newFld : fld, newFld == null);
+            if (newFld != null) {
+                changed[0] = true;
+            }
+            // If newFld is null, then we have not already cloned.
             newFld = applyNamespaceToInlineType(namespace, newFld != null ? newFld : fld, nestLevel + 1,
                     newFld == null);
             if (newFld != null) {
@@ -105,8 +119,10 @@ public class DnRawType implements DnRawTypeInterface {
         if (changed[0]) {
             var newAnonData = cloneMap(anonData);
 
-            // See if reference to base type needs to have a namespace applied to it.
+            // See if reference to base type needs to have a namespace applied to it. We have already
+            // cloned, so we do not need to clone again.
             DnTypeUtils.updateTypeIfChanged(namespace, DN_BASE_TYPE, newAnonData, false);
+            DnTypeUtils.updateTypesIfChanged(namespace, DN_TYPE_REFS_FIELDS_ONLY, newAnonData, false);
 
             newAnonData.put(DN_FIELDS, newFields);
             if (cloneIfChanged) {
@@ -160,6 +176,12 @@ public class DnRawType implements DnRawTypeInterface {
         return this;
     }
 
+    /** Adds in traits to be merged in. */
+    public DnRawType setReferencedTypesWithFields(List<String> refTypesWithFields) {
+        model.put(DN_TYPE_REFS_FIELDS_ONLY, refTypesWithFields);
+        return this;
+    }
+
     public DnRawType setAttribute(String optionName, Object optionValue) {
         model.put(optionName, optionValue);
         return this;
@@ -183,5 +205,4 @@ public class DnRawType implements DnRawTypeInterface {
             model.put(DN_NAME, name);
         }
     }
-
 }

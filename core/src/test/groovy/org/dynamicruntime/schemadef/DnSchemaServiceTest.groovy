@@ -91,6 +91,7 @@ class DnSchemaServiceTest extends Specification {
         def type2 = [name: type2Name, baseType: type1Name, dnFields:
                 [[name: "listMapField", required: true],
                 [name: "recursionField", dnTypeRef: type2Name]]]
+
         def cxt = createCxt("ValidateTypes", [type1, type2].collect {DnRawType.extract(it)})
         // Get the manufactured read only type. Note that we now have to use the namespace qualifier to
         // the dnType entry.
@@ -155,6 +156,39 @@ class DnSchemaServiceTest extends Specification {
         goodResultsForType2a == [dateField: dateVal, boolField: true, listField: [], listMapField: [[entry: "x1"]]]
         goodResultsForType2b == [dateField: dateVal, boolField: true,  listField: [], listMapField: [[entry: "x1"]],
             recursionField: [dateField: dateVal, boolField: true, listField: [], listMapField: [[entry: "x2"]]]]
+    }
+
+    def "Test traits functionality"() {
+        def type1Name = "Type1"
+        def type1 = [name: type1Name, dnFields: [
+                [name: "strField"],
+                [name: "dateField", required: true, dnTypeRef: "Date"],
+                [name: "boolField", description: "Bool Field First Time", required: true]]]
+
+        def type2Name = "Type2"
+        def type2 = [name: type2Name, dnFields: [
+                [name: "boolField", description: "Bool Field Second Time", defaultValue: true, dnTypeRef: "Boolean"],
+                 [name: "listField", isList: true, dnTypeDef: [max: 10, baseType: "Integer"]],
+                 [name: "listMapField", dnTypeDef: [
+                         dnFields: [[name: "entry"]]], isList: true]]]
+
+        def type3Name = "Type3"
+        def type3 = [name: type3Name, typeRefsFieldsOnly: [type1Name, type2Name, type2Name + "#listMapField"]]
+
+        def cxt = createCxt("TestTraits", [type1, type2, type3].collect {DnRawType.extract(it)})
+
+        when: "Getting a type built from two other types"
+        def dnType3 = cxt.getSchema().getType(namespace + "." + type3Name)
+        def fields = dnType3.fieldsByName
+
+        then: "Should have fields from both types"
+        fields.strField != null
+        fields.boolField?.description == "Bool Field Second Time" // Proves second instance is replacing the first.
+        fields.boolField.isRequired // Not replaced by second field, proves that merging is going on.
+        fields.listMapField != null
+        fields.listMapField.isList
+        // Pulled in anonymous type by reference to Type2#listMapField
+        fields.entry != null
     }
 
     /** Instantiates a mini-app and gets a DnCxt for it. Note the usage of the TestComponent from the simulation

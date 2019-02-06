@@ -8,6 +8,8 @@ import org.dynamicruntime.util.ConvertUtil;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.util.ConvertUtil.*;
@@ -75,39 +77,53 @@ public class DnSchemaService implements StartupServiceInitializer {
             Map<String,DnType> dnTypes = mMapT();
             Map<String,DnEndpoint> endpoints = mMapT();
             Map<String,DnTable> tables = mMapT();
-            for (DnRawType rawTypeIn : rawSchemaStore.rawTypes.values()) {
-                String builder = getOptStr(rawTypeIn.model, DN_BUILDER);
-                DnRawType rawType = rawTypeIn;
-                if (builder != null) {
-                    DnBuilder builderFunction = rawSchemaStore.builders.get(builder);
-                    if (builderFunction == null) {
-                        throw DnException.mkConv(String.format("Unable to find implementation of builder " +
-                                "%s for type %s.", builder, rawTypeIn.name));
-                    }
-                    rawType = builderFunction.buildType(cxt, rawTypeIn);
-                    rawType.finish();
-                }
-                DnType dnType = DnType.extract(rawType.model, rawSchemaStore.rawTypes);
-                dnTypes.put(dnType.name, dnType);
-                boolean isEndpoint = getBoolWithDefault(dnType.model, DN_IS_ENDPOINT, false);
-                if (isEndpoint) {
-                    String functionName = getReqStr(dnType.model, EP_FUNCTION);
-                    var endpointFunction = rawSchemaStore.functions.get(functionName);
-                    if (endpointFunction == null) {
-                        throw DnException.mkConv(String.format("Unable to find function %s " +
-                                "for dnType %s.", functionName, rawTypeIn.name));
-                    }
-                    DnEndpoint endpoint = DnEndpoint.extract(dnType, endpointFunction);
-                    endpoints.put(endpoint.path, endpoint);
-                }
-                boolean isTable = getBoolWithDefault(dnType.model, DN_IS_TABLE, false);
-                if (isTable) {
-                    DnTable table = DnTable.extract(dnType);
-                    tables.put(table.tableName, table);
-                }
 
+            // Loop twice. First time just the builders, and then everybody else.
+            Map<String,DnRawType> changedTypes = mMapT();
+            for (int i = 0; i < 2; i++) {
+                if (changedTypes.size() > 0) {
+                    rawSchemaStore.rawTypes.putAll(changedTypes);
+                }
+                for (DnRawType rawTypeIn : rawSchemaStore.rawTypes.values()) {
+                    String builder = getOptStr(rawTypeIn.model, DN_BUILDER);
+                    boolean doBuilder = (i == 0);
+                    boolean hasBuilder = builder != null;
+                    if (hasBuilder != doBuilder) {
+                        continue;
+                    }
+                    DnRawType rawType = rawTypeIn;
+                    if (hasBuilder) {
+                        DnBuilder builderFunction = rawSchemaStore.builders.get(builder);
+                        if (builderFunction == null) {
+                            throw DnException.mkConv(String.format("Unable to find implementation of builder " +
+                                    "%s for type %s.", builder, rawTypeIn.name));
+                        }
+                        rawType = builderFunction.buildType(cxt, rawTypeIn);
+                        rawType.finish();
+                        changedTypes.put(rawType.name, rawType);
+                    }
+                    DnType dnType = DnType.extract(rawType.model, rawSchemaStore.rawTypes);
+                    dnTypes.put(dnType.name, dnType);
+                    boolean isEndpoint = getBoolWithDefault(dnType.model, DN_IS_ENDPOINT, false);
+                    if (isEndpoint) {
+                        String functionName = getReqStr(dnType.model, EP_FUNCTION);
+                        var endpointFunction = rawSchemaStore.functions.get(functionName);
+                        if (endpointFunction == null) {
+                            throw DnException.mkConv(String.format("Unable to find function %s " +
+                                    "for dnType %s.", functionName, rawTypeIn.name));
+                        }
+                        DnEndpoint endpoint = DnEndpoint.extract(dnType, endpointFunction);
+                        endpoints.put(endpoint.path, endpoint);
+                    }
+                    boolean isTable = getBoolWithDefault(dnType.model, DN_IS_TABLE, false);
+                    if (isTable) {
+                        DnTable table = DnTable.extract(dnType);
+                        tables.put(table.tableName, table);
+                    }
+
+                }
+                schemaStore.set(new DnSchemaStore(dnTypes, endpoints, tables));
             }
-            schemaStore.set(new DnSchemaStore(dnTypes, endpoints, tables));
         }
     }
 
@@ -232,6 +248,7 @@ public class DnSchemaService implements StartupServiceInitializer {
             fields.add(modifyUserField);
         }
 
+        int lateRank = DN_DEFAULT_SORT_RANK + 50;
         /* See if transaction fields should be added. */
         boolean isTopLevel = getBoolWithDefault(inModel, TB_IS_TOP_LEVEL, false);
         if (isTopLevel) {
@@ -239,8 +256,8 @@ public class DnSchemaService implements StartupServiceInitializer {
                     "The last time a transaction lock was attempted against this table.");
             var lastTranId = DnRawField.mkReqField(LAST_TRAN_ID, "Last Transaction ID",
                     "The identifier of the transaction that last successfully concluded a transaction.");
-            fields.add(touchedField);
-            fields.add(lastTranId);
+            fields.add(touchedField.setRank(lateRank));
+            fields.add(lastTranId.setRank(lateRank));
         }
 
         /* See if enabled field should be suppressed. */
@@ -248,7 +265,7 @@ public class DnSchemaService implements StartupServiceInitializer {
         if (!noEnabled) {
             var enabledField = DnRawField.mkReqBoolField(ENABLED, "Enabled",
                     "Whether the row is enabled.");
-            fields.add(enabledField);
+            fields.add(enabledField.setRank(lateRank));
         }
 
         /* See if row tracking date fields should be added. */
@@ -258,8 +275,8 @@ public class DnSchemaService implements StartupServiceInitializer {
                     "When this row was created.");
             var modifiedDate = DnRawField.mkReqDateField(MODIFIED_DATE, "Modified Date",
                     "When this row was last modified.");
-            fields.add(createdDate);
-            fields.add(modifiedDate);
+            fields.add(createdDate.setRank(lateRank));
+            fields.add(modifiedDate.setRank(lateRank));
             var modifiedIndex = buildIndex(mMap(DN_NAME, "ModifiedDate",
                     TBI_INDEX_FIELDS, mList(MODIFIED_DATE)));
             indexes.add(modifiedIndex);
@@ -299,7 +316,8 @@ public class DnSchemaService implements StartupServiceInitializer {
                 throw DnException.mkConv(String.format("Primary key refers to field %s that does not exist in table %s.",
                         fldName, tableName));
             }
-            sortedFields.add(fld);
+            // Move fields earlier in the sort rank.
+            sortedFields.add(fld.setRank(DN_DEFAULT_SORT_RANK - 50));
         }
         sortedFields.addAll(remainingFields);
 

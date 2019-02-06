@@ -67,13 +67,14 @@ public class UserExtractAuthFunction implements DnHookFunction<DnRequestService,
                     // At some point, we will look for differences between the row record and the cookie
                     // to see if transitioning is occurring.
                     authData.grantingUserId = authCookie.grantingUserId;
+                    authData.authId = authCookie.authId;
+
                     authData.userId = userId;
                     authData.publicName = curAuthData.getPublicName();
                     authData.account = curAuthData.account;
                     authData.userGroup = curAuthData.groupName;
                     authData.shard = curAuthData.shard;
                     authData.roles = curAuthData.roles;
-                    authData.authId = curAuthData.authId;
                     authData.determinedUserId = true;
                     authData.cookieModifiedDate = cookieDate;
                     workData.setUserAuthData(authData);

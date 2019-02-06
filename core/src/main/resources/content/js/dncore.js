@@ -280,7 +280,8 @@ class DnEndpointForm extends Component {
             return <DnMessage>Did not get back an endpoint definition for endpoint {endpoint}.</DnMessage>
         }
         else {
-            const {endpointInputType, httpMethod, description} = items[0];
+            const endpointDef = items[0];
+            const {endpointInputType, endpointOutputType, httpMethod, description} = endpointDef;
             if (!endpointInputType) {
                 return <DnMessage>Endpoint definition for endpoint {endpoint} did not return a
                     input type.</DnMessage>
@@ -321,19 +322,35 @@ class DnEndpointForm extends Component {
                     )
                 }
             });
-            let linkStr = "";
+            let inputLinkStr = "";
             if (inputBaseType && inputBaseType.indexOf(".") > 0) {
                 const url = "/schema/dnType/list?dnTypeName=" + inputBaseType;
-                linkStr = <div><p>The core input type definition for endpoint <b>{endpoint} </b>
+                inputLinkStr = <div>The core input type definition for endpoint <b>{endpoint} </b>
                     can be found at <a href={url}>{inputBaseType}</a>. This does not include
-                    general protocol parameters.</p></div>
+                    general protocol parameters</div>
             } else {
                 if (fields.length > 0) {
-                    linkStr = <div><p>Endpoint <b>{endpoint}</b> has only intrinsic defined input parameters.</p></div>
+                    inputLinkStr = <div>Endpoint <b>{endpoint}</b> has only intrinsic defined input parameters.</div>
                 } else {
-                    linkStr = <div><p>Endpoint <b>{endpoint}</b> has no input parameters.</p></div>
+                    inputLinkStr = <div>Endpoint <b>{endpoint}</b> has no input parameters.</div>
                 }
             }
+            const {dnFields: outputFields} = endpointOutputType || {};
+            //alert(JSON.stringify(endpointOutputType));
+            let outputLinkStr = "";
+            if (outputFields) {
+                const itemsField = outputFields.find(oField => oField.name === "items");
+                const {dnTypeRef: outputTypeRef} = itemsField || {};
+                if (outputTypeRef && outputTypeRef.indexOf(".") > 0) {
+                    const url = "/schema/dnType/list?dnTypeName=" + outputTypeRef;
+                    outputLinkStr = <div>The definition of the type for <i>items</i> in the response
+                        can be found at <a href={url}>{outputTypeRef}</a>.</div>;
+                }
+            }
+            const {name: endpointSchemaName} = endpointDef;
+            const endpointUrl = "/schema/dnType/list?dnTypeName=" + endpointSchemaName;
+            const endpointLinkStr = <div>The full endpoint definition can be found at <a href={endpointUrl}>
+                {endpointSchemaName}</a></div>;
             const mainTable = (fields.length > 0) ?
                 <table>
                     <tbody>
@@ -343,7 +360,10 @@ class DnEndpointForm extends Component {
             return (
                 <div>
                     <i>{description}</i>
-                    {linkStr}
+                    <p/>
+                    {inputLinkStr}
+                    {outputLinkStr}
+                    {endpointLinkStr}
                     <form key="mainForm" onSubmit={this.onSubmit}>
                         {mainTable}
                         <p key="requestInfo"><b>Request: </b>

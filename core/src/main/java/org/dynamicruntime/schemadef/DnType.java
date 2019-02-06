@@ -92,6 +92,17 @@ public class DnType {
         return extractNamed(name, model, types);
     }
 
+    /** Creates a type from raw type data. We are at the heart of the Schema engine.
+     * The implementation of this method is quite complex because it has to do some of the complex things
+     * that compilers have to do. Some of the things that we are emulating are
+     * * Extending from a base type (with the base type itself potentially extending of other types).
+     * * Pulling in fields from traits (again with recursion to expand each "trait").
+     * * Determining if a type is primitive at its core or has fields.
+     * * Collapsing fields that are defined more than once during the recursive merges so each field
+     *   is only referenced once. The logic of how this is not simple because there are rules
+     *   for which field's data gets precedence over another.
+     * * Cloning data when necessary when mutating data pulled in from the map containing the raw types.
+     **/
     public static DnType extractNamed(String name, Map<String,Object> model, Map<String,DnRawType> types) throws DnException {
         boolean noTrimming = getBoolWithDefault(model, DN_NO_TRIMMING, false);
         boolean noCommas = getBoolWithDefault(model, DN_NO_COMMAS, false);
@@ -102,32 +113,7 @@ public class DnType {
         Double min = getOptDouble(newModel, DN_MIN);
         Double max = getOptDouble(newModel, DN_MAX);
 
-        List<RawField> newRawFields = null;
-
-        // Collapse raw fields, later fields map data is merged with earlier fields of the same name.
-        if (md.rawFields != null) {
-            // Sort raw fields (note we are really depending on this being a stable sort.
-            md.rawFields.sort(Comparator.comparingInt(f -> f.sortRank));
-            Map<String,RawField> foundFields = mMapT();
-            newRawFields = mList();
-            for (var rawField : md.rawFields) {
-                RawField existing = foundFields.get(rawField.name);
-                if (existing != null) {
-                    // Depending on nest level, we can merge in two different ways but with
-                    // lower nest level fields merging their data into higher nest level fields.
-                    if (rawField.nestLevel <= existing.nestLevel) {
-                        existing.data.putAll(rawField.data);
-                    } else {
-                        rawField.data.putAll(existing.data);
-                        // Switch in the new merged data for existing.
-                        existing.data = rawField.data;
-                    }
-                } else {
-                    newRawFields.add(rawField);
-                    foundFields.put(rawField.name, rawField);
-                }
-            }
-        }
+        List<RawField> newRawFields = collapseRawFields(md);
 
         // At this point, all cloning that needs to be done has been done.
         List<DnField> dnFields = null;
@@ -148,6 +134,38 @@ public class DnType {
         return new DnType(name, baseType, noTrimming, noCommas, min, max, dnFields, newModel);
     }
 
+    public static List<RawField> collapseRawFields(MergeData mergeData) {
+        List<RawField> newRawFields = null;
+
+        // Collapse raw fields, later fields map data is merged with earlier fields of the same name.
+        if (mergeData.rawFields != null) {
+            // Sort raw fields (note we are really depending on this being a stable sort.
+            mergeData.rawFields.sort(Comparator.comparingInt(f -> f.sortRank));
+            Map<String,RawField> foundFields = mMapT();
+            newRawFields = mList();
+            for (var rawField : mergeData.rawFields) {
+                RawField existing = foundFields.get(rawField.name);
+                if (existing != null) {
+                    // Depending on nest level, we can merge in two different ways but with
+                    // lower nest level fields merging their data into higher nest level fields.
+                    if (rawField.nestLevel <= existing.nestLevel) {
+                        existing.data.putAll(rawField.data);
+                    } else {
+                        rawField.data.putAll(existing.data);
+                        // Switch in the new merged data for existing.
+                        existing.data = rawField.data;
+                    }
+                } else {
+                    newRawFields.add(rawField);
+                    foundFields.put(rawField.name, rawField);
+                }
+            }
+        }
+
+        return newRawFields;
+
+    }
+
     public static MergeData mergeWithBaseType(Map<String,Object> model, Map<String,DnRawType> types, int nestLevel)
             throws DnException {
         if (nestLevel > 10) {
@@ -157,6 +175,16 @@ public class DnType {
         List<RawField> rawFields = null;
         if (fields != null && fields.size() > 0) {
             rawFields = nMap(fields, (fld -> RawField.mk(fld, nestLevel)));
+        }
+
+        // Add fields pulled in from *traits* like references.
+        List<String> refsWithFields = getOptListOfStrings(model, DN_TYPE_REFS_FIELDS_ONLY);
+        if (refsWithFields != null && refsWithFields.size() > 0) {
+            if (rawFields == null) {
+                rawFields = mList();
+            }
+            // This is what implements the *traits* functionality.
+            addReferencedTypesWithFields(refsWithFields, rawFields, model, types, nestLevel);
         }
         String baseTypeName = getOptStr(model, DN_BASE_TYPE);
 
@@ -206,6 +234,57 @@ public class DnType {
         md.rawFields = newRawFields;
         md.baseType = baseTypeName;
         return md;
+    }
+
+    public static void addReferencedTypesWithFields(List<String> typeRefs, List<RawField> rawFields,
+            Map<String,Object> model, Map<String,DnRawType> types, int nestLevel) throws DnException {
+        for (String typeRef : typeRefs) {
+            String coreTypeRef = typeRef;
+            int index = typeRef.indexOf('#');
+            String fld = null;
+            if (index > 0) {
+                fld = typeRef.substring(index + 1);
+                coreTypeRef = typeRef.substring(0, index);
+            }
+            DnRawType traitType = types.get(coreTypeRef);
+            if (traitType == null) {
+                throw DnException.mkConv("Could not find the trait type " + typeRef +
+                        " referenced by " + model.get(DN_NAME) + ".");
+            }
+            var mdTrait = mergeWithBaseType(traitType.model, types, nestLevel + 1);
+            if (mdTrait.rawFields == null) {
+                throw DnException.mkConv("The trait type " + typeRef +
+                        " referenced by " + model.get(DN_NAME) + " has no fields.");
+            }
+
+            if (fld != null) {
+                List<RawField> typeFields = collapseRawFields(mdTrait);
+                final var fldName = fld; // To make closure happy.
+                RawField rf = findItem(typeFields, (tf -> tf.name.equals(fldName)));
+                if (rf == null) {
+                    throw DnException.mkConv("The trait type " + typeRef + " referenced by " + model.get(DN_NAME) +
+                            " references a field that does not exist.");
+                }
+                Map<String,Object> fldType = getOptMap(rf.data, DN_TYPE_DEF);
+
+                if (fldType == null) {
+                    DnRawType fldRawType = types.get(DN_TYPE_REF);
+                    if (fldRawType == null) {
+                        throw DnException.mkConv("The trait type " + typeRef + " referenced by " + model.get(DN_NAME) +
+                                " references a field that does not have a type associated with it.");
+                    }
+                    fldType = fldRawType.model;
+                }
+                var mdField = mergeWithBaseType(fldType, types, nestLevel);
+                if (mdField.rawFields == null) {
+                    throw DnException.mkConv("The trait type " + typeRef + " referenced by " + model.get(DN_NAME) +
+                            " references a field that has a type that has no fields associated with it.");
+                }
+                rawFields.addAll(mdField.rawFields);
+            } else {
+                rawFields.addAll(mdTrait.rawFields);
+            }
+        }
     }
 
     @Override

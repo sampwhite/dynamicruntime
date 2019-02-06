@@ -162,23 +162,56 @@ public class UserSchemaDefData {
             DNT_NONE, authLogoutResponse.name).setMethod(EPH_POST);
 
     static public DnRawField userIdParam = mkField(USER_ID, "User ID", "The database row " +
-            "identifier for user.").setTypeRef(DNT_COUNT);
+            "numeric identifier for user.").setTypeRef(DNT_COUNT);
     static public DnRawField primaryIdParam = mkField(AUTH_USER_PRIMARY_ID, "Primary Identifier for User",
             "The primary key for the user, usually an email address.");
     static public DnRawField usernameParam = mkField(AUTH_USERNAME, "Username",
             "The user's chosen public identifier.");
-    static public DnRawType userInfoRequest = mkType("AdminUserInfoRequest",
+    static public DnRawType adminUserInfoRequest = mkType("AdminUserInfoRequest",
             mList(userIdParam, primaryIdParam, usernameParam));
+    static public DnRawType adminUserInfoResponse = mkType("AdminUserInfoResponse", mList())
+            .setReferencedTypesWithFields(
+                    mList(mkTbTypeName(UT_TB_AUTH_USERS), mkTbTypeName(UT_TB_USER_PROFILES)));
     static public DnRawEndpoint adminUserInfoEndpoint = mkSimpleListEndpoint("/admin/user/info",
             ADMIN_USER_INFO,
             "Retrieves user information using one of three different options for " +
-                    "identifying the user.", userInfoRequest.name, DNT_MAP);
+                    "identifying the user.", adminUserInfoRequest.name, adminUserInfoResponse.name);
+
+    /*
+    USER_ID, userId, AUTH_ID, authId, USER_ACCOUNT, account, USER_GROUP, userGroup,
+                AUTH_ROLES, roles, UP_PUBLIC_NAME, publicName, UP_USER_LOCALE, locale,
+                UP_USER_TIMEZONE, timezone, UP_USER_DATA, profileData
+     */
+    static public DnRawField upAuthId = mkField(AUTH_ID, "Authentication ID",
+            "User identifier for logging purposes.");
+    static public DnRawField account = mkReqField(USER_ACCOUNT, "Account", "The account to which " +
+            "the user belongs.");
+    static public DnRawField upUserGroup = mkReqField(USER_GROUP, "User Group", "The assigned " +
+            "group to which the user belongs.");
+    static public DnRawField roles = mkField(AUTH_ROLES, "Roles", "The authorization roles " +
+            "granted to this user.");
+    static public DnRawField publicName = mkReqField(UP_PUBLIC_NAME, "Public Name",
+            "The name that should be used when referring to the user externally.");
+    static public DnRawField locale = mkReqField(UP_USER_LOCALE, "Locale",
+            "The user's preferred locale.");
+    static public DnRawField timezone = mkReqField(UP_USER_TIMEZONE, "Timezone",
+            "The user's preferred timezone.");
+    static public DnRawField profileData = mkField(UP_USER_DATA, "User Profile Data",
+            "Extended information about the user.").setTypeRef(DNT_MAP);
+    static public DnRawType selfUserInfoResponse = mkType("SelfUserInfoResponse",
+            mList(userId, upAuthId, account, upUserGroup, roles, publicName, locale, timezone,
+                    profileData));
+    static public DnRawEndpoint selfUserInfoEndpoint = mkEndpoint("/user/self/info",
+            SELF_USER_INFO,
+            "Retrieves profile information for the current acting user.",
+            DNT_NONE, selfUserInfoResponse.name);
 
 
     static public DnRawSchemaPackage getPackage() {
         return DnRawSchemaPackage.mkPackage("UserSchema", USER_NAMESPACE,
                 mList(authUserTable, authContactTable, authLoginSourcesTable, authTokensTable,
                         userProfileTable, tokenLoginRequest, tokenLoginResponse, tokenLoginEndpoint,
-                        authLogoutResponse, authLogoutEndpoint, userInfoRequest, adminUserInfoEndpoint));
+                        authLogoutResponse, authLogoutEndpoint, adminUserInfoRequest, adminUserInfoResponse,
+                        adminUserInfoEndpoint, selfUserInfoResponse, selfUserInfoEndpoint));
     }
 }

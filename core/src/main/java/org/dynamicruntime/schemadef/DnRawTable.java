@@ -24,7 +24,7 @@ public class DnRawTable implements DnRawTypeInterface {
     public DnRawType getRawType() {
         String name = getOptStr(tbModel, DN_NAME);
         if (name == null) {
-            name = tableName + "Table";
+            name = mkTbTypeName(tableName);
             tbModel.put(DN_NAME, name);
         }
         tbModel.put(TB_NAME, tableName);
@@ -33,6 +33,10 @@ public class DnRawTable implements DnRawTypeInterface {
         var rawType =  new DnRawType(name, tbModel);
         rawType.addFields(fields);
         return rawType;
+    }
+
+    public static String mkTbTypeName(String tableName) {
+        return tableName + "Table";
     }
 
     public static DnRawTable mkTable(String tableName, String description, List<DnRawField> fields,

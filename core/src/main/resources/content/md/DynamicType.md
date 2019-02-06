@@ -47,6 +47,17 @@ structure of the DnType is as follows.
   the name of a type, this gives a way of pulling in other types by name.  The *baseType*
   is optional. In many cases, the base type refers to one of the known primitive types. Note that a type is not
   allowed to recursively extend itself. If that happens an error will occur during the processing.
+ * *typeRefsFieldsOnly* - A list of references to DnTypes. Only the fields are brought in from the types.
+ The fields are deduplicated with fields in later types in the list of types winning
+ over earlier fields. The *typeRefsFieldsOnly* attribute is similar in nature to *baseType*. Where 
+ *baseType* simulates a base class which is being extended, the *typeRefsFieldsOnly* is more analogous
+ to traits (such as the ones defined in 
+ Scala). Except unlike for *baseType*, only the fields of the referenced types are brought in. There is
+ one additional wrinkle to *typeRefsFieldsOnly* and that is you can reference not just a type, but the 
+ field of a type and then the type pulled in is the type of the field. The reference to the field name
+ uses a *hash* ("#") separator. For example, if you have the reference *user.MyType#profile*, the the
+ fields pulled in are the fields defined in the type for the *profile* field. Using field references can
+ be away of pulling in anonymous types which are otherwise un-referencable. 
  * *dnFields* - A list of DnField objects. If no fields are given then the type is assumed to essentially
   be the base type with extra supplementary data. or if there is no base type, then it is considered to represent
   a simple string value with supplementary data. If the base type also has fields, then these dnFields are

@@ -12,11 +12,11 @@ import org.dynamicruntime.schemadef.DnSchemaValidator;
 import org.dynamicruntime.schemadef.DnType;
 import org.dynamicruntime.startup.ServiceInitializer;
 import org.dynamicruntime.user.UserAuthCookie;
+import org.dynamicruntime.user.UserAuthData;
 import org.dynamicruntime.user.UserAuthHook;
-import org.dynamicruntime.user.UserConstants;
 import org.dynamicruntime.util.DnDateUtil;
 
-import static org.dynamicruntime.user.UserConstants.AUTH_COOKIE_NAME;
+import static org.dynamicruntime.user.UserConstants.*;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.util.ConvertUtil.*;
 import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
@@ -40,6 +40,7 @@ public class DnRequestService implements ServiceInitializer {
     public final Map<String,ContextRootRules> contextRulesMap = mMapT();
 
     public List<String> anonRoots = mList(CONTENT_ROOT, "auth", "health", "schema");
+    public List<String> userRoots = mList(USER_ROOT);
     public List<String> adminRoots = mList("node", "admin");
     public DnCoreNodeService coreNode;
     public boolean isInit = false;
@@ -69,9 +70,12 @@ public class DnRequestService implements ServiceInitializer {
         for (var anonRoot : anonRoots) {
             contextRulesMap.put(anonRoot, new ContextRootRules(anonRoot, false, null));
         }
+        for (var userRoot : userRoots) {
+            contextRulesMap.put(userRoot, new ContextRootRules(userRoot, true, ROLE_USER));
+        }
         for (var adminRoot : adminRoots) {
             contextRulesMap.put(adminRoot,
-                    new ContextRootRules(adminRoot, false, UserConstants.ROLE_ADMIN));
+                    new ContextRootRules(adminRoot, false, ROLE_ADMIN));
         }
         isInit = true;
     }
@@ -119,24 +123,54 @@ public class DnRequestService implements ServiceInitializer {
         // basic security issues, simplifying their implementations to focus purely on their
         // own concerns.
         String rRole = handler.contextRules.requiredRole;
-        if (rRole != null) {
-            List<String> userRoles = handler.userAuthData != null ? handler.userAuthData.roles : null;
-            boolean allowed = false;
+        UserAuthData authData = handler.userAuthData;
+        boolean allowed = (rRole == null);
+        if (rRole != null && authData != null && authData.determinedUserId) {
+            List<String> userRoles = handler.userAuthData.roles;
             if (userRoles != null) {
-                if (userRoles.contains(rRole) || userRoles.contains(UserConstants.ROLE_ADMIN)) {
+                if (userRoles.contains(ROLE_ADMIN)) {
+                    allowed = true;
+                }
+                else if (userRoles.contains(rRole)) {
+                    // Paths with the word *self* in them are assumed to return data
+                    // based on the user data attached to the DnCxt object, so they do not need a userId.
+                    if (rRole.equals(ROLE_USER) && !target.contains("/self/")) {
+                        // We have made the decision to force requests that are at the *user* level
+                        // to provide a *userId*. Others may choose to automatically supply it from
+                        // the authentication data. If you choose this approach, then change this
+                        // code to fill in a userId here.
+
+                        // Need to make sure userId parameter matches the userId in the authentication data.
+                        Long id = getOptLong(handler.queryParams, USER_ID);
+                        if (id == null) {
+                            id = getOptLong(handler.postData, USER_ID);
+                        } else {
+                            // Make sure postData cannot contaminate our request.
+                            if (handler.postData != null) {
+                                handler.postData.remove(USER_ID);
+                            }
+                        }
+                        if (id == null) {
+                            throw DnException.mkConv("Parameter *userId* is required for user focused requests.");
+                        }
+                        if (id != authData.userId) {
+                            throw new DnException("User endpoints require a *userId* parameter that matches " +
+                                    "the userId of the current acting user.", DnException.NOT_AUTHORIZED);
+                        }
+                    }
                     allowed = true;
                 }
             }
-            if (!allowed) {
-                // If request is being made directly to this node and it does not change state, then we let
-                // it through. Otherwise, we throw an exception.
-                // Temporary code to always throw an exception.
-                //if (handler.isFromLoadBalancer || handler.method == null || !handler.method.equals(EPH_GET)) {
-                    throw new DnException("Current acting user (if any) does not have the privilege " +
-                            "to execute this request", null, DnException.NOT_AUTHORIZED, DnException.SYSTEM,
-                            DnException.AUTH);
-                //}
-            }
+        }
+        if (!allowed) {
+            // If request is being made directly to this node and it does not change state, then we let
+            // it through. Otherwise, we throw an exception.
+            // Temporary code to always throw an exception.
+            //if (handler.isFromLoadBalancer || handler.method == null || !handler.method.equals(EPH_GET)) {
+            throw new DnException("Current acting user (if any) does not have the privilege " +
+                    "to execute this request", null, DnException.NOT_AUTHORIZED, DnException.SYSTEM,
+                    DnException.AUTH);
+            //}
         }
 
         // Eventually there will be code here that forwards some requests to other nodes.
@@ -145,12 +179,17 @@ public class DnRequestService implements ServiceInitializer {
         // node using *shard* and *userId* as criteria for choosing which node in a cluster to target. Requests
         // to the same *userId* should tend to go to the same node so that user based caching can
         // be most effective.  The request will forward the extracted user auth data as a header so it
-        // does not have to be queried for again.
+        // does not have to be queried for again. Note that any node that receives that request is
+        // working inside a greatly simplified security model making it easier for developers creating software
+        // for that node to get their solution integrated into the entire software stack. It is expected that
+        // some of these nodes will *not* be written in Java and by locking down the shard, we may also
+        // simplify their database configuration as well.
         // 2. This current node does not have access to the database that can handle the request (shard
         // is used to determine this) and so the request is forwarded to one that does have access.
         // In some cases, we are receiving requests that were forwarded.
         //
-        // After this point, we are committed to executing the request in this node.
+        // After this point, we are no longer executing code that is shared with the proxy. The code that
+        // follows is to help handle the request in *this* node.
 
         // Call hook to load (or potentially create) profile record for user.
         loadProfile(cxt, handler);

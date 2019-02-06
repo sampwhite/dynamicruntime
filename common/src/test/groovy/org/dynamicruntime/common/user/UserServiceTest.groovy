@@ -173,7 +173,7 @@ class UserServiceTest extends Specification {
                 [UserService.class, DnRequestService.class, DnCoreNodeService.class, DnNodeService.class])
         tc.endpointFunctions.addAll(NodeEndpoints.getFunctions())
         tc.endpointFunctions.addAll(AuthUserEndpoints.getFunctions())
-        tc.endpointFunctions.addAll(AdminUserEndpoints.getFunctions())
+        tc.endpointFunctions.addAll(UserEndpoints.getFunctions())
         compList.addAll([tc])
         if (executeAsIntegrationTest) {
             // Test will use postgresql instance on local machine that is assumed to have appropriate

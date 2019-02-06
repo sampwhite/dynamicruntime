@@ -4,7 +4,7 @@ import org.dynamicruntime.common.mail.DnMailEndpoints;
 import org.dynamicruntime.common.mail.DnMailSchemaDefData;
 import org.dynamicruntime.common.node.DnNodeSchemaDefData;
 import org.dynamicruntime.common.node.DnNodeService;
-import org.dynamicruntime.common.user.AdminUserEndpoints;
+import org.dynamicruntime.common.user.UserEndpoints;
 import org.dynamicruntime.common.user.AuthUserEndpoints;
 import org.dynamicruntime.common.user.UserSchemaDefData;
 import org.dynamicruntime.common.user.UserService;
@@ -45,7 +45,7 @@ public class CommonComponent implements ComponentDefinition {
         schemaStore.addPackage(UserSchemaDefData.getPackage());
         schemaStore.addPackage(DnNodeSchemaDefData.getPackage());
         schemaStore.addFunctions(AuthUserEndpoints.getFunctions());
-        schemaStore.addFunctions(AdminUserEndpoints.getFunctions());
+        schemaStore.addFunctions(UserEndpoints.getFunctions());
         schemaStore.addPackage(DnMailSchemaDefData.getPackage());
         schemaStore.addFunctions(DnMailEndpoints.getFunctions());
 

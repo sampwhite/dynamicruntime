@@ -3,6 +3,10 @@ package org.dynamicruntime.context;
 import java.time.ZoneId;
 import java.util.*;
 
+import static org.dynamicruntime.util.DnCollectionUtil.*;
+import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
+import static org.dynamicruntime.user.UserConstants.*;
+
 /** The user profile data. This data is loaded in two rounds. The first loads the auth data from the database
  * that holds userId authentication records (in some cases this first round uses a 3rd party authentication
  * solution, such as oauth2 or ping federate to auto register a user). The second round loads profile information
@@ -84,5 +88,11 @@ public class UserProfile {
         this.account = account;
         this.userGroup = userGroup;
         this.roles = roles;
+    }
+
+    public Map<String,Object> toMap() {
+        return mMap(USER_ID, userId, AUTH_ID, authId, USER_ACCOUNT, account, USER_GROUP, userGroup,
+                AUTH_ROLES, roles, UP_PUBLIC_NAME, publicName, UP_USER_LOCALE, locale,
+                UP_USER_TIMEZONE, timezone, UP_USER_DATA, profileData);
     }
 }

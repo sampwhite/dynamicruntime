@@ -49,6 +49,16 @@ public class DnSchemaDefConstants {
     public static final String DN_BUILDER = "dnBuilder";
     /** Reference to a base DnType by a DnType. Used for one type to extend another. */
     public static final String DN_BASE_TYPE = "baseType";
+    /** Reference to a list of types or a type plus a fieldName where the type of the field is
+     * is the one that is being pulled in. If the reference is to a field
+     * then it is of the form %DnType-Name#DnField-Name. For example,
+     * node.NodeSetClusterMembership#endpointOutputType refers to the type for the field
+     * endpointOutputType. The list of types brought overlay each other with types later in
+     * the list overlaying types earlier in the list. So if a field is mentioned in two different
+     * types, the field definition associated with the later DnType in the list of types
+     * replaces the earlier one. This *typeRefsFieldsOnly* is the primary mechanism for simulating *trait*
+     * functionality for types and is used to reduce the redundant declaration of field lists. */
+    public static final String DN_TYPE_REFS_FIELDS_ONLY= "typeRefsFieldsOnly";
     /** Reference to the core type underlying all the base types. */
     public static final String DN_CORE_TYPE = "coreType";
     /** Attribute that holds the fields of the DnType. */

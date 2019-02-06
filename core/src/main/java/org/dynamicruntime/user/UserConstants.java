@@ -88,4 +88,5 @@ public class UserConstants {
     public static final String AUTH_EP_TOKEN_LOGIN = "tokenLogin";
     public static final String AUTH_EP_LOGOUT = "authLogout";
     public static final String ADMIN_USER_INFO = "adminUserInfo";
+    public static final String SELF_USER_INFO = "selfUserInfo";
 }
