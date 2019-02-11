@@ -13,7 +13,7 @@ Some of the results of creating data sourced schema can be seen at
 ## Intent
 
 This code tries to anticipate and implement solutions to many of the common problems that arise during the creation
-of a standard web application. The intent of the this project is **not** for usage as a library or
+of a standard web application. The intent of this project is **not** for usage as a library or
 webservice. Instead the code base is meant to be a repository of *ready to copy* example code with an 
 assumption that the code will be mutated appropriately to fit the needs of a particular application. The running website
 that the code generates exhibits how the code is meant to be used. We do hope that when programmers examine this
@@ -27,8 +27,8 @@ log4j infrastructure. Re-compiles after changing a few files take less than two 
 good at hot-loading changed code (after you ask it to recompile a Java file or a resource file). The debugger
 is smooth, reliable, and has clean (and informative) thread call stacks.
 
-Our goal for any web application is to have the startup time stay below fifteen seconds, a goal we have achieved
-in the past  with some fairly complicated code (more than 100,000 lines of code, reading in
+Our goal for any web application is to have the startup time stay below fifteen seconds. A goal we have achieved
+in the past with some fairly complicated code (more than 100,000 lines of code, reading in
 megabytes of configuration data). I believe that slow Java server start up times are a self-inflicted unnecessary evil.
 Slow start up times are fine for quick simple projects using quick on-ramp frameworks, but for projects that will
 have many man years put into them, the savings on start up time can justify a real serious think about the best
@@ -36,29 +36,28 @@ approach to implementing your code.
 
 ## Current Progress
 
-We now create schemas for endpoints and tables and tables will be automatically created and updated based on
+We now create schemas for endpoints and tables, and tables are automatically created and updated based on
 the schema. We use the schema for endpoints to generate HTML forms for convenient execution of the endpoints.
 The schema for tables includes the primary key and indexes. Schemas can extend from other schemas 
 (*equivalent of subclassing*) and can import fields from other schemas (*equivalent of traits*) into their definitions.
 
-Configuration allows overlays for environment *type* and environment *mode* allowing different configurations
+The configuration allows overlays for environment *type* and environment *mode* allowing different configurations
 to come into play depending on deployment choices. This is useful for creating staging and simulation environments.
 
 We created code to access an RDS database including a query translator that takes bouncy cap column names to column
 names that are lower case with underscores. Also there is query generation code that can look at the table schema
-to aid the creation of the queries making the code use design information when defining the query.
-If the database connection is not configured then the application will startup using the H2 in-memory database. 
-This means you can clone the git repository and run `./gradlew execute` (after installing the Java 10 or 11 VM) to
-get the server running with no additional labors.
+to aid in the creation and design of queries. If the database connection is not configured then the application starts
+up using the H2 in-memory database. This means you can clone the git repository and run `./gradlew execute`
+(after installing the Java 10 or 11 VM) and have the server running with no additional labors.
 
 The application can send email using a free [mailgun](https://www.mailgun.com) service.
 
-We broke the application up into independently loadable components. The startup code can load one more
-more components depending on configuration and allows control over which components are loading. Components
-can extend or add schema. Testing uses this to control exactly what functionality is loaded for a particular test.
+We split the application into independently loadable components and configuration controls which components are to l
+loaded on startup. Also, components can extend or add schema. Testing uses this to control exactly what functionality
+is loaded for a particular test.
 
 This application is deployed to [dynamicruntime.org](https://dynamicruntime.org). The entry to the website 
-uses an AWS load balancer which talks to multiple nodes running the base application.  At startup the nodes connect
+uses an AWS load balancer, which talks to multiple nodes running the base application.  At startup the nodes connect
 to an AWS postgres database. The multiple nodes are automatically updated (using AWS CodeDeploy)
 when code is contributed to the git repository.
 

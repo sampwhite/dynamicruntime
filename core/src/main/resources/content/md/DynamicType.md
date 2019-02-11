@@ -3,7 +3,7 @@
 ## Overview
 
 This document defines the data format for the dynamic type, the basic building block of the application.
-In a typical schema you define types which are then built up on top of fields. In our application,
+In a typical schema, you define types which are then built on top of fields. In our application,
 we call the type definition **DnType** and the field definition **DnField**. We do this because the words
 *type* and *field* are so common in coding and can refer to so many different concepts that using a variant
 name will help make it clear that we are talking about types and fields that are the foundational elements
@@ -11,15 +11,15 @@ of this application.
 
 ### Primitive Types
 
-These types have global definition, have no namespacing, and are reserved keywords and cannot
-be reused when naming types. The primitive types are following.
+These types have global definition, have no namespacing, and are reserved keywords that cannot
+be reused when naming types. The primitive types are the following:
 
-* *String* - This is also the default type if no type information is given.
+* *String* - This is also the default type, if no type information is given.
 * *Boolean* - Either *true* or *false*. However, many times this is a tri-state value because
- the value of the field can be missing if it is not a required field.
-* *Integer* - The value is an an eight byte integer.
+ the value of the field can be missing, if it is not a required field.
+* *Integer* - The value is an eight byte integer.
 * *Date* - The value is a date.
-* *Float* - The value is floating point and also uses eight bytes (a *Double* in Java) to store its value.
+* *Float* - The value is a floating point and also uses eight bytes (a *Double* in Java) to store its value.
 * *Any* - Any value that can be a primitive type or can be represented by a JSON construct.
 * *Map* - A map of strings to *Any* values.
 * *Generic* - Represents a replaceable type whose choice of definition is based on another field in the input data.
@@ -27,13 +27,13 @@ be reused when naming types. The primitive types are following.
  approach is to have a *name* attribute in the data, and then the *name* is used to find a type
  to replace the *Generic* type. This type can be useful for web form survey implementations where there can
  be a lot of variation in the questions asked.
-* *None* - Means schema does not define a Json like data object. For endpoint requests, it means
+* *None* - Means schema does not define a JSON like data object. For endpoint requests, it means
 the requests do not take ordinary parameters. As another example, *None* can represent either file uploads or file
 downloads.
 
 Before we go on, we call a type *simple* if it has no fields and a recursive chase up the *base* types
-leads to a primitive type. A type is *inline* if it is not captured into the DnSchemaStore. The data 
-structure of the DnType is as follows.
+leads to a primitive type. A type is *inline*, if it is not captured into the DnSchemaStore. The data
+structure of the DnType is as follows:
 
 ### DnType
  * *name* - Name of type. Optional for inline types.
@@ -46,61 +46,60 @@ structure of the DnType is as follows.
   the same as the base type for many purposes. Also, since the *baseType* attribute is a reference string to
   the name of a type, this gives a way of pulling in other types by name.  The *baseType*
   is optional. In many cases, the base type refers to one of the known primitive types. Note that a type is not
-  allowed to recursively extend itself. If that happens an error will occur during the processing.
+  allowed to recursively extend itself. If that happens an error occurs during the processing.
  * *typeRefsFieldsOnly* - A list of references to DnTypes. Only the fields are brought in from the types.
- The fields are deduplicated with fields in later types in the list of types winning
- over earlier fields. The *typeRefsFieldsOnly* attribute is similar in nature to *baseType*. Where 
- *baseType* simulates a base class which is being extended, the *typeRefsFieldsOnly* is more analogous
- to traits (such as the ones defined in 
- Scala). Except unlike for *baseType*, only the fields of the referenced types are brought in. There is
- one additional wrinkle to *typeRefsFieldsOnly* and that is you can reference not just a type, but the 
- field of a type and then the type pulled in is the type of the field. The reference to the field name
- uses a *hash* ("#") separator. For example, if you have the reference *user.MyType#profile*, the the
+ The fields are de-duplicated with fields in later types in the list of types winning
+ over earlier fields. The *typeRefsFieldsOnly* attribute is similar in nature to *baseType* where
+ *baseType* simulates a base class which is being extended. The *typeRefsFieldsOnly* is more analogous
+ to traits (such as the ones defined in Scala). Except unlike for *baseType*, only the fields of the referenced
+ types are brought in. There is one additional wrinkle to *typeRefsFieldsOnly* and that is you can reference not just
+ a type, but the field of a type and then the type pulled in is the type of the field. The reference to the field name
+ uses a *hash* ("#") separator. For example, if you have the reference *user.MyType#profile*, the
  fields pulled in are the fields defined in the type for the *profile* field. Using field references can
- be away of pulling in anonymous types which are otherwise un-referencable. 
+ be away of pulling in anonymous types, which are otherwise un-referencable.
  * *dnFields* - A list of DnField objects. If no fields are given then the type is assumed to essentially
-  be the base type with extra supplementary data. or if there is no base type, then it is considered to represent
+  be the base type with extra supplementary data. Or if there is no base type, then it is considered to represent
   a simple string value with supplementary data. If the base type also has fields, then these dnFields are
-  prepended to the list of fields in the base type. If one of fields in the dnFields has the same name as 
+  prepended to the list of fields in the base type. If one of the fields in the dnFields has the same name as
   one of the fields in the base type, then the attributes in the dnField's field are merged into the field
   from the base type with the same name.
- * *noTrimming* - By default string values when validated by a schema are trimmed. Setting this prevents
+ * *noTrimming* - By default, string values when validated by a schema are trimmed. Setting this prevents
   strings from being trimmed.
  * *isTable* - Type represents a table.
  * *noCommas* - The value of the field cannot have commas. If this is true and *isList* is true and
   a string is being parsed to populate the list, the list can be broken up by commas. This only applies
   to lists of simple DnTypes (String, Boolean, Integer, Date, Float). Empty entities in the list are converted
   to nulls except for the DnType String where they are turned into empty strings.
- * *min* - Only applies to simple types whose primitive type is numeric. This is minimum numeric value (inclusive)
- * *max* - Only applies if there are no fields present in this type and a recursive chase up the *baseType* references
+ * *min* - Only applies to simple types whose primitive type is numeric. This is the minimum numeric value (inclusive).
+ * *max* - Only applies if there are no fields present in this type and a recursive chase up of the *baseType* references
  leads to a primitive numeric type. This is the maximum numeric value (exclusive).
  * *&lt;other&gt;* - Other attributes can be put into the schema for a private channel between code, data, and 
   presentation. It can also be used as inputs to builders. This is meant to get sufficiently complex 
-  that additional *DnType* definitions will be  needed to define the structure of this data. Or put it another
+  that additional *DnType* definitions will be  needed to define the structure of this data. Or put another
   way, the *DnType* has extended metadata that needs its own *DnType* to define its structure. This makes
-  the *DnType* both a model definition and an instanced data  object simultaneously. This is a theme which
+  the *DnType* both a model definition and an instanced data object simultaneously. This is a theme which
   this application intends to build on.
  
  When this type is cloned, all the top level attributes are put into a new Map and the top level attributes
- of the *dnFields* are cloned as well. Altering values interior to the values
- that are cloned will likely cause undesired side effects and should be avoided. In particular, the *dnTypeDef*
- attribute of the DnField object is only cloned if it needs to be modified.
+ of the *dnFields* are cloned as well. Altering values interior to the values that are cloned will likely cause
+ undesired side-effects and should be avoided. In particular, the *dnTypeDef* attribute of the DnField object is
+ only cloned if it needs to be modified.
  
  ### DnField
- * *name* - Name of field. Required if field is being used to capture data values.
- * *label* - Friendly label for field. Required if field is meant to hold data.
- * *description* - Description of field. Required if field is meant to hold data.
- * *dnTypeRef* - A reference to a DnType by name. This allows the type for the field to have independent
+ * *name* - Name of field. Required if the field is being used to capture data values.
+ * *label* - Friendly label for the field. Required if the field is meant to hold data.
+ * *description* - Description of the field. Required if the field is meant to hold data.
+ * *dnTypeRef* - A reference to a DnType by name. This allows the type for the field to have an independent
   existence. This field is ignored, if *dnTypeDef* is defined.
  * *dnTypeDef* - A full inline *DnType* object that is owned by this field and has no independent
   existence. Useful when interior nested types have meaning only in the context of their parent. When the DnField
-  is cloned, this object is recursively cloned, cloning any referenced fields that also use a dnTypeDef to define
-  their type. This type definition is considered to be immutable, it must be cloned in order to be modified.
+  is cloned, this object is recursively cloned by cloning any referenced fields that also use a dnTypeDef to define
+  their type. This type definition is considered to be immutable and must be cloned in order to be modified.
  * *isList* - Whether the field represents a list of values instead of single value.
  * *typeIsChoices* - Whether the DnField's type definition represents choices with each DnField entry
   representing a choice.
  * *dnChoiceTypeRef* - If *typeIsChoices* is enabled, then this is the value type for the values of the choices.
-  If this entry is missing then it is computed, first by looking at the type of the first DnField in the
+  If this entry is missing then it is computed first by looking at the type of the first DnField in the
   associated type and if there are no fields, then it is assumed to be a string.
  * *typeIsStrict* - If *typeIsChoices* is set, then it means the value must be one of the possible values. In
   other validations, it can be used to say that the validation should be applied in the strictest way.
@@ -117,7 +116,7 @@ structure of the DnType is as follows.
  being appended to existing fields. But sometimes it is useful to control the sort order so that certain fields
  (particularly protocol fields) come either earlier or later in the list. Also, when the schema is used as a choice
  list, it can be used to control how new entries get merged in with the existing entries. The *sortRank* is
- of particular interest to *DnBuilder* functions which want to make sure that their created types have the fields
+ of particular interest to *DnBuilder* functions, which want to make sure that their created types have the fields
  in the order they desire. The default sort rank of a field is 100.
  * *&lt;other&gt;* - Other attributes of the field definition, though in general, unlike with DnType, the attributes
   here should be relatively simple.
@@ -125,15 +124,15 @@ structure of the DnType is as follows.
  ### DnBuilder
  
  During the design phase of the schema implementation, I looked at various ways to capture repeated patterns
- in schema definition. As an example, a traditional way to do this is to used parameterized types with
+ in schema definition. As an example, a traditional way to do this is to use parameterized types with
  the schema definition not fully defined until you give it externally supplied type definitions as parameters.
  I also looked at writing a generic build that would let you union the fields from various types together
  to build another type. This mimics the *traits* pattern that can be found in many programming languages.
  
- However, neither of these patterns fits json data models and database table definitions as I have seen them
+ However, neither of these patterns fits JSON data models and database table definitions as I have seen them
  over the years. In many cases, the patterns that needed isolating from the main code came with a lot of
- presumptions of about the behavior of those fields. And many times, so many of the additional fields
- and types that I might add using parameterized types and traits were so conditional on certain characteristics
+ presumptions about the behavior of those fields. And many times, so many of the additional fields
+ and types that I might add using parameterized types and traits were conditional on certain characteristics
  of the deployment and the specific nature of the usage of the schema. It just made using standard
  programming language constructs for reusing schema definitions clunky and produced arcane artifacts. It
  was also very confusing to explain in a user interface what was going on with a particular type.
@@ -148,22 +147,22 @@ structure of the DnType is as follows.
  custom fields to the DnType definition.
  
   * inputTypeRef - The DnType used to validate the input.
-  * outputTypeRef - The core part of the output DnType that is expanded upon by this builder.
+  * outputTypeRef - The core part of the output DnType that is expanded by this builder.
   * path - The endpoint path, like */health/status* that this endpoint intercepts.
   * function - The name of the registered function that the endpoint calls to do the logic of the endpoint.
   * isListResponse - Whether the *outputTypeRef* is pushed down to become the DnType of a value in an array
    of items.  If this is true, then the builder adds a field called *limit* to the inputTypeRef that allows 
    the caller to limit the number of values returned.
-  * hasMorePaging - Whether the response will set *hasMore* to true in the response data it there is more
+  * hasMorePaging - Whether the response sets *hasMore* to true in the response data, if there is more
     data available.
-  * hasAvailableSize - Whether the response will indicate the total number of items that could be possibly returned.
+  * hasAvailableSize - Whether the response indicates the total number of items that could be possibly returned.
   This is usually only done when the potential totalSize value is less than 10,000.
   * supportsOffset - Whether the endpoint supports an *offset* parameter in its call to allow
     the list values returned to start at an offset index. This would be added to the *inputTypeRef*.
     
  As an example of what the builder might do, let us assume the inputTypeRef named *Category* has two fields
  *category* and *fromDate*, the first is a String and the second is a Date. Assume the response
- type named *Content* has two fields *contentId* and *contentDate* with first being a string and the second
+ type named *Content* has two fields *contentId* and *contentDate* with the first being a string and the second
  a date.
  
  Suppose you defined the following type, using yaml style syntax.
@@ -184,7 +183,7 @@ ruleToGetContent: byCategory
 ```
 
 Note the extra custom parameter *ruleToGetContent*. This is visible
-to the *getContent* function which allows the function to alter its behavior
+to the *getContent* function and allows the function to alter its behavior
 based on the schema definition of the endpoint. One function can potentially
 serve many endpoints.
 
@@ -251,13 +250,13 @@ dnFields:
              dnTypeRef: Content
 ```
 
-The reference to the *dnType* Count is a reference to a built in type that extends
+The reference to the *dnType* Count is a reference to a built-in type that extends
 Integer and has a *min* value of zero.
 
 If you look at the above, there are some things to call out. The first is that the
 DnType *Category* is extended to have an additional *limit* field that can be used to
 limit the results. The second is that the DnType *Content* has been subsumed into a containing type
-so that the *items* field of the containing type has *Content* has the of one of its objects. The values 
+so that the *items* field of the containing type has *Content* as of one of its objects. The values
 *duration*, *requestUri*, and *none* are all handled by generic protocol handlers and
 are invisible to the implementation code for the function *getContent*.
 
@@ -265,25 +264,25 @@ are invisible to the implementation code for the function *getContent*.
 
 The other major data model defined by a DnType is the definition of a table. This not only includes the
 columns, but the definition of the primary key, indexes, and any special storage options for the table. The
-definition is live in that the definition is used to automatically create tables and to update the table
+definition is live in that it is used to automatically create tables and to update the table,
 if the current design of the table does not match the schema. However, there are operational issues that
-may limit the types of fixups that are performed against tables. For example, creating a new index on a table
+may limit the types of fix-ups that are performed against tables. For example, creating a new index on a table
 with a billion rows when the table is under heavy usage is not a good idea. In that case, the index would
 be applied manually by a database administrator. But the schema definition can still assist. It is easy to write
-a command line utility that uses the schema to create a report of what columns or indexes needed to be added
+a command line utility that uses the schema to create a report of what columns or indexes need to be added
 by an administrator before the code can be deployed.
 
 Note: We are skipping the implementation of foreign keys for now. We will get back to them when they prove useful.
-In this application, rows are never deleted, they are only disabled. Rows get deleted (by not copying them) when 
+In this application, rows are never deleted; they are only disabled. Rows get deleted (by not copying them) when
 the entire table is copied from one database to another during a *data* refresh process. 
 
 The builder is named *table* and it has the following inputs.
 
-* tableName - Name of table. It should be a globally unique name. Note that qualifier strings may be added to the
+* tableName - Name of the table. It should be a globally unique name. Note that qualifier strings may be added to the
  the *tableName* value to create the actual table name.
-* description - Description of table.
+* description - Description of the table.
 * dnFields - An array of DnField definitions as described above.
-* primaryKey - An Index object as defined below. This does not need to be supplied if *counterField* is supplied.
+* primaryKey - An Index object as defined below. This does not need to be supplied, if *counterField* is supplied.
 * indexes - An array of Index objects as defined below. These are secondary indexes.
 * counterField - If present, the attribute names the name of the field that becomes the auto-incrementing primary
  key for the table. The column becomes the first column.
@@ -293,13 +292,13 @@ The builder is named *table* and it has the following inputs.
  accounting date for the row. It is the answer to "when did this happen?"
 * hasModifyUser - Whether the column *modifyUserId* is added to the database table to track the user who
  modified the row.
-* noEnabled - Whether the column *enabled* should **not** be added to the database table. By default it is
+* noEnabled - Whether the column *enabled* should **not** be added to the database table. By default, it is
  added to the table at the end before the date fields added by *hasDates*.
 * isUserData - Whether the columns *userId* and *userGroup* are added to the database and whether an index on
  *userGroup* (and additionally *modifiedDate* if it is present) is created. Unless, a primary key is created
  with *userId* in it, then an index on *userId* (and *modifiedDate* if present) is created as well. The type
  of value that populates the *userGroup* field depends on how users are organized, but the *userGroup* value is targeted
- if any sharding is done on the table. The value for *userGroup* may also vary depending on the type type of data
+ if any sharding is done on the table. The value for *userGroup* may also vary depending on the type of data
  being stored.
 * isTopLevel - Whether the columns *lastTranId* and *touchedDate* should be added to the table. Generally
 if these columns are added then the table should be treated as a locking table to initiate transactions. 
@@ -312,11 +311,11 @@ An Index object can either be:
  that specifying *asc* or *desc* is not supported for primary keys.
 * Or a structure that looks like:
    * name - A unique name (relative to the table) to assign to the index. This is definitely optional. Note, this
-    is the *not* the actual name assigned to the index. That name will have the actual true table name prepended. 
+    is *not* the actual name assigned to the index. That name has the actual true table name prepended.
     But it can be used in code to find the index definition and use it to help build queries.
    * fields - The array of strings described in the first option.
-   * props - A map of additional properties about the index. One common property is *unique* which if set to true means
-   there is an uniqueness constraint on the index. Note that a primary key has that constraint automatically.
+   * props - A map of additional properties about the index. One common property is *unique*, which if set to true means
+   there is a uniqueness constraint on the index. Note that a primary key has that constraint automatically.
    
 If the index is supplied using the first option, it is converted into the second.
 
@@ -412,14 +411,14 @@ indexes:
 
 In addition to adding protocol fields to the table, the table definitions built this way also come with
 associated code that will automatically generate prepared SQL statements that perform the predictable
-queries against the data. There will also be code that automatically populates a new with the user fields, 
-the date fields and the *enabled* field without direct intervention by the logic using the table to do TSV.
+queries against the data. There is also code that automatically populates a new table with the user fields,
+the date fields, and the *enabled* field without direct intervention by the logic using the table to do TSV.
    
 ### Namespacing
 
 One of the reasons for cloning is for making a copy of a DnType so it can be put into a particular namespace, 
-which alters the name of its type. Also, any fields referring to a base type also may have that reference 
+which alters the name of its type. Also, any fields referring to a base type may have that reference
 adjusted as well. Essentially, if the name of a DnType does not have a dot ('.') in it, then the current
 namespace is added a prefix separated by a dot. This allows the definition of the raw type to be done 
-without reference to a namespace and the namespacing applied later.
+without reference to a namespace and the name spacing applied later.
  
