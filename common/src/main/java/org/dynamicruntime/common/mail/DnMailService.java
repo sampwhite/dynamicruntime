@@ -23,9 +23,12 @@ public class DnMailService implements ServiceInitializer {
     // The configuration for private key should be in the private file.
     public static final String API_KEY = "mail.mg.apiKey";
     public static final String MAILGUN_URI_KEY = "mail.mg.uri";
+    public static final String MAIL_APP_FROM_ADDRESS_KEY = "mail.appFromAddress";
 
     // For simulated email sending.
     public final AtomicInteger mailId = new AtomicInteger(1);
+
+    public String fromAddressForApp;
 
     // Target of email.
     public String mailgunUri;
@@ -45,6 +48,9 @@ public class DnMailService implements ServiceInitializer {
             mailgunUri = DnConfigUtil.getConfigString(cxt, MAILGUN_URI_KEY,
                     "https://api.mailgun.net/v3/mg.dynamicruntime.org/messages",
                     "Mailgun URI path");
+            fromAddressForApp = DnConfigUtil.getConfigString(cxt, MAIL_APP_FROM_ADDRESS_KEY,
+                    "support@mg.dynamicruntime.org", "From address for application " +
+                            "generated emails.");
             apiKey = toOptStr(cxt.instanceConfig.get(API_KEY));
             httpClient = new DnHttpClient(cxt, "Mailgun", false);
         }

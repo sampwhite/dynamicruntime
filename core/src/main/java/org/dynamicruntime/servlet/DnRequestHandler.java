@@ -10,6 +10,7 @@ import org.dynamicruntime.request.DnServletHandler;
 import org.dynamicruntime.startup.InstanceRegistry;
 import org.dynamicruntime.user.UserAuthCookie;
 import org.dynamicruntime.user.UserAuthData;
+import org.dynamicruntime.user.UserSourceId;
 import org.dynamicruntime.util.DnDateUtil;
 import org.dynamicruntime.util.EncodeUtil;
 import org.dynamicruntime.util.ParsingUtil;
@@ -70,6 +71,7 @@ public class DnRequestHandler implements DnServletHandler {
 
     /** Attributes filled or acted on by hooks. */
     public UserAuthData userAuthData;
+    public UserSourceId userSourceId;
     public UserAuthCookie userAuthCookie;
     public boolean setAuthCookie;
     public boolean isLogout;
@@ -131,6 +133,9 @@ public class DnRequestHandler implements DnServletHandler {
                 }
             }
         }
+        String ff = getRequestHeader("X-Forwarded-For");
+        this.forwardedFor = (ff != null && ff.length() > 0) ? ff : null;
+
         this.testHeaders = convertedHdrs;
         this.rptResponseHeaders = mMapT();
         String ct = getRequestHeader("content-type");
@@ -152,6 +157,7 @@ public class DnRequestHandler implements DnServletHandler {
 
             // For now, default to the local instance for getting cxt objects. Eventually, we will do more.
             cxt = InstanceRegistry.createCxt("request", instance);
+            cxt.forwardedFor = forwardedFor;
 
             // See if the request is being forwarded from a client that knows how to supply a request path.
             String reqPath = getRequestHeader(NDH_HDR_REQUEST_PATH);
@@ -268,7 +274,7 @@ public class DnRequestHandler implements DnServletHandler {
                 sentResponse = true;
                 int code = DnException.INTERNAL_ERROR;
                 String source = DnException.SYSTEM;
-                String activity = DnException.UNSPECIFIED;
+                String activity = DnException.GENERAL;
                 String msg = t.getMessage();
                 boolean canRetry = false;
                 if (t instanceof DnException) {
@@ -457,6 +463,16 @@ public class DnRequestHandler implements DnServletHandler {
         }
     }
 
+    @Override
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    @Override
+    public String getForwardedFor() {
+        return forwardedFor;
+    }
+
     // Let auth code set cookies.
     @Override
     public void addResponseHeader(String header, String value) {
@@ -476,6 +492,16 @@ public class DnRequestHandler implements DnServletHandler {
     @Override
     public void setUserAuthData(UserAuthData userAuthData) {
         this.userAuthData = userAuthData;
+    }
+
+    @Override
+    public UserSourceId getUserSourceId() {
+        return userSourceId;
+    }
+
+    @Override
+    public void setUserSourceId(UserSourceId sourceId) {
+        this.userSourceId = sourceId;
     }
 
 

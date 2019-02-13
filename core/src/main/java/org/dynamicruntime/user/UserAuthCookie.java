@@ -35,6 +35,7 @@ public class UserAuthCookie {
     public final int version;
     public final long grantingUserId;
     public final long userId;
+    public final String sourceId;
     public final String account;
     public final List<String> roles;
     public final String authId;
@@ -49,11 +50,12 @@ public class UserAuthCookie {
     public Date expireDate;
 
     public UserAuthCookie(String code, int version, long grantingUserId, long userId,
-            String account, List<String> roles, String authId, Date creationDate) {
+            String sourceId, String account, List<String> roles, String authId, Date creationDate) {
         this.code = code;
         this.version = version;
         this.grantingUserId = grantingUserId;
         this.userId = userId;
+        this.sourceId = sourceId;
         this.account = account;
         this.roles = roles;
         this.authId = authId;
@@ -92,8 +94,8 @@ public class UserAuthCookie {
     public String toString() {
         String md = getDateDiffAsString(creationDate, modifiedDate);
         String ed = getDateDiffAsString(modifiedDate, expireDate);
-        return code + version + "," + grantingUserId + "," + userId + "," + s(account) + "," + l(roles) + "," +
-                s(authId) + "," + s(publicName) + "," + s(groupName) + "," + s(shard) + "," +
+        return code + version + "," + grantingUserId + "," + userId + "," + s(sourceId) + "," + s(account) + "," +
+                l(roles) + "," + s(authId) + "," + s(publicName) + "," + s(groupName) + "," + s(shard) + "," +
                 s(authRulesAsStr) + "," + renewalCount + "," + fmtObject(creationDate) + "," + md + "," + ed;
     }
 
@@ -118,29 +120,31 @@ public class UserAuthCookie {
         if (!cv.startsWith(STD_AUTH_COOKIE_CODE) || cv.length() < 2) {
             throw new DnException("Cookie type is not supported by this application.");
         }
-        if (entries.length < 14) {
+        if (entries.length < 15) {
             throw new DnException("Cookie is not properly formatted.");
         }
         String code = cv.substring(0, 1);
         int version = (int)toReqLong(cv.substring(1));
         long grantingUserId = toReqLong(entries[1]);
         long userId = toReqLong(entries[2]);
-        String account = entries[3];
-        List<String> roles = StrUtil.splitString(entries[4], ":");
-        String authId = entries[5];
-        String publicName = entries[6];
-        String groupName = entries[7];
-        String shard = entries[8];
-        String authRulesAsStr = entries[9];
-        int renewalCount = (int)toReqLong(entries[10]);
-        Date creationDate = toReqDate(entries[11]);
-        Date modifiedDate = getDateWithDiff(creationDate, entries[12]);
-        Date expireDate = getDateWithDiff(modifiedDate, entries[13]);
+        String sourceId = entries[3];
+        String account = entries[4];
+        List<String> roles = StrUtil.splitString(entries[5], ":");
+        String authId = entries[6];
+        String publicName = entries[7];
+        String groupName = entries[8];
+        String shard = entries[9];
+        String authRulesAsStr = entries[10];
+        int renewalCount = (int)toReqLong(entries[11]);
+        Date creationDate = toReqDate(entries[12]);
+        Date modifiedDate = getDateWithDiff(creationDate, entries[13]);
+        Date expireDate = getDateWithDiff(modifiedDate, entries[14]);
 
         // Additional entries can be added as the cookie grows in data that is put into it.
         //....
 
-        var uac = new UserAuthCookie(code, version, grantingUserId, userId, account, roles, authId, creationDate);
+        var uac = new UserAuthCookie(code, version, grantingUserId, userId, sourceId, account, roles,
+                authId, creationDate);
         // Mutable values.
         uac.publicName = publicName;
         uac.groupName = groupName;

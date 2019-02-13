@@ -35,8 +35,8 @@ public class DnRawEndpoint implements DnRawTypeInterface {
         return new DnRawType(name, epModel);
     }
 
-    public static DnRawEndpoint mkEndpoint(String path, String function, String description, String inTypeRef, String outTypeRef) {
-        var model = mMap(EP_PATH, path, EP_FUNCTION, function, DN_DESCRIPTION, description,
+    public static DnRawEndpoint mkEndpoint(String method, String path, String function, String description, String inTypeRef, String outTypeRef) {
+        var model = mMap(EP_HTTP_METHOD, method, EP_PATH, path, EP_FUNCTION, function, DN_DESCRIPTION, description,
                 EP_INPUT_TYPE_REF, inTypeRef, EP_OUTPUT_TYPE_REF, outTypeRef);
         return new DnRawEndpoint(path, model);
     }
@@ -48,13 +48,13 @@ public class DnRawEndpoint implements DnRawTypeInterface {
 
     public static DnRawEndpoint mkListEndpoint(String path, String function, String description,
             String inTypeRef, String outTypeRef) {
-        return mkEndpoint(path, function, description, inTypeRef, outTypeRef)
+        return mkEndpoint(EPH_GET,path, function, description, inTypeRef, outTypeRef)
                 .setAttribute(EP_IS_LIST_RESPONSE, true);
     }
 
     public static DnRawEndpoint mkSimpleListEndpoint(String path, String function, String description,
             String inTypeRef, String outTypeRef) {
-        return mkEndpoint(path, function, description, inTypeRef, outTypeRef)
+        return mkEndpoint(EPH_GET, path, function, description, inTypeRef, outTypeRef)
                 .setAttribute(EP_IS_LIST_RESPONSE, true).setAttribute(EP_NO_LIMIT_PARAMETER, true);
     }
 

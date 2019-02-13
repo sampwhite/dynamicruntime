@@ -14,8 +14,10 @@ import org.dynamicruntime.sql.DnSqlStatement;
 import org.dynamicruntime.sql.SqlCxt;
 import org.dynamicruntime.sql.topic.*;
 import org.dynamicruntime.startup.ServiceInitializer;
+import org.dynamicruntime.user.LogUser;
 import org.dynamicruntime.user.UserAuthData;
 import org.dynamicruntime.user.UserAuthHook;
+import org.dynamicruntime.user.UserSourceId;
 import org.dynamicruntime.util.EncodeUtil;
 
 import static org.dynamicruntime.user.UserConstants.*;
@@ -35,6 +37,7 @@ public class UserService implements ServiceInitializer {
     public static final int PROFILE_CACHE_TIMEOUT_IN_SECS = 10;
     public static final String USER_SERVICE = UserService.class.getSimpleName();
     public SqlTopicService topicService;
+    public final AuthFormHandler formHandler = new AuthFormHandler(this);
     public final UserCache userCache = new UserCache();
 
     public static UserService get(DnCxt cxt) {
@@ -53,6 +56,7 @@ public class UserService implements ServiceInitializer {
         if (topicService == null) {
             throw new DnException("UserService requires SqlTopicService.");
         }
+        formHandler.init(cxt);
 
         // Register the topics this service interfaces with.
         topicService.registerTopicContainer(SqlTopicConstants.AUTH_TOPIC,
@@ -186,8 +190,18 @@ public class UserService implements ServiceInitializer {
     public AuthUserRow queryPrimaryId(DnCxt cxt, String primaryId) throws DnException {
         return queryUser(cxt, aqh -> aqh.queryByPrimaryId(cxt, primaryId));
     }
-
     public void loadProfileRecord(DnCxt cxt, UserProfile profile, boolean forceRefresh) throws DnException {
+        if (profile == null) {
+            return;
+        }
+        AuthAllUserData allData = new AuthAllUserData(profile.userId, null, null);
+        allData.profile = profile;
+        loadProfileRecord(cxt, allData, forceRefresh);
+    }
+
+    public void loadProfileRecord(DnCxt cxt, AuthAllUserData allData, boolean forceRefresh)
+            throws DnException {
+        UserProfile profile = allData.profile;
         if (profile == null || profile.userId <= DnCxtConstants.AC_SYSTEM_USER_ID) {
             return;
         }
@@ -200,15 +214,16 @@ public class UserService implements ServiceInitializer {
                 timeout = secondsDiff;
             }
         }
-        var row = userCache.getProfileData(userId, timeout, datedItem -> getOrCreateProfileRow(cxt, profile));
+        var row = userCache.getProfileData(userId, timeout, datedItem -> getOrCreateProfileRow(cxt, allData));
         profile.timezone = ZoneId.of(getReqStr(Objects.requireNonNull(row), UP_USER_TIMEZONE));
         profile.locale = LocaleUtils.toLocale(getReqStr(row, UP_USER_LOCALE));
         profile.profileData = getMapDefaultEmpty(row, UP_USER_DATA);
         profile.data = row;
     }
 
-    public Map<String,Object> getOrCreateProfileRow(DnCxt cxt, UserProfile profile) throws DnException {
-        long userId = profile.userId;
+    public Map<String,Object> getOrCreateProfileRow(DnCxt cxt, AuthAllUserData allData) throws DnException {
+        UserProfile profile = allData.profile;
+        long userId = allData.userId;
         var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.USER_PROFILE_TOPIC);
         var profileTopic = Objects.requireNonNull(sqlCxt.sqlTopic);
         var sqlDb = profileTopic.sqlDb;
@@ -224,13 +239,37 @@ public class UserService implements ServiceInitializer {
                 String username = getOptStr(profileUserData, UP_PUBLIC_NAME);
                 if (profile.publicName != null && (username == null || !username.equals(profile.publicName))) {
                     needsUpdate = true;
-                    profileUserData.clear();
                     profileUserData.put(UP_PUBLIC_NAME, profile.publicName);
                 }
             } else {
                 profileUserData = mMap(UP_PUBLIC_NAME, profile.publicName);
             }
-            boolean doUpdate = needsUpdate;
+            // Copy over initial contacts from auth provisioning (if necessary).
+            if (!profileUserData.containsKey(CTE_CONTACTS)) {
+                var authContacts = getOptListOfMaps(profile.authData, CTE_CONTACTS);
+                if (authContacts != null && authContacts.size() > 0) {
+                    profileUserData.put(CTE_CONTACTS, authContacts);
+                    needsUpdate = (row != null);
+                }
+            }
+
+            // See if we need to capture some changes in the login sourceId state.
+            if (allData.updateProfileSourceId) {
+                Map<String,Object> sourceIdData = getMapDefaultEmpty(profileUserData, UP_LOGIN_SOURCES);
+                UserSourceId sourceId = new UserSourceId(false, "canBeIgnored",
+                        null);
+                try {
+                    sourceId.fillFromSourceData(sourceIdData);
+                } catch (DnException e) {
+                    LogUser.log.error(cxt, e, "Failed to fill in login source data from profile.");
+                }
+                sourceId.addSource(cxt, allData.ipAddress, allData.userAgent);
+                profileUserData.put(UP_LOGIN_SOURCES, sourceId.toProfileMap());
+                needsUpdate = (row != null);
+            }
+
+            // Capture into another variable so it can be used in code blocks below.
+            final boolean doUpdate = needsUpdate;
 
             if (row == null || doUpdate) {
                 // Need to create a new row.  Note that the transaction will populate the data with userId,

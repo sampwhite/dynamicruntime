@@ -7,12 +7,15 @@ import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.schemadef.DnTable;
 import org.dynamicruntime.sql.DnSqlStatement;
 import org.dynamicruntime.sql.SqlCxt;
+import org.dynamicruntime.sql.SqlStmtUtil;
 import org.dynamicruntime.sql.SqlTableUtil;
 import org.dynamicruntime.sql.topic.SqlQueryHolderBase;
 import org.dynamicruntime.sql.topic.SqlTopic;
 import org.dynamicruntime.sql.topic.SqlTopicConstants;
 import org.dynamicruntime.sql.topic.SqlTopicUtil;
+import org.dynamicruntime.user.UserSourceId;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.dynamicruntime.util.ConvertUtil.*;
@@ -53,22 +56,25 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
     public DnSqlStatement qUsername;
     public DnSqlStatement qPrimaryId;
 
-    /** Contacts */
-    public DnTable contacts;
-    public DnSqlStatement iContact;
-    public DnSqlStatement qContact;
-    public DnSqlStatement qContactsByUser;
-    public DnSqlStatement qContactByContactId;
-    public DnSqlStatement uContact;
     /** AuthTokens */
     public DnTable authTokens;
     public DnSqlStatement iAuthToken;
     public DnSqlStatement uAuthToken;
     public DnSqlStatement qAuthToken;
+
+    /* Contacts
+    public DnTable contacts;
+    public DnSqlStatement iContact;
+    public DnSqlStatement qContact;
+    public DnSqlStatement qContactsByUser;
+    public DnSqlStatement qContactByContactId;
+    public DnSqlStatement uContact; */
+
     /** Login sources. */
     public DnTable sources;
     public DnSqlStatement iSource;
     public DnSqlStatement qSource;
+    public DnSqlStatement qRecentSources;
     public DnSqlStatement uSource;
 
     public AuthQueryHolder(String name, SqlTopic sqlTopic) {
@@ -85,8 +91,8 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
 
     @Override
     public void init(SqlCxt sqlCxt) throws DnException {
-        boolean firstTime = initContacts(sqlCxt);
-        initAuthTokens(sqlCxt);
+        boolean firstTime = initAuthTokens(sqlCxt);
+        // initContacts(sqlCxt);
         initSources(sqlCxt);
         initExtraAuth(sqlCxt);
         if (firstTime) {
@@ -94,7 +100,7 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
         }
     }
 
-
+/*
     public boolean initContacts(SqlCxt sqlCxt) throws DnException {
         DnCxt cxt = sqlCxt.cxt;
 
@@ -113,16 +119,17 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
 
         return firstTime;
     }
-
-    public void initAuthTokens(SqlCxt sqlCxt) throws DnException {
+*/
+    public boolean initAuthTokens(SqlCxt sqlCxt) throws DnException {
         DnCxt cxt = sqlCxt.cxt;
 
         authTokens = cxt.getSchema().getTable(UserTableConstants.UT_TB_AUTH_TOKENS);
-        SqlTableUtil.checkCreateTable(sqlCxt, authTokens);
+        boolean firstTime = SqlTableUtil.checkCreateTable(sqlCxt, authTokens);
 
         iAuthToken = SqlTopicUtil.mkTableInsertStmt(sqlCxt, authTokens);
         uAuthToken = SqlTopicUtil.mkTableUpdateStmt(sqlCxt, authTokens);
         qAuthToken = SqlTopicUtil.mkTableSelectStmt(sqlCxt, authTokens);
+        return firstTime;
     }
 
     public void initSources(SqlCxt sqlCxt) throws DnException {
@@ -134,6 +141,11 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
 
         iSource = SqlTopicUtil.mkTableInsertStmt(sqlCxt, sources);
         qSource = SqlTopicUtil.mkTableSelectStmt(sqlCxt, sources);
+
+        String recentSourcesStmt = SqlStmtUtil.mkSelectQuery(sources.tableName,  mList(USER_ID)) +
+                String.format(" ORDER BY c:%s DESC LIMIT 8", MODIFIED_DATE);
+        qRecentSources = SqlStmtUtil.prepareSql(sqlCxt, "qRecentForUser" + sources.tableName,
+                sources.columns, recentSourcesStmt);
         uSource = SqlTopicUtil.mkTableUpdateStmt(sqlCxt, sources);
     }
 
@@ -181,10 +193,20 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
     // an SQL session.
     //
 
-    public void insertAuthUser(DnCxt cxt, Map<String,Object> userDefData) throws DnException {
+    public long insertAuthUser(DnCxt cxt, Map<String,Object> userDefData) throws DnException {
         SqlTopicUtil.prepForTranInsert(cxt, userDefData);
         SqlTopicUtil.prepForStdExecute(cxt, userDefData);
-        sqlDb.executeDnStatement(cxt, sqlTopic.iTranLockQuery, userDefData);
+        long[] counter = {-1};
+        sqlDb.executeDnStatementGetCounterBack(cxt, sqlTopic.iTranLockQuery, userDefData, counter);
+        if (counter[0] < 0) {
+            throw new DnException("Creating user row did not return a counter for the user.");
+        }
+        return counter[0];
+    }
+
+    public boolean updateAuthUser(DnCxt cxt, Map<String,Object> userDefData) throws DnException {
+        SqlTopicUtil.prepForStdExecute(cxt, userDefData);
+        return sqlDb.executeDnStatement(cxt, sqlTopic.uTranLockQuery, userDefData) > 0;
     }
 
     public AuthUserRow queryByUserId(DnCxt cxt, long userId) throws DnException {
@@ -206,5 +228,24 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
         var params = mMap(AUTH_USERNAME, username);
         var row = sqlDb.queryOneDnStatement(cxt, qUsername, params);
         return (row != null) ? AuthUserRow.extract(row) : null;
+    }
+
+    public UserSourceId queryLoginSourceId(DnCxt cxt, long userId, String sourceCode) throws DnException {
+        var params = mMap(USER_ID, userId, LS_SOURCE_GUID, sourceCode);
+        var row = sqlDb.queryOneDnStatement(cxt, qSource, params);
+        return (row != null) ? UserSourceId.extract(row) : null;
+    }
+
+    public List<UserSourceId> queryRecentLoginSourceIds(DnCxt cxt, long userId) throws DnException {
+        var params = mMap(USER_ID, userId);
+        var rows = sqlDb.queryDnStatement(cxt, qRecentSources, params);
+        return nMap(rows, UserSourceId::extract);
+    }
+
+    public void updateLoginSourceId(DnCxt cxt, UserSourceId sourceId, boolean isInsert) throws DnException {
+        var data = sourceId.toLoginMap();
+        SqlTopicUtil.prepForStdExecute(cxt, data);
+        var stmt = (isInsert) ? iSource : uSource;
+        sqlDb.executeDnStatement(cxt, stmt, data);
     }
 }

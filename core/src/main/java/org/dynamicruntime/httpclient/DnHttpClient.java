@@ -124,7 +124,7 @@ public class DnHttpClient implements Runnable {
             if (request.cxt != null) {
                 // When doing inter-node calls, pass along execution paths so that we can
                 // chase down the cross node call stack.
-                hReq.addHeader(NDH_HDR_REQUEST_PATH, request.cxt.getExePath());
+                hReq.addHeader(NDH_HDR_REQUEST_PATH, request.cxt.getCxtPath());
             }
             if (hReq instanceof HttpEntityEnclosingRequest && request.values != null) {
                 HttpEntityEnclosingRequest hEntity = (HttpEntityEnclosingRequest) hReq;

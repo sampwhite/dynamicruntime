@@ -1,6 +1,7 @@
 package org.dynamicruntime.request;
 
 import org.dynamicruntime.user.UserAuthData;
+import org.dynamicruntime.user.UserSourceId;
 
 import java.io.IOException;
 import java.util.Date;
@@ -16,10 +17,14 @@ public interface DnServletHandler {
     List<String> getHeaderNames();
     String getRequestHeader(String header);
     List<String> getRequestHeaders(String header);
+    String getUserAgent();
+    String getForwardedFor();
     // Let auth implementation set cookies.
     void addResponseHeader(String header, String value);
     UserAuthData getUserAuthData();
     void setUserAuthData(UserAuthData userAuthData);
+    UserSourceId getUserSourceId();
+    void setUserSourceId(UserSourceId sourceId);
     void setAuthCookieOnResponse(boolean setAuthCookie);
     void setIsLogout(boolean isLogout);
     Map<String,String> getRequestCookies();

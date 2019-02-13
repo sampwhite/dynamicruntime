@@ -177,7 +177,7 @@ public class DnSchemaDefConstants {
     /** The name of the field that defines the output type for the endpoint. */
     public static final String EPF_OUTPUT_TYPE = "endpointOutputType";
 
-    /** The allowable HTTP methods. */
+    /** The allowable HTTP methods. EPH = EndPoint Http*/
     public static final String EPH_GET = "GET";
     public static final String EPH_POST = "POST";
     public static final String EPH_PUT = "PUT";

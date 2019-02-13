@@ -24,4 +24,12 @@ class EncodeUtilTest extends Specification {
         then: "Should be able to check hash against original value"
         EncodeUtil.checkPassword(inText, hash)
     }
+
+    def "Verify generating readable code"() {
+        List<Byte> bytes = [0x3A, 0xE2]
+        when: "Producing a string"
+
+        then:
+        EncodeUtil.convertToReadableChars(bytes as byte[], 2) == 'KZ8H'
+    }
 }

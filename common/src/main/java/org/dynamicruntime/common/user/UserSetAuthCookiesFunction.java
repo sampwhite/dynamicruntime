@@ -6,6 +6,7 @@ import org.dynamicruntime.servlet.DnRequestHandler;
 import org.dynamicruntime.servlet.DnRequestService;
 import org.dynamicruntime.user.UserAuthCookie;
 import org.dynamicruntime.user.UserAuthData;
+import org.dynamicruntime.user.UserSourceId;
 import org.dynamicruntime.util.DnDateUtil;
 
 import static org.dynamicruntime.user.UserConstants.*;
@@ -32,11 +33,27 @@ public class UserSetAuthCookiesFunction implements DnHookFunction<DnRequestServi
         }
         var ac = workData.userAuthCookie;
         var oldCookie = (ac != null && ac.userId == userAuthData.userId) ? ac : null;
+
+
         boolean setIt = workData.setAuthCookie;
         if (oldCookie == null && !setIt) {
             return;
         }
         Date now = cxt.now();
+
+        // Handle the sourceId first.
+        UserSourceId sourceId = workData.getUserSourceId();
+        if (sourceId != null) {
+            boolean updateSourceId = sourceId.forceRegenerateCookie || sourceId.isModified ||
+                    (sourceId.newCookieCreateDate != null &&
+                            !sourceId.newCookieCreateDate.equals(sourceId.cookieCreateDate));
+            if (updateSourceId) {
+                String cookieValue = sourceId.computeCookieString(cxt);
+                workData.addResponseCookie(LS_SOURCE_COOKIE_NAME, cookieValue,
+                        DnDateUtil.addDays(now, 400));
+            }
+        }
+
         if (!setIt) {
             Date modifiedDate = oldCookie.modifiedDate;
             long dur = now.getTime() - modifiedDate.getTime();
@@ -48,9 +65,10 @@ public class UserSetAuthCookiesFunction implements DnHookFunction<DnRequestServi
         if (setIt) {
             Date dateCreated = (oldCookie != null) ? oldCookie.creationDate : now;
             int renewalCount = (oldCookie != null) ? oldCookie.renewalCount + 1 : 1;
+            String sourceCode = userAuthData.sourceId;
             var authCookie = new UserAuthCookie(UserAuthCookie.STD_AUTH_COOKIE_CODE,
                     UserAuthCookie.CURRENT_VERSION, userAuthData.grantingUserId, userAuthData.userId,
-                    userAuthData.account, userAuthData.roles, userAuthData.authId, dateCreated);
+                    sourceCode, userAuthData.account, userAuthData.roles, userAuthData.authId, dateCreated);
             authCookie.publicName = userAuthData.publicName;
             authCookie.groupName = userAuthData.userGroup;
             authCookie.shard = userAuthData.shard;

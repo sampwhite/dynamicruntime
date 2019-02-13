@@ -21,4 +21,10 @@ public class RandomUtil {
     public static Random getRandom() {
         return random.get();
     }
+
+    public static int getIntegerInRange(int lower, int upper) {
+        int diff = upper + 1 - lower;
+        int offset = getRandom().nextInt(diff);
+        return lower + offset;
+    }
 }

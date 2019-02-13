@@ -14,6 +14,9 @@ public class AuthUserUtil {
         if (authUser == null) {
             throw DnException.mkInput("Authentication token is not valid.");
         }
+        if (!authUser.enabled) {
+            throw new DnException("Cannot do token auth against disabled user.");
+        }
         UserAuthData userAuthData = servletHandler.getUserAuthData();
         if (userAuthData == null) {
             userAuthData = new UserAuthData();
@@ -22,7 +25,19 @@ public class AuthUserUtil {
         authUser.populateAuthData(userAuthData);
         userAuthData.determinedUserId = true;
         return userAuthData;
-
     }
 
+    public static AuthAllUserData mkAllUserData(long userId, DnServletHandler servletHandler) {
+        String ipAddress = servletHandler.getForwardedFor();
+        if (ipAddress == null) {
+            ipAddress = "localhost";
+        }
+        String userAgent = servletHandler.getUserAgent();
+        if (userAgent == null) {
+            userAgent = "none";
+        }
+        AuthAllUserData allData = new AuthAllUserData(userId, ipAddress, userAgent);
+        allData.sourceId = servletHandler.getUserSourceId();
+        return allData;
+    }
 }

@@ -22,6 +22,7 @@ public class DnException extends Exception {
     public static int AUTH_NEEDED = 401;
     public static int NOT_AUTHORIZED = 403;
     public static int NOT_FOUND = 404;
+    public static int CONFLICT = 409;
     // The default error code.
     public static int INTERNAL_ERROR = 500;
     // We treat 501 as a version of *400* but it is not the caller's fault.
@@ -39,7 +40,7 @@ public class DnException extends Exception {
 
     /** Activity codes. What type of activity caused the issue. */
     // No activity reported, the most common case.
-    public static final String UNSPECIFIED = "unspecified";
+    public static final String GENERAL = "general";
     // Thread interruption.
     public static final String INTERRUPTED = "interrupted";
     // Indicates that parsing or conversion was taking place.
@@ -61,16 +62,16 @@ public class DnException extends Exception {
     public final String activity;
 
     public DnException(String msg) {
-        this(msg, null, INTERNAL_ERROR, SYSTEM, UNSPECIFIED);
+        this(msg, null, INTERNAL_ERROR, SYSTEM, GENERAL);
     }
 
     public DnException(String msg, Throwable t) {
-        this(msg, t, INTERNAL_ERROR, SYSTEM, UNSPECIFIED);
+        this(msg, t, INTERNAL_ERROR, SYSTEM, GENERAL);
     }
 
 
     public DnException(String msg, int code) {
-        this(msg, null, code, SYSTEM, UNSPECIFIED);
+        this(msg, null, code, SYSTEM, GENERAL);
     }
 
     public DnException(String msg, Throwable cause, int code, String source, String activity) {

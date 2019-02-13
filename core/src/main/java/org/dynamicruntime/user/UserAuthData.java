@@ -28,6 +28,8 @@ public class UserAuthData {
     public String publicName;
     /** The roles assigned to user. */
     public List<String> roles;
+    /** The sourceCode for the UserSourceId object. Only set when doing to standard logins. */
+    public String sourceId;
     /** Indicates whether we have determined a userId. */
     public boolean determinedUserId;
 
@@ -45,6 +47,7 @@ public class UserAuthData {
         var up = new UserProfile(userId, account, userGroup, roles);
         up.authId = authId != null ? authId : "" + userId;
         up.publicName = publicName;
+        up.sourceId = sourceId;
         up.authData = userData;
         up.authRules = authRules;
         up.cookieModifiedDate = cookieModifiedDate;

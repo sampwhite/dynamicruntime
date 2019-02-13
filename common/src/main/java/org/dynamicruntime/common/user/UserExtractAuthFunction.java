@@ -7,11 +7,14 @@ import org.dynamicruntime.servlet.DnRequestHandler;
 import org.dynamicruntime.servlet.DnRequestService;
 import org.dynamicruntime.user.UserAuthCookie;
 import org.dynamicruntime.user.UserAuthData;
+import org.dynamicruntime.user.UserSourceId;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
+import static org.dynamicruntime.util.ConvertUtil.*;
 import static org.dynamicruntime.user.UserConstants.*;
 
 @SuppressWarnings("WeakerAccess")
@@ -41,6 +44,16 @@ public class UserExtractAuthFunction implements DnHookFunction<DnRequestService,
             String tokenData = token.substring(index + 1);
             AuthUserUtil.computeUserAuthDataFromToken(cxt, userService, name, tokenData, workData);
             return;
+        }
+
+        Map<String,String> cookies = workData.getRequestCookies();
+        String sourceCookie = cookies.get(LS_SOURCE_COOKIE_NAME);
+        UserSourceId sourceId = null;
+        if (sourceCookie != null) {
+            // Initial creation of UserSourceId. This gets filled out from the database
+            // only when needed.
+            sourceId = UserSourceId.createFromCookie(sourceCookie);
+            workData.setUserSourceId(sourceId);
         }
 
         UserAuthCookie authCookie = workData.userAuthCookie;
@@ -78,6 +91,16 @@ public class UserExtractAuthFunction implements DnHookFunction<DnRequestService,
                     authData.determinedUserId = true;
                     authData.cookieModifiedDate = cookieDate;
                     workData.setUserAuthData(authData);
+                    String cSourceId = authCookie.sourceId;
+                    // Allow authentication cookie to create a sourceId or to overrule an existing sourceId.
+                    if (!isEmpty(cSourceId) && (sourceId == null || !sourceId.sourceCode.equals(cSourceId))) {
+                        sourceId = new UserSourceId(false, cSourceId, authCookie.creationDate);
+                        sourceId.forceRegenerateCookie = true;
+                        workData.setUserSourceId(sourceId);
+                    }
+                    if (sourceId != null) {
+                        sourceId.userId = userId;
+                    }
                     // Use cookie update to tell other nodes that their user and profile caches need
                     // to be updated.
                     boolean isUserEdit = DnRequestService.USER_ROOT.equals(workData.target) &&

@@ -39,9 +39,9 @@ public class DnMailSchemaDefData {
     static public DnRawField message = mkField("message", "Message",
             "The message sent back by the mail server.");
     static public DnRawType adminMailResponse = mkType("AdminMailResponse", mList(id, message));
-    static public DnRawEndpoint adminMailTestEndpoint = mkEndpoint("/admin/email/test", ADMIN_EMAIL_TEST,
+    static public DnRawEndpoint adminMailTestEndpoint = mkEndpoint(EPH_POST,"/admin/email/test", ADMIN_EMAIL_TEST,
             "Allows testing of mailgun api.",
-            adminMailRequest.name, adminMailResponse.name).setMethod(EPH_POST);
+            adminMailRequest.name, adminMailResponse.name);
 
     static public DnRawSchemaPackage getPackage() {
         return DnRawSchemaPackage.mkPackage("DnMail", MAIL_NAMESPACE,

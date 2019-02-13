@@ -2,6 +2,7 @@ package org.dynamicruntime.common.user;
 
 @SuppressWarnings("WeakerAccess")
 public class UserTableConstants {
+    public static String UT_TB_SHARD_USERS = "ShardUsers";
     public static String UT_TB_AUTH_USERS = "AuthUsers";
     public static String UT_TB_AUTH_CONTACTS = "AuthContacts";
     public static String UT_TB_AUTH_TOKENS = "AuthTokens";

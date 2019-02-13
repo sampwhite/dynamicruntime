@@ -91,6 +91,17 @@ public class SqlTopicUtil {
         return true;
     }
 
+    public static Map<String,Object> mergeUserFields(Map<String,Object> into, Map<String,Object> from) {
+        Map<String,Object> retVal = (into != null) ? into : mMap();
+        mList(USER_ID, USER_GROUP).forEach(uId -> {
+            Object v = from.get(uId);
+            if (v != null) {
+                retVal.put(uId, v);
+            }
+        });
+        return retVal;
+    }
+
     public static void checkAddUserFields(DnCxt cxt, Map<String,Object> rowValues) {
         long userId = cxt.userProfile != null ? cxt.userProfile.userId : DnCxtConstants.AC_SYSTEM_USER_ID;
         String group = cxt.userProfile != null ? cxt.userProfile.userGroup : DnCxtConstants.AC_LOCAL;

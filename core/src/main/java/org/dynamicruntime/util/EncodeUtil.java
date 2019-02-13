@@ -1,5 +1,6 @@
 package org.dynamicruntime.util;
 
+import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
 
 import javax.crypto.*;
@@ -12,6 +13,7 @@ import java.security.*;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
+import java.util.Date;
 
 @SuppressWarnings({"WeakerAccess", "unused"})
 public class EncodeUtil {
@@ -38,14 +40,19 @@ public class EncodeUtil {
         return Base64.getDecoder().decode(str);
     }
 
-    public static String bigHash(String text) {
+    public static String stdHash(String text) {
+        return uuEncode(stdHashToBytes(text));
+    }
+
+    public static byte[] stdHashToBytes(String text) {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
             byte[] result = md.digest(text.getBytes(StandardCharsets.UTF_8));
-            return uuEncode(result);
+            return result;
         } catch (Exception e) {
             throw new RuntimeException("Could not do MD5 hash", e);
         }
+
     }
 
     /** Makes a shorter string out of a long one. The idea is to give some idea of the original
@@ -58,11 +65,57 @@ public class EncodeUtil {
             return text;
         }
         // Limit characters in hash to 20 (good enough for uniqueness).
-        String h = bigHash(text).substring(0, 20);
+        String h = stdHash(text).substring(0, 20);
         int leftover = maxLen - 20;
         int start = leftover/2;
         int end = leftover - start;
         return text.substring(0, start) + h + text.substring(l - end, l);
+    }
+
+    public static String mkRndString(int numBytes) {
+        var rnd = RandomUtil.getRandom();
+        byte[] b = new byte[numBytes];
+        rnd.nextBytes(b);
+        return uuEncode(b);
+    }
+
+    public static String convertToReadableChars(byte[] bytes, int numBytes) {
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
+        for (int i = 0; i < numBytes; i++) {
+            byte b = bytes[i];
+            convertToReadableChars(b, sb);
+        }
+        return sb.toString();
+    }
+
+    // Characters are chosen so that even seen with poor vision, they are likely to be discerned correctly.
+    public static char[] UNIQUE_LOOKING_CHARS = {'A', 'F', 'H', 'K', 'M', 'P', 'T', 'X',
+                                                 'Y', 'W', 'Z', '3', '4', '6', '8', '9'};
+    public static void convertToReadableChars(byte bVal, StringBuilder sb) {
+        int b1 = (bVal >>> 4) & 0x0F;
+        int b2 = bVal & 0x0F;
+        sb.append(UNIQUE_LOOKING_CHARS[b1]);
+        sb.append(UNIQUE_LOOKING_CHARS[b2]);
+    }
+
+    /** Creates this project's standard unique ID, usable for primary keys or globally unique values. We use
+     * this function in preference to standard GUIDs because it can be sorted by timestamp, a useful
+     * thing for troubleshooting and paging through result sets. This approach is used by Mongo for its
+     * automatically generated primary keys, and it works well. */
+    public static String mkUniqueId(DnCxt cxt) {
+        Date d = cxt.now();
+        // Returns a 36 character string, a bit long, but friendly in debug output and easy for code
+        // to parse out the date portion.
+        return DnDateUtil.formatDate(d) + mkRndString(8);
+    }
+
+    public static Date parseDateFromUniqueId(String uniqueId) throws DnException {
+        int index = uniqueId.indexOf('Z');
+        if (index < 0) {
+            throw new DnException(String.format("Unique Id %s does not have a date encoded in it.", uniqueId));
+        }
+        String dateStr = uniqueId.substring(0, index);
+        return DnDateUtil.parseDate(dateStr);
     }
 
     public static SecretKeyFactory mkSecretKeyFactory() {

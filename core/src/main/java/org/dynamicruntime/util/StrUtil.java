@@ -1,6 +1,8 @@
 package org.dynamicruntime.util;
 
+import javax.lang.model.SourceVersion;
 import java.util.List;
+import static org.dynamicruntime.util.DnCollectionUtil.*;
 
 @SuppressWarnings("WeakerAccess")
 public class StrUtil {
@@ -126,8 +128,35 @@ public class StrUtil {
     }
 
     public static List<String> splitString(String str, String sep) {
-        String[] values = str.split(sep);
-        return DnCollectionUtil.mListA(values);
+        return splitString(str, sep, -1);
+    }
+
+    /** Does a split, but without using a regular expression. If maxSplit is greater or equal to
+     * zero, then it is the maximum size of the list that will be returned. The splitting
+     * starts from the beginning of the string. The return value is a mutable list. If a separator
+     * occurs at the end of the string, then the returned list has an empty string at the end
+     * (assuming *maxSplit* has not already been reached). */
+    public static List<String> splitString(String str, String sep, int maxSplit) {
+        if (maxSplit < 0) {
+            maxSplit = 1000000;
+        }
+        List<String> results = mList();
+        if (maxSplit == 0) {
+            return mList();
+        }
+        int w = sep.length();
+        int index = 0;
+        while (true) {
+            int nextIndex = str.indexOf(sep, index);
+            if (nextIndex < 0 || results.size() >= maxSplit - 1) {
+                // End it.
+                results.add(str.substring(index));
+                break;
+            }
+            results.add(str.substring(index, nextIndex));
+            index = nextIndex + w;
+        }
+        return results;
     }
 
     public static String limitStringSize(String str, int maxLen) {
@@ -135,5 +164,20 @@ public class StrUtil {
             return str.substring(0, maxLen - 3) + "...";
         }
         return str;
+    }
+
+    /**
+     * Verifies that entry would be a valid name of a Java variable. This
+     * is a pass thru function to the internal Java call that validates whether a string
+     * would be a valid variable name.
+     *
+     * Side note: The more strings that are persistently stored that can be known to pass this
+     * validation, the friendlier the application is to scripting, external query constructions,
+     * full text search, and CSV file outputs. Generally any names of entities that are used as
+     * the primary key for the entity should pass this test, unless there is a good reason otherwise (email
+     * address or domain name is are examples where you cannot use this test).
+     */
+    public static boolean isJavaName(String str) {
+        return SourceVersion.isName(str);
     }
 }

@@ -6,6 +6,7 @@ import org.dynamicruntime.user.UserAuthData;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.dynamicruntime.util.ConvertUtil.*;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
@@ -103,6 +104,7 @@ public class AuthUserRow {
         return needsRealUsername() ? primaryId : username;
     }
 
+    /** Creates map for storage, not map for showing to an admin or user. */
     public Map<String,Object> toMap() {
         // Take advantage of the fact that *mMap()* removes nulls.
         var newAuthUserData = mMap(AUTH_ROLES, roles, AUTH_ENCODED_PASSWORD, encodedPassword,
@@ -130,6 +132,7 @@ public class AuthUserRow {
         authData.authId = authId;
         authData.publicName = getPublicName();
         authData.roles = roles;
+        authData.userData = (authUserData != null) ? cloneMap(authUserData) : mMap();
         authData.authRules = authRules;
     }
 }

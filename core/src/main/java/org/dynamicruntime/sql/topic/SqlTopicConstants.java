@@ -23,9 +23,9 @@ public class SqlTopicConstants {
     //
     /** Storage of user records needed to do authentication. Also provides determination of *userGroup*
      * and *shard*. The auth topic cannot be sharded using the standard sharding solution in this application, but
-     * custom sharding can be done based on regional hardware configurations, but that is a separate effort
-     * with its own set of functionality. Auth topic data is queried at the time security is evaluated
-     * against the context-root of the endpoint. It is then cached in a browser cookie (or mobile
+     * custom sharding can be done based on regional hardware configurations or by userId, but that is a
+     * separate effort with its own set of functionality. Auth topic data is queried at the time security is
+     * evaluated against the context-root of the endpoint. It is then cached in a browser cookie (or mobile
      * equivalent). After determining auth information, the current node may decide
      * to forward the request to another node (but augmented with the auth information that was loaded).
      * When such forwarding is performed, it should be done in a *sticky* way so that requests to the

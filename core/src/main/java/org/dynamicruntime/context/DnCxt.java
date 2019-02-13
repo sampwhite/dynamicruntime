@@ -42,6 +42,11 @@ public class DnCxt {
     public final Date creationDate = new Date();
     /** Nano time of start time. Used to time requests. */
     public final long nanoTime = System.nanoTime();
+    /** The IP address that originated this request. This is set only if relevant to the processing of the request.
+     * This is in the DnCxt because this can be used to do aggregating stats
+     * on a per *forwardedFor* address which can then be used for request limiting. It can also be
+     * useful to add to logging in particular scenarios. */
+    public String forwardedFor;
     /** Cached copy of the schema store. Allows ready access to an unchanging read only copy of the schema. We put
      * it into the DnCxt to show how fundamental it is to the application. */
     public DnSchemaStore schemaStore;
@@ -71,6 +76,7 @@ public class DnCxt {
         var subCxt = new DnCxt(subCxtName, this.instanceConfig, this, this.shard);
         subCxt.locals.putAll(this.locals);
         subCxt.schemaStore = schemaStore;
+        subCxt.forwardedFor = forwardedFor;
         subCxt.userProfile = userProfile;
         return subCxt;
     }
@@ -88,7 +94,7 @@ public class DnCxt {
         return ((double)diff)/1000000;
     }
 
-    public String getExePath() {
+    public String getCxtPath() {
         List<String> elts = mList();
         if (parentLoggingIds != null) {
             elts.addAll(parentLoggingIds);

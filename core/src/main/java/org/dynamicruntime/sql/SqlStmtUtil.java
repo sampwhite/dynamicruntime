@@ -235,7 +235,7 @@ public class SqlStmtUtil {
 
     public static DnException mkDnException(String msg, Exception e) {
         boolean isTransient = e instanceof SQLTransientException;
-        String activity = (isTransient) ? DnException.IO : DnException.UNSPECIFIED;
+        String activity = (isTransient) ? DnException.IO : DnException.GENERAL;
         return new DnException(msg, e, DnException.INTERNAL_ERROR, DnException.DATABASE, activity);
     }
 

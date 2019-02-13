@@ -56,44 +56,13 @@ public class DnContentService implements ServiceInitializer {
 
     }
 
-    public DnContentData getContent(@SuppressWarnings("unused") DnCxt cxt, String resourcePath) throws DnException {
+    public DnContentData getContent(DnCxt cxt, String resourcePath) throws DnException {
         File f = getFileResource(resourcePath);
         Date resTimestamp = new Date(f.lastModified());
-        String ext = StrUtil.getAfterLastIndex(resourcePath, ".");
-        if ("md".equals(ext)) {
-            DnTemplates.DnTemplate t = templates.checkGetTemplate(resourcePath, f, (content -> {
-                Node node = mdParser.parse(content);
-                Node child = node.getFirstChild();
-                Node childNext = child != null ? child.getFirstChild() : null;
-                while (childNext != null && !(child instanceof Text)) {
-                    child = childNext;
-                    childNext = childNext.getNext();
-                }
-                String title = (child instanceof Text) ? ((Text)child).getLiteral() : "Dynamic Runtime";
-                String body = mdHtmlRenderer.render(node);
-                // Return null for actual content output so we do not generate actual FreeMarker template.
-                return new DnTemplates.DnOutput(null, mMap("title", title, "body", body));
-            }));
-            // Eventually we may augment *baseParams*.
-            return applyHtmlLayout(cxt, t.baseParams);
-        }
-        if ("html".equals(ext)) {
-            DnTemplates.DnTemplate t = templates.checkGetTemplate(resourcePath, f, (content -> {
-                String head = PageUtil.extractSection(content, "<!--B-HEAD-->", "<!--E-HEAD-->");
-                String body = (head != null) ?
-                        PageUtil.extractSection(content, "<!--B-BODY-->", "<!--E-BODY-->") : null;
-                if (body != null) {
-                    // Page is turned into arguments to the layout.ftl page.
-                    return new DnTemplates.DnOutput(null, mMap("head", head, "body", body));
-                }
-                // Evaluate HTML page without applying layout.
-                return new DnTemplates.DnOutput(content, mMap());
-            }));
-            if (t.template != null) {
-                return DnContentData.mkHtml(templates.evalTemplate(t, mMap()).output);
-            } else {
-                return applyHtmlLayout(cxt, t.baseParams);
-            }
+        DnContentData templatedData = getTemplateContent(cxt, resourcePath, f,
+                mMap());
+        if (templatedData != null) {
+            return templatedData;
         }
 
         String mimeType = fileNameMap.getContentTypeFor(resourcePath);
@@ -120,13 +89,60 @@ public class DnContentService implements ServiceInitializer {
         }
     }
 
+    public DnContentData getTemplateContent(@SuppressWarnings("unused") DnCxt cxt, String resourcePath,
+            File f, Map<String,Object> args) throws DnException {
+        if (f == null) {
+            f = getFileResource(resourcePath);
+        }
+        String ext = StrUtil.getAfterLastIndex(resourcePath, ".");
+        if ("md".equals(ext)) {
+            DnTemplates.DnTemplate t = templates.checkGetTemplate(resourcePath, f, (content -> {
+                Node node = mdParser.parse(content);
+                Node child = node.getFirstChild();
+                Node childNext = child != null ? child.getFirstChild() : null;
+                while (childNext != null && !(child instanceof Text)) {
+                    child = childNext;
+                    childNext = childNext.getNext();
+                }
+                String title = (child instanceof Text) ? ((Text)child).getLiteral() : "Dynamic Runtime";
+                String body = mdHtmlRenderer.render(node);
+                // Return null for actual content output so we do not generate actual FreeMarker template.
+                return new DnTemplates.DnOutput(null, mMap("title", title, "body", body));
+            }));
+            // Eventually we may augment *baseParams*.
+            return applyHtmlLayout(cxt, t.baseParams);
+        }
+        if ("html".equals(ext) || "ftl".equals(ext)) {
+            DnTemplates.DnTemplate t = templates.checkGetTemplate(resourcePath, f, (content -> {
+                String head = "html".equals(ext) ?
+                        PageUtil.extractSection(content, "<!--B-HEAD-->", "<!--E-HEAD-->") : null;
+                String body = (head != null) ?
+                        PageUtil.extractSection(content, "<!--B-BODY-->", "<!--E-BODY-->") : null;
+                if (body != null) {
+                    // Page is turned into arguments to the layout.ftl page.
+                    return new DnTemplates.DnOutput(null, mMap("head", head, "body", body));
+                }
+                // Evaluate HTML or FTL page without applying layout.
+                return new DnTemplates.DnOutput(content, args);
+            }));
+            if (t.template != null) {
+                return DnContentData.mkHtml(templates.evalTemplate(t, args).output);
+            } else {
+                return applyHtmlLayout(cxt, t.baseParams);
+            }
+        }
+        return null;
+    }
+
+
+
     public DnContentData applyHtmlLayout(DnCxt cxt, Map<String,Object> baseParams) throws DnException {
         var layoutFile = getFileResource("layout/layout.ftl");
         DnTemplates.DnTemplate layoutTemplate = templates.checkGetTemplate("layout/layout.ftl",
                 layoutFile, null);
         var params = cloneMap(baseParams);
         if (cxt.userProfile != null) {
-            String name = !isEmpty(cxt.userProfile.publicName) ? cxt.userProfile.publicName : cxt.userProfile.authId;
+            String name = isEmpty(cxt.userProfile.publicName) ? cxt.userProfile.authId : cxt.userProfile.publicName;
             if (name != null) {
                 params.put("username", name);
             }

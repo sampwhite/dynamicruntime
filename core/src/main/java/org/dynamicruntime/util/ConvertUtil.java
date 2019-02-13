@@ -154,6 +154,7 @@ public class ConvertUtil {
         return (s != null && !s.isEmpty()) ? s : null;
     }
 
+    @SuppressWarnings("unused")
     public static String toReqStr(Object o) throws DnException {
         String s = toOptStr(o);
         if (s == null) {
@@ -183,6 +184,11 @@ public class ConvertUtil {
         return s;
     }
 
+    public static boolean isEmpty(String str) {
+        return (str == null || str.isEmpty());
+    }
+
+    @SuppressWarnings("unused")
     public static boolean isEmpty(Object o) {
         if (o == null) {
             return true;

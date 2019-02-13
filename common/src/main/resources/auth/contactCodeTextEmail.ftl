@@ -1,0 +1,1 @@
+Your verification code is DN-${verifyCode}. Only the part after the *DN-* needs to be copied.

@@ -99,7 +99,7 @@ public class DnCoreNodeService implements ServiceInitializer {
     public String decryptString(String encryptedText) throws DnException {
         int index = encryptedText.indexOf('|');
         if (index < 0) {
-            throw DnException.mkConv("Encrypted text was not in correct format.");
+            throw DnException.mkInput("Encrypted text was not in correct format.");
         }
         String configKey = encryptedText.substring(0, index);
         String data = encryptedText.substring(index + 1);
