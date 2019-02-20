@@ -1,6 +1,7 @@
 package org.dynamicruntime.common.user;
 
 import org.dynamicruntime.context.DnCxt;
+import org.dynamicruntime.context.UserProfile;
 import org.dynamicruntime.hook.DnHookFunction;
 import org.dynamicruntime.servlet.DnRequestHandler;
 import org.dynamicruntime.servlet.DnRequestService;
@@ -28,12 +29,13 @@ public class UserSetAuthCookiesFunction implements DnHookFunction<DnRequestServi
             return;
         }
         UserAuthData userAuthData = workData.userAuthData;
-        if (userAuthData == null) {
+        UserProfile userProfile = cxt.userProfile;
+        if (userAuthData == null || userProfile == null || userProfile.modifiedDate == null ||
+                userAuthData.userId != userProfile.userId) {
             return;
         }
         var ac = workData.userAuthCookie;
         var oldCookie = (ac != null && ac.userId == userAuthData.userId) ? ac : null;
-
 
         boolean setIt = workData.setAuthCookie;
         if (oldCookie == null && !setIt) {
@@ -62,13 +64,23 @@ public class UserSetAuthCookiesFunction implements DnHookFunction<DnRequestServi
                 setIt = true;
             }
         }
+        Date profileModifiedDate = userProfile.modifiedDate;
+        if (oldCookie != null && oldCookie.profileModifiedDate.after(profileModifiedDate) &&
+            !userProfile.didForceRefresh) {
+            // The user profile is out of date, so we do not trust it.
+            profileModifiedDate = oldCookie.profileModifiedDate;
+        }
+        if (!setIt && !oldCookie.profileModifiedDate.equals(profileModifiedDate)) {
+            setIt = true;
+        }
         if (setIt) {
             Date dateCreated = (oldCookie != null) ? oldCookie.creationDate : now;
             int renewalCount = (oldCookie != null) ? oldCookie.renewalCount + 1 : 1;
             String sourceCode = userAuthData.sourceId;
             var authCookie = new UserAuthCookie(UserAuthCookie.STD_AUTH_COOKIE_CODE,
                     UserAuthCookie.CURRENT_VERSION, userAuthData.grantingUserId, userAuthData.userId,
-                    sourceCode, userAuthData.account, userAuthData.roles, userAuthData.authId, dateCreated);
+                    sourceCode, userAuthData.account, userAuthData.roles, userAuthData.authId, dateCreated,
+                    userProfile.modifiedDate);
             authCookie.publicName = userAuthData.publicName;
             authCookie.groupName = userAuthData.userGroup;
             authCookie.shard = userAuthData.shard;

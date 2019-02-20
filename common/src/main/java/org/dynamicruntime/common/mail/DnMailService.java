@@ -80,7 +80,7 @@ public class DnMailService implements ServiceInitializer {
     public DnMailResponse sendEmail(DnCxt cxt, Map<String,Object> mailData) throws DnException {
         DnMailResponse resp;
         if (apiKey != null) {
-            var request = new DnHttpRequest(cxt, EPH_POST, mailgunUri);
+            var request = new DnHttpRequest(cxt, EPM_POST, mailgunUri);
             request.auth("api", apiKey).useFormEncoded(true).values(mailData);
             httpClient.execute(request);
             int code = request.respCode;

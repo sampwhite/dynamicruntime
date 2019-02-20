@@ -35,7 +35,7 @@ public class DnTestServletClient {
     public DnRequestHandler sendGetRequest(String endpoint, Map<String,Object> args)  {
         String queryStr = (args != null) ? HttpUtil.encodeHttpArgs(args) : "";
         DnRequestHandler requestHandler = new DnRequestHandler(instanceConfig.instanceName,
-                EPH_GET, endpoint, curHeaders, cookies);
+                EPM_GET, endpoint, curHeaders, cookies);
 
         requestHandler.queryStr = queryStr;
         executeRequest(requestHandler);
@@ -44,7 +44,7 @@ public class DnTestServletClient {
 
     public DnRequestHandler sendEditRequest(String endpoint, Map<String,Object> args, Map<String,Object> data,
             boolean isPut) {
-        String method = (isPut) ? EPH_PUT : EPH_POST;
+        String method = (isPut) ? EPM_PUT : EPM_POST;
         String queryStr = (args != null) ? HttpUtil.encodeHttpArgs(args) : "";
         String postData = data != null ? ParsingUtil.toJsonString(data) : "";
         DnRequestHandler requestHandler = new DnRequestHandler(instanceConfig.instanceName,

@@ -17,13 +17,10 @@
 <!--BODY content extracted and put into layout.ftl-->
 <!--B-BODY-->
 <h1>Endpoints</h1>
-<div class="intro">
-    This page presents the available endpoints that this particular node can execute.
-</div>
 
 <div id="root">
     <script type="text/babel">
-        function mkGetDisplay(item) {
+        function mkMethodDisplay(item) {
             const {httpMethod} = item;
             const className = httpMethod + "Method";
             return (
@@ -40,13 +37,19 @@
             )
         }
 
-        const cols = [{key: "httpMethod", label: "Method", mkDisplay: mkGetDisplay},
+        const cols = [{key: "httpMethod", label: "Method", mkDisplay: mkMethodDisplay},
             {key: "path", label: "Endpoint", mkDisplay: mkPathDisplay},
             {key: "description", label: "Description"}];
 
         ReactDOM.render(
             <div>
-                <DnTable columns={cols} dataUrl={"/schema/endpoint/list"}/>
+                <DnTable columns={cols} dataUrl={"/schema/endpoint/list"}
+                    desFunction={(items) =>
+                        <div className="intro">
+                            This page presents the {items.length} available endpoints that
+                            this particular node can execute.
+                        </div>
+                    }/>
             </div>,
             document.getElementById('root')
         );

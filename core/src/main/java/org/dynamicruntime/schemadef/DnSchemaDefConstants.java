@@ -177,12 +177,12 @@ public class DnSchemaDefConstants {
     /** The name of the field that defines the output type for the endpoint. */
     public static final String EPF_OUTPUT_TYPE = "endpointOutputType";
 
-    /** The allowable HTTP methods. EPH = EndPoint Http*/
-    public static final String EPH_GET = "GET";
-    public static final String EPH_POST = "POST";
-    public static final String EPH_PUT = "PUT";
+    /** The allowable HTTP methods. EPM = EndPoint Method */
+    public static final String EPM_GET = "GET";
+    public static final String EPM_POST = "POST";
+    public static final String EPM_PUT = "PUT";
 
-    public static final List<String> EPH_ALLOWABLE_HTTP_METHODS = List.of(EPH_GET, EPH_POST, EPH_PUT);
+    public static final List<String> EPM_ALLOWABLE_HTTP_METHODS = List.of(EPM_GET, EPM_POST, EPM_PUT);
 
     //
     // Table definition fields

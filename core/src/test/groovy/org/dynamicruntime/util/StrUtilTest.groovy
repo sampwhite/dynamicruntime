@@ -6,6 +6,7 @@ class StrUtilTest extends Specification {
     def "Custom string split routine works as desired"() {
         when: "Doing a validation of split string"
         then: "Should get expected results"
+        StrUtil.splitString("abc", ":") == ["abc"]
         StrUtil.splitString("a,b,c,d", ",") == ["a", "b", "c", "d"]
         StrUtil.splitString("a,b,c,d", ",", 3) == ["a", "b", "c,d"]
         StrUtil.splitString("ab::cd(rx::uv)", "::", 2) == ["ab", "cd(rx::uv)"]

@@ -1,6 +1,7 @@
 package org.dynamicruntime.common.user;
 
 import org.dynamicruntime.context.DnCxt;
+import org.dynamicruntime.context.UserProfile;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.hook.DnHookFunction;
 import org.dynamicruntime.servlet.DnRequestHandler;

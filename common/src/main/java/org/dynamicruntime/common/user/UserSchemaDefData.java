@@ -140,17 +140,21 @@ public class UserSchemaDefData {
     static public DnRawField authTokenPwd = mkReqField(AUTH_TOKEN, "Authentication Token",
             "Authentication token for doing token based login.")
             .setAttribute(EP_IS_PASSWORD, true);
-    static public DnRawType tokenLoginRequest = mkType("AuthTokenLoginRequest", mList(authId, authTokenPwd));
     static public DnRawField publicUsername = mkField(AUTH_USERNAME, "Username",
             "Currently preferred choice of username.");
+    static public DnRawField loggedInUser = mkReqField(AUTH_LOGGED_IN_USER, "Logged In User",
+            "Whether the particular requested action left the user actively logged in.");
+
+    // Login by admin token.
+    static public DnRawType tokenLoginRequest = mkType("AuthTokenLoginRequest", mList(authId, authTokenPwd));
     static public DnRawType tokenLoginResponse = mkType("AuthTokenLoginResponse",
-            mList(authId, userId, publicUsername));
-    static public DnRawEndpoint tokenLoginEndpoint = mkEndpoint(EPH_POST,"/auth/token/login", AUTH_EP_TOKEN_LOGIN,
+            mList(authId, userId, publicUsername, loggedInUser));
+    static public DnRawEndpoint tokenLoginEndpoint = mkEndpoint(EPM_POST,"/auth/login/byAdminToken",
+            AUTH_EP_TOKEN_LOGIN,
             "Login using auth identifier and token. Response sets authentication cookie. " +
                     "Reload page to see effect of login.",
             tokenLoginRequest.name, tokenLoginResponse.name);
 
-    //static public DnRawType authLogoutRequest = mkType("AuthLogoutRequest", mList());
     static public DnRawField userAuthId = mkField(AUTH_ID, "Authentication Id",
             "Internal identifier for user used when doing logging.");
     static public DnRawField sessionUserId = mkField(USER_ID, "User Id",
@@ -159,7 +163,7 @@ public class UserSchemaDefData {
             "Whether there was a user to log out.");
     static public DnRawType authLogoutResponse = mkType("AuthLogoutResponse",
             mList(userAuthId, sessionUserId, publicUsername, loggedOutUser));
-    static public DnRawEndpoint authLogoutEndpoint = mkEndpoint(EPH_POST,"/auth/logout", AUTH_EP_LOGOUT,
+    static public DnRawEndpoint authLogoutEndpoint = mkEndpoint(EPM_POST,"/auth/logout", AUTH_EP_LOGOUT,
             "Logs out the current user session. Reload page to see effects.",
             DNT_NONE, authLogoutResponse.name);
 
@@ -203,7 +207,7 @@ public class UserSchemaDefData {
     static public DnRawType selfUserInfoResponse = mkType("SelfUserInfoResponse",
             mList(userId, upAuthId, account, upUserGroup, roles, publicName, locale, timezone,
                     profileData));
-    static public DnRawEndpoint selfUserInfoEndpoint = mkEndpoint(EPH_GET,"/user/self/info",
+    static public DnRawEndpoint selfUserInfoEndpoint = mkEndpoint(EPM_GET,"/user/self/info",
             SELF_USER_INFO,
             "Retrieves profile information for the current acting user.",
             DNT_NONE, selfUserInfoResponse.name);
@@ -222,56 +226,110 @@ public class UserSchemaDefData {
     static public DnRawField formCaptchaData = mkField(FM_CAPTCHA_DATA, "Captcha Data",
             "The data, combined with form interaction by browser user, produces the *formAuthCode*. " +
                     "In the simplest implementation, the captcha data has the code inside it.");
+    static public DnRawField verifyCode = mkReqField(FM_VERIFY_CODE, "Verify Code",
+            "The short code used to validate a contact address, create a new user, or do a login.");
 
-    static public DnRawType formAuthDataResponse = mkType("FormAuthDataResponse",
+    // Creates a token that should be passed in all future auth related form activity.
+    static public DnRawType formCreateTokenResponse = mkType("FormCreateTokenResponse",
             mList(formAuthType, formAuthToken, formCaptchaData));
+    static public DnRawEndpoint createAuthTokenEndpoint = mkEndpoint(EPM_GET,"/auth/form/createToken",
+            AUTH_CREATE_FORM_TOKEN,
+            "Returns information used for later form submits for doing registration, login or " +
+                    "any other post that requires extra sensitivity to automated attacks or cross site scripting.",
+            DNT_NONE, formCreateTokenResponse.name);
+
+    static public DnRawField fmUsername = mkReqField(AUTH_USERNAME, "Username",
+            "The login username and the user's chosen public identifier for themselves.");
+
+    // Admin version of creating token that supplies the verifyCode as well in the response.
+    // Creates a form token and verify code using admin privileges.
+    static public DnRawType adminCreateFormTokenRequest = mkType("AdminCreateFormTokenRequest",
+            mList(fmUsername));
+    static public DnRawType adminCreateFormTokenResponse = mkType("AdminCreateFormTokenResponse",
+            mList(fmUsername, formAuthToken, verifyCode));
+    static public DnRawEndpoint adminCreateFormTokenEndpoint = mkEndpoint(EPM_POST,
+            "/admin/user/createFormToken", ADMIN_CREATE_FORM_TOKEN,
+            "Creates a form token and verify code to do a login. This is to support doing user emulation.",
+            adminCreateFormTokenRequest.name, adminCreateFormTokenResponse.name);
 
     static public DnRawField formContactType = mkReqField(CT_CONTACT_TYPE, "Contact Type",
             "Auth contact type, currently must be *email*.");
     static public DnRawField formContactAddress = mkReqField(CT_CONTACT_ADDRESS, "Contact Address",
             "A contact address. Currently only an email address is supported.");
-
-    static public DnRawEndpoint getFormAuthTokenEndpoint = mkEndpoint(EPH_GET,"/auth/form/createToken",
-            AUTH_GET_FORM_TOKEN,
-            "Returns information used for later form submits for doing registration, login or " +
-                    "any other post that requires extra sensitivity to automated attacks or cross site scripting.",
-            DNT_NONE, formAuthDataResponse.name);
-
     static public DnRawField formAuthCode = mkReqField(FM_FORM_AUTH_CODE, "Form Auth Code",
             "The browser determined code that must be supplied along with the *formAuthToken*.");
+
+    // Sends a verifyCode for a potentially new contact address which will be used to create a new user.
     static public DnRawType sendNewContactVerifyCodeRequest = mkType("SendNewContactVerifyCodeRequest",
             mList(formContactType, formContactAddress, formAuthToken, formAuthCode));
     static public DnRawType sendVerifyCodeResponse = mkType("SendVerifyCodeResponse",
             mList(formContactType, formContactAddress));
-    static public DnRawEndpoint sendVerifyCodeForNewContactEndpoint = mkEndpoint(EPH_POST,"/auth/newContact/sendVerify",
-            AUTH_SEND_NEW_CONTACT_VERIFY_CODE,
+    static public DnRawEndpoint sendVerifyCodeForNewContactEndpoint = mkEndpoint(EPM_POST,
+            "/auth/newContact/sendVerify", AUTH_SEND_NEW_CONTACT_VERIFY_CODE,
             "Sends a verify code to the specified new contact address.",
             sendNewContactVerifyCodeRequest.name, sendVerifyCodeResponse.name);
 
-    static public DnRawField verifyCode = mkReqField(FM_VERIFY_CODE, "Verify Code",
-            "The short code used to validate a contact address.");
+    // Sends a verifyCode to an existing user. The verify code can be used to do a login or
+    // change the username and password.
+    static public DnRawType sendUserVerifyCodeRequest = mkType("SendUserVerifyCodeRequest",
+            mList(fmUsername, formAuthToken, formAuthCode));
+    static public DnRawType sendUserVerifyCodeResponse = mkType("SendUserVerifyCodeResponse",
+            mList(fmUsername));
+    static public DnRawEndpoint sendUserVerifyCodeEndpoint = mkEndpoint(EPM_POST,
+            "/auth/user/sendVerify", AUTH_SEND_USER_VERIFY_CODE,
+            "Sends a verification code to the user specified by the username.",
+            sendUserVerifyCodeRequest.name, sendUserVerifyCodeResponse.name);
+
+    // Creates a placeholder user database row that has contact information in it.
     static public DnRawType createInitialUserRequest = mkType("CreateInitialUserRequest",
             mList(formAuthToken, formContactType, formContactAddress, verifyCode));
     // Returning the raw row of auth user data (minus password info).
-    static public DnRawType createInitialUserResponse = mkType("CreateInitialUserResponse",
-            mList()).setReferencedTypesWithFields(mList(mkTbTypeName(UT_TB_AUTH_USERS)));
-    static public DnRawEndpoint createInitialUserEndpoint = mkEndpoint(EPH_PUT,"/auth/user/createInitial",
+    static public DnRawType createInitialUserResponse = mkType("CreateInitialUserResponse", mList())
+            .setReferencedTypesWithFields(mList(mkTbTypeName(UT_TB_AUTH_USERS)));
+    static public DnRawEndpoint createInitialUserEndpoint = mkEndpoint(EPM_PUT,"/auth/user/createInitial",
             AUTH_CREATE_INITIAL_USER,
             "Creates the initial user. This can be repeated with the same contact address if " +
                     "a username and password have not yet been associated with this user.",
             createInitialUserRequest.name, createInitialUserResponse.name);
 
-    static public DnRawField fmUsername = mkReqField(AUTH_USERNAME, "Username",
-            "The login username and the user's chosen public identifier for themselves.");
+    // Sets the username and password of a user using a verified primaryId (which is an email contact address).
     static public DnRawField fmPassword = mkReqField(FM_PASSWORD, "Password", "User's password.")
             .setAttribute(EP_IS_PASSWORD, true);
     static public DnRawType setLoginDataRequest = mkType("SetLoginDataRequest",
             mList(formAuthToken, userId, fmUsername, fmPassword, verifyCode));
-    static public DnRawEndpoint setLoginDataEndpoint = mkEndpoint(EPH_PUT,"/auth/user/setLoginData",
+    static public DnRawType loginAttemptResponse = mkSubType("LoginAttemptResponse",
+            selfUserInfoResponse.name, mList(loggedInUser));
+
+    static public DnRawEndpoint setLoginDataEndpoint = mkEndpoint(EPM_PUT,"/auth/user/setLoginData",
             AUTH_SET_LOGIN_DATA,
-            "Set's the username and password for a created user and " +
+            "Sets the username and password for a created user and " +
                     "does a login for the user.",
             setLoginDataRequest.name, selfUserInfoResponse.name);
+
+    //
+    // Direct login of existing user.
+    //
+
+    // Login by verify code
+    static public DnRawField fmOptPassword = mkField(FM_PASSWORD, "Password",
+            "User's password to change, does not need to be supplied.")
+            .setAttribute(EP_IS_PASSWORD, true);
+    static public DnRawType loginByCodeRequest = mkType("LoginByCodeRequest",
+            mList(fmUsername, fmOptPassword, formAuthToken, verifyCode));
+    static public DnRawEndpoint loginByCodeEndpoint = mkEndpoint(EPM_POST, "/auth/login/byCode",
+            AUTH_LOGIN_BY_CODE,
+            "Performs a login using a verification code.",
+            loginByCodeRequest.name, loginAttemptResponse.name);
+
+    // Login by password.
+    static public DnRawType loginByPasswordRequest = mkType("LoginByPasswordRequest",
+            mList(fmUsername, fmPassword, formAuthToken, formAuthCode));
+    static public DnRawEndpoint loginByPasswordEndpoint = mkEndpoint(EPM_POST, "/auth/login/byPassword",
+            AUTH_LOGIN_BY_PASSWORD,
+            "Attempts to login by password. A login by password is only allowed from a *familiar* " +
+                    "browser or device, otherwise it is rejected with an HTTP 403 and a login by verification " +
+                    "code has to be done instead.",
+            loginByPasswordRequest.name, loginAttemptResponse.name);
 
 
     static public DnRawSchemaPackage getPackage() {
@@ -280,9 +338,13 @@ public class UserSchemaDefData {
                         userProfileTable, tokenLoginRequest, tokenLoginResponse, tokenLoginEndpoint,
                         authLogoutResponse, authLogoutEndpoint, adminUserInfoRequest, adminUserInfoResponse,
                         adminUserInfoEndpoint, selfUserInfoResponse, selfUserInfoEndpoint,
-                        formAuthDataResponse, getFormAuthTokenEndpoint,
+                        formCreateTokenResponse, createAuthTokenEndpoint,
+                        adminCreateFormTokenRequest, adminCreateFormTokenResponse, adminCreateFormTokenEndpoint,
                         sendNewContactVerifyCodeRequest, sendVerifyCodeResponse, sendVerifyCodeForNewContactEndpoint,
+                        sendUserVerifyCodeRequest, sendUserVerifyCodeResponse, sendUserVerifyCodeEndpoint,
                         createInitialUserRequest, createInitialUserResponse, createInitialUserEndpoint,
-                        setLoginDataRequest, setLoginDataEndpoint));
+                        setLoginDataRequest, loginAttemptResponse, setLoginDataEndpoint,
+                        loginByCodeRequest, loginByCodeEndpoint,
+                        loginByPasswordRequest, loginByPasswordEndpoint));
     }
 }

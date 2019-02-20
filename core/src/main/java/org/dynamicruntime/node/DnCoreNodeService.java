@@ -13,6 +13,7 @@ import static org.dynamicruntime.schemadata.CoreConstants.*;
 import java.util.Date;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * The node functionality is built up in two layers. The first is provided by the *core* component
@@ -39,6 +40,7 @@ public class DnCoreNodeService implements ServiceInitializer {
 
     private DnNodeId nodeId;
     private String nodeIdLabel;
+    public Pattern internalIpAddresses;
     public volatile boolean isInCluster = true;
     public boolean loggingHealthChecks = false;
     /** Lookup key to find current active encryption key. */
@@ -61,6 +63,14 @@ public class DnCoreNodeService implements ServiceInitializer {
         nodeId = DnNodeUtil.extractNodeId(cxt);
         nodeIdLabel = nodeId.nodeIpAddress + ":" + nodeId.port;
         loggingHealthChecks = toBoolWithDefault(cxt.instanceConfig.get("loggingHealthChecks"), false);
+        // We start with a non-trivial filter to show how it might work. These IP addresses are trusted
+        // to not abuse us. They may also be used to limit access to dangerous or expensive APIs. It is *not*
+        // to be used as an alternative auth layer that allows a bypass to a normal auth check.
+        String addressFilter = DnConfigUtil.getConfigString(cxt, "node.internalIpAddressFilter",
+                "127.0.0.1|206.*",
+                "Regular expression test on forwardFor IP addresses to see if they are internal or " +
+                        "considered safe.");
+        internalIpAddresses = Pattern.compile(addressFilter);
         instanceAuthConfigKey = DnConfigUtil.getConfigString(cxt, "node.instance.authConfigKey",
                 DEFAULT_AUTH_CONFIG_LOOKUP_KEY,
                 "Lookup key in instance configuration for encryption and auth logic configuration. " +
@@ -109,5 +119,12 @@ public class DnCoreNodeService implements ServiceInitializer {
         }
         String ec = authConfig.getNodeEncryptionKey();
         return EncodeUtil.decrypt(ec, data);
+    }
+
+    public boolean checkIsInternalAddress(String ipAddress) {
+        if (ipAddress == null) {
+            return true;
+        }
+        return internalIpAddresses.matcher(ipAddress).matches();
     }
 }

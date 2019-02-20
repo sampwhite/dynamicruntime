@@ -63,8 +63,14 @@ public class UserProfile {
     /** Auth rules, not yet fully defined. */
     public Map<String,Object> authRules;
 
+    /** Last modified date for user profile. */
+    public Date modifiedDate;
+
     /** Last cookie change date. */
     public Date cookieModifiedDate;
+
+    /** Whether this profile was filled by a force refresh. */
+    public boolean didForceRefresh;
 
     //
     // User profile data.

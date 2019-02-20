@@ -90,6 +90,7 @@ public class UserExtractAuthFunction implements DnHookFunction<DnRequestService,
                     authData.roles = curAuthData.roles;
                     authData.determinedUserId = true;
                     authData.cookieModifiedDate = cookieDate;
+                    authData.profileModifiedDate = authCookie.profileModifiedDate;
                     workData.setUserAuthData(authData);
                     String cSourceId = authCookie.sourceId;
                     // Allow authentication cookie to create a sourceId or to overrule an existing sourceId.
@@ -104,7 +105,7 @@ public class UserExtractAuthFunction implements DnHookFunction<DnRequestService,
                     // Use cookie update to tell other nodes that their user and profile caches need
                     // to be updated.
                     boolean isUserEdit = DnRequestService.USER_ROOT.equals(workData.target) &&
-                            (workData.method.equals(EPH_POST) || workData.method.equals(EPH_PUT));
+                            (workData.method.equals(EPM_POST) || workData.method.equals(EPM_PUT));
                     if (curAuthData.modifiedDate.after(cookieDate) || isUserEdit) {
                         workData.setAuthCookieOnResponse(true);
                     }

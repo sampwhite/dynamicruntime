@@ -34,7 +34,7 @@ public class DnEndpoint {
     public static DnEndpoint extract(DnType dnType, DnEndpointFunction endpointFunction) throws DnException {
         String path = getReqStr(dnType.model, EP_PATH);
         String method = getOptStr(dnType.model, EP_HTTP_METHOD);
-        if (method == null || !EPH_ALLOWABLE_HTTP_METHODS.contains(method)) {
+        if (method == null || !EPM_ALLOWABLE_HTTP_METHODS.contains(method)) {
             throw DnException.mkConv(String.format("Method %s is not one of the allowable methods " +
                     "for the endpoint at path %s.", method, path));
         }

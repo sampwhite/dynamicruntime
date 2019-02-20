@@ -86,7 +86,7 @@ public class UserService implements ServiceInitializer {
                 Priority.EARLY, new UserSetAuthCookiesFunction(this));
     }
 
-    public void addToken(DnCxt cxt, String username, String authId, String authToken, Map<String,Object> rules,
+    public void addAdminToken(DnCxt cxt, String username, String authId, String authToken, Map<String,Object> rules,
             Date expireDate) throws DnException {
         if (StringUtils.containsWhitespace(authId)) {
             throw DnException.mkConv(String.format("Auth ID %s cannot have whitespace.", authId));
@@ -134,13 +134,24 @@ public class UserService implements ServiceInitializer {
         });
     }
 
-    public AuthUserRow queryCacheToken(DnCxt cxt, String authId, String authToken) throws DnException {
-        String tokenKey = authId + ":" + authToken;
-        return userCache.getAuthDataByToken(tokenKey, PROFILE_CACHE_TIMEOUT_IN_SECS,
-                datedItem -> queryToken(cxt, authId, authToken));
+    /** Does a simple admin token login. Does not need all the extras of a regular user login. In particular,
+     * it does not have to deal with login sources and in fact it does not get tracked for login source.
+     * Contrast this method with {@link AuthFormHandler#doLogin}.*/
+    public void authUsingAdminToken(DnCxt cxt, String authId, String tokenData, DnServletHandler servletHandler)
+            throws DnException {
+        UserAuthData userAuthData = AuthUserUtil.computeUserAuthDataFromToken(cxt, this, authId,
+                tokenData, servletHandler);
+        cxt.userProfile = userAuthData.createProfile();
+        loadProfileRecord(cxt, cxt.userProfile, false);
     }
 
-    public AuthUserRow queryToken(DnCxt cxt, String authId, String authToken) throws DnException {
+    public AuthUserRow queryByAdminCacheToken(DnCxt cxt, String authId, String authToken) throws DnException {
+        String tokenKey = authId + ":" + authToken;
+        return userCache.getAuthDataByToken(tokenKey, PROFILE_CACHE_TIMEOUT_IN_SECS,
+                datedItem -> queryByAdminToken(cxt, authId, authToken));
+    }
+
+    public AuthUserRow queryByAdminToken(DnCxt cxt, String authId, String authToken) throws DnException {
         var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.AUTH_TOPIC);
         AuthQueryHolder aqh = AuthQueryHolder.get(sqlCxt);
 
@@ -196,32 +207,48 @@ public class UserService implements ServiceInitializer {
         }
         AuthAllUserData allData = new AuthAllUserData(profile.userId, null, null);
         allData.profile = profile;
-        loadProfileRecord(cxt, allData, forceRefresh);
+        loadProfileRecord(cxt, "loadProfile", allData, forceRefresh);
     }
 
-    public void loadProfileRecord(DnCxt cxt, AuthAllUserData allData, boolean forceRefresh)
+    public void loadProfileRecord(DnCxt cxt, String tranName, AuthAllUserData allData, boolean forceRefresh)
             throws DnException {
         UserProfile profile = allData.profile;
         if (profile == null || profile.userId <= DnCxtConstants.AC_SYSTEM_USER_ID) {
             return;
         }
+        // The profile.modifiedDate will come from cookie authentication.
+        var doForceRefresh = forceRefresh;
         long userId = profile.userId;
         Date cookieDate = profile.cookieModifiedDate;
-        int timeout = forceRefresh ? -1 : PROFILE_CACHE_TIMEOUT_IN_SECS;
+        int timeout = doForceRefresh ? -1 : PROFILE_CACHE_TIMEOUT_IN_SECS;
         if (cookieDate != null) {
             int secondsDiff = (int)((cxt.now().getTime() - cookieDate.getTime())/1000);
             if (secondsDiff < timeout) {
                 timeout = secondsDiff;
             }
         }
-        var row = userCache.getProfileData(userId, timeout, datedItem -> getOrCreateProfileRow(cxt, allData));
+        var row = userCache.getProfileData(userId, timeout, datedItem ->
+                getOrCreateProfileRow(cxt, tranName, allData));
+        Date modifiedDate = getReqDate(row, MODIFIED_DATE);
+        // Other node may have updated cookie with information that the profile has changed.
+        if (!doForceRefresh && profile.modifiedDate != null && profile.modifiedDate.after(modifiedDate)) {
+            doForceRefresh = true;
+            timeout = -1;
+            // Get the row again.
+            row = userCache.getProfileData(userId, timeout, datedItem ->
+                    getOrCreateProfileRow(cxt, tranName + "Forced", allData));
+            modifiedDate = getReqDate(row, MODIFIED_DATE);
+        }
         profile.timezone = ZoneId.of(getReqStr(Objects.requireNonNull(row), UP_USER_TIMEZONE));
         profile.locale = LocaleUtils.toLocale(getReqStr(row, UP_USER_LOCALE));
         profile.profileData = getMapDefaultEmpty(row, UP_USER_DATA);
+        profile.modifiedDate = modifiedDate;
+        profile.didForceRefresh = doForceRefresh;
         profile.data = row;
     }
 
-    public Map<String,Object> getOrCreateProfileRow(DnCxt cxt, AuthAllUserData allData) throws DnException {
+    public Map<String,Object> getOrCreateProfileRow(DnCxt cxt, String tranName, AuthAllUserData allData)
+            throws DnException {
         UserProfile profile = allData.profile;
         long userId = allData.userId;
         var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.USER_PROFILE_TOPIC);
@@ -274,10 +301,11 @@ public class UserService implements ServiceInitializer {
             if (row == null || doUpdate) {
                 // Need to create a new row.  Note that the transaction will populate the data with userId,
                 // userGroup, and a number of other protocol fields.
-                Map<String, Object> insertData = mMap(UP_USER_TIMEZONE, profile.timezone.toString(),
+                Map<String, Object> tranData = mMap(USER_ID, userId, USER_GROUP, profile.userGroup,
+                        UP_USER_TIMEZONE, profile.timezone.toString(),
                         UP_USER_LOCALE, profile.locale.toString(), UP_USER_DATA, profileUserData);
-                SqlTopicTranProvider.executeTopicTran(sqlCxt, "addUserProfile", null,
-                        insertData, () -> {
+                SqlTopicTranProvider.executeTopicTran(sqlCxt, tranName, null,
+                        tranData, () -> {
                             if (doUpdate) {
                                 // Update profile data with data extracted from auth data. This is
                                 // meant as a motivating example, not a real useful usage.
@@ -295,13 +323,6 @@ public class UserService implements ServiceInitializer {
         return profileRowPtr.value;
     }
 
-    public void authUsingToken(DnCxt cxt, String authId, String tokenData, DnServletHandler servletHandler)
-        throws DnException {
-        UserAuthData userAuthData = AuthUserUtil.computeUserAuthDataFromToken(cxt, this, authId,
-                tokenData, servletHandler);
-        cxt.userProfile = userAuthData.createProfile();
-        loadProfileRecord(cxt, cxt.userProfile, false);
-    }
 
     @Override
     public void checkInit(DnCxt cxt) {

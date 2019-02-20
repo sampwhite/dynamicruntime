@@ -46,7 +46,7 @@ public class DnSchemaService implements StartupServiceInitializer {
         rawSchemaStore.builders.put(TB_TABLE, this::buildTableDefinition);
 
         // Add some built-in types.
-        var count = DnRawType.mkSubType(DNT_COUNT, DNT_INTEGER)
+        var count = DnRawType.mkSubType(DNT_COUNT, DNT_INTEGER, null)
                 .setAttribute(DN_MIN, 0);
         var corePckg = DnRawSchemaPackage.mkPackage("DnSchemaServiceCore", DN_CORE_NAMESPACE,
                 mList(count));

@@ -154,8 +154,12 @@ public class DnRawType implements DnRawTypeInterface {
 
     /** Makes a type that extends from another type. If the type is inline then the *typeName*
      * can be null. */
-    public static DnRawType mkSubType(String typeName, String baseTypeName) {
-        return new DnRawType(typeName, mMap(DN_NAME, typeName, DN_BASE_TYPE, baseTypeName));
+    public static DnRawType mkSubType(String typeName, String baseTypeName, List<DnRawField> fields) {
+        var rawType = new DnRawType(typeName, mMap(DN_NAME, typeName, DN_BASE_TYPE, baseTypeName));
+        if (fields != null) {
+            rawType.addFields(fields);
+        }
+        return rawType;
     }
 
     public static DnRawType mkSubType(String baseTypeName) {

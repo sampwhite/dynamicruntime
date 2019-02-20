@@ -43,6 +43,10 @@ public class UserAuthData {
      * auth data is not involved in authentication caching. */
     public Date cookieModifiedDate;
 
+    /** Last time profile was last updated. This is extracted from the authentication cookie. If the cookie
+     * did not generated this object, then this value will be null. */
+    public Date profileModifiedDate;
+
     public UserProfile createProfile() {
         var up = new UserProfile(userId, account, userGroup, roles);
         up.authId = authId != null ? authId : "" + userId;
@@ -51,6 +55,10 @@ public class UserAuthData {
         up.authData = userData;
         up.authRules = authRules;
         up.cookieModifiedDate = cookieModifiedDate;
+        // We allow cookie to play back against the profile loading logic so it can determine
+        // if its cache is fresh. This allows one node to change the cookie to tell other nodes
+        // that the profile has changed.
+        up.modifiedDate = profileModifiedDate;
         return up;
     }
 }

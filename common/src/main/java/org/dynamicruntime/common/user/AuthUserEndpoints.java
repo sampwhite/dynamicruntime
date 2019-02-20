@@ -26,11 +26,11 @@ public class AuthUserEndpoints {
         var userService = Objects.requireNonNull(UserService.get(requestCxt.cxt));
         String authId = getReqStr(data, AUTH_ID);
         String tokenData = getReqStr(data, AUTH_TOKEN);
-        userService.authUsingToken(cxt, authId, tokenData, requestCxt.webRequest);
+        userService.authUsingAdminToken(cxt, authId, tokenData, requestCxt.webRequest);
         requestCxt.webRequest.setAuthCookieOnResponse(true);
         long userId = Objects.requireNonNull(cxt.userProfile).userId;
         requestCxt.mapResponse.putAll(mMap(AUTH_ID, authId, USER_ID, userId,
-                AUTH_USERNAME, cxt.userProfile.publicName));
+                AUTH_USERNAME, cxt.userProfile.publicName, AUTH_LOGGED_IN_USER, true));
     }
 
     public static void logout(DnRequestCxt requestCxt) {
@@ -47,10 +47,18 @@ public class AuthUserEndpoints {
 
     }
 
-    public static void getFormToken(DnRequestCxt requestCxt) throws DnException {
+    public static void createFormToken(DnRequestCxt requestCxt) throws DnException {
         var cxt = requestCxt.cxt;
         var formHandler = Objects.requireNonNull(UserService.get(requestCxt.cxt)).formHandler;
-        var respData = formHandler.generateFormTokenData(cxt);
+        var respData = formHandler.generateFormTokenData(cxt, null);
+        requestCxt.mapResponse.putAll(respData);
+    }
+
+    public static void adminCreateFormToken(DnRequestCxt requestCxt) throws DnException {
+        var cxt = requestCxt.cxt;
+        var formHandler = Objects.requireNonNull(UserService.get(requestCxt.cxt)).formHandler;
+        String username = getReqStr(requestCxt.requestData, AUTH_USERNAME);
+        var respData = formHandler.createLoginDataForEmulation(cxt, username);
         requestCxt.mapResponse.putAll(respData);
     }
 
@@ -63,9 +71,22 @@ public class AuthUserEndpoints {
         String formAuthToken = getReqStr(data, FM_FORM_AUTH_TOKEN);
         String formAuthCode = getReqStr(data, FM_FORM_AUTH_CODE);
         var formHandler = Objects.requireNonNull(UserService.get(cxt)).formHandler;
-        formHandler.sendVerifyToken(cxt, contact, formAuthToken, formAuthCode);
+        formHandler.sendVerifyTokenToContact(cxt, contact, formAuthToken, formAuthCode);
         requestCxt.mapResponse.put(CT_CONTACT_TYPE, contact.cType);
         requestCxt.mapResponse.put(CT_CONTACT_ADDRESS, contact.address);
+    }
+
+    @SuppressWarnings("Duplicates")
+    public static void sendUserVerifyEmail(DnRequestCxt requestCxt) throws DnException {
+        var cxt = requestCxt.cxt;
+        var data = requestCxt.requestData;
+
+        String username = getReqStr(data, AUTH_USERNAME);
+        String formAuthToken = getReqStr(data, FM_FORM_AUTH_TOKEN);
+        String formAuthCode = getReqStr(data, FM_FORM_AUTH_CODE);
+        var formHandler = Objects.requireNonNull(UserService.get(cxt)).formHandler;
+        formHandler.sendVerifyTokenToUser(cxt, username, formAuthToken, formAuthCode);
+        requestCxt.mapResponse.put(AUTH_USERNAME, username);
     }
 
     public static void createInitialUser(DnRequestCxt requestCxt) throws DnException {
@@ -94,26 +115,54 @@ public class AuthUserEndpoints {
         AuthAllUserData allData = AuthUserUtil.mkAllUserData(userId, requestCxt.webRequest);
 
         formHandler.setLoginDataAndCreateProfile(cxt, allData, username, password, formAuthToken, verifyCode);
+        AuthUserUtil.setLoggedInResponse(requestCxt, allData);
+    }
 
-        // Bind to current user and session.
-        requestCxt.webRequest.setUserAuthData(allData.authData);
-        requestCxt.webRequest.setUserSourceId(allData.sourceId);
-        cxt.userProfile = allData.profile;
 
-        // We will be authenticated after this request.
-        requestCxt.webRequest.setAuthCookieOnResponse(true);
+    @SuppressWarnings("Duplicates")
+    public static void authLoginByCode(DnRequestCxt requestCxt) throws DnException {
+        var cxt = requestCxt.cxt;
+        var data = requestCxt.requestData;
 
-        // Return same data as if we had asked for profile information for ourselves.
-        requestCxt.mapResponse.putAll(allData.profile.toMap());
+        String formAuthToken = getReqStr(data, FM_FORM_AUTH_TOKEN);
+        String username = getReqStr(data, AUTH_USERNAME);
+        String passwordToChange = getOptStr(data, FM_PASSWORD);
+        String verifyCode = getReqStr(data, FM_VERIFY_CODE);
+
+        var formHandler = Objects.requireNonNull(UserService.get(cxt)).formHandler;
+        // By setting userId to 0, we force the login code to query for it using the username.
+        AuthAllUserData allData = AuthUserUtil.mkAllUserData(0, requestCxt.webRequest);
+        formHandler.loginByVerifyCode(cxt, allData, username, passwordToChange, formAuthToken, verifyCode);
+        AuthUserUtil.setLoggedInResponse(requestCxt, allData);
+    }
+
+    @SuppressWarnings("Duplicates")
+    public static void authLoginByPassword(DnRequestCxt requestCxt) throws DnException {
+        var cxt = requestCxt.cxt;
+        var data = requestCxt.requestData;
+
+        String formAuthToken = getReqStr(data, FM_FORM_AUTH_TOKEN);
+        String username = getReqStr(data, AUTH_USERNAME);
+        String password = getReqStr(data, FM_PASSWORD);
+
+        var formHandler = Objects.requireNonNull(UserService.get(cxt)).formHandler;
+        // By setting userId to 0, we force the login code to query for it using the username.
+        AuthAllUserData allData = AuthUserUtil.mkAllUserData(0, requestCxt.webRequest);
+        formHandler.loginByPassword(cxt, allData, username, password, formAuthToken);
+        AuthUserUtil.setLoggedInResponse(requestCxt, allData);
     }
 
     public static List<DnEndpointFunction> getFunctions() {
         return mList(
                 mkEndpoint(AUTH_EP_TOKEN_LOGIN, AuthUserEndpoints::authUsingToken),
                 mkEndpoint(AUTH_EP_LOGOUT, AuthUserEndpoints::logout),
-                mkEndpoint(AUTH_GET_FORM_TOKEN, AuthUserEndpoints::getFormToken),
+                mkEndpoint(AUTH_CREATE_FORM_TOKEN, AuthUserEndpoints::createFormToken),
+                mkEndpoint(ADMIN_CREATE_FORM_TOKEN, AuthUserEndpoints::adminCreateFormToken),
                 mkEndpoint(AUTH_SEND_NEW_CONTACT_VERIFY_CODE, AuthUserEndpoints::sendNewContactVerifyEmail),
+                mkEndpoint(AUTH_SEND_USER_VERIFY_CODE, AuthUserEndpoints::sendUserVerifyEmail),
                 mkEndpoint(AUTH_CREATE_INITIAL_USER, AuthUserEndpoints::createInitialUser),
-                mkEndpoint(AUTH_SET_LOGIN_DATA, AuthUserEndpoints::setAuthLoginData));
+                mkEndpoint(AUTH_SET_LOGIN_DATA, AuthUserEndpoints::setAuthLoginData),
+                mkEndpoint(AUTH_LOGIN_BY_CODE, AuthUserEndpoints::authLoginByCode),
+                mkEndpoint(AUTH_LOGIN_BY_PASSWORD, AuthUserEndpoints::authLoginByPassword));
     }
 }

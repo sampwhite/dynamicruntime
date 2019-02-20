@@ -91,7 +91,7 @@ public class DnHttpClient implements Runnable {
     }
 
     public DnHttpRequest doGet(DnCxt cxt, String uri, Map<String,Object> args) throws DnException {
-        DnHttpRequest request = new DnHttpRequest(cxt, EPH_GET, uri);
+        DnHttpRequest request = new DnHttpRequest(cxt, EPM_GET, uri);
         request.args = args;
         execute(request);
         return request;
@@ -106,7 +106,7 @@ public class DnHttpClient implements Runnable {
     }
 
     public DnHttpRequest doEdit(DnCxt cxt, String uri, Map<String,Object> values, boolean isPut) throws DnException {
-        String method = (isPut) ? EPH_PUT : EPH_POST;
+        String method = (isPut) ? EPM_PUT : EPM_POST;
         DnHttpRequest request = new DnHttpRequest(cxt, method, uri);
         request.values = values;
         execute(request);
@@ -233,11 +233,11 @@ public class DnHttpClient implements Runnable {
             u = uri;
         }
         switch (method) {
-            case EPH_GET:
+            case EPM_GET:
                 return new HttpGet(u);
-            case EPH_POST:
+            case EPM_POST:
                 return new HttpPost(u);
-            case EPH_PUT:
+            case EPM_PUT:
                 return new HttpPut(u);
             default:
                 throw new DnException("Request to " + u + " is using illegal method " + method + ".");

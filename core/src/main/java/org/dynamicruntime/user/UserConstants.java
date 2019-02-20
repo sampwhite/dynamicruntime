@@ -36,6 +36,9 @@ public class UserConstants {
     public static final String AUTH_COOKIE_NAME = "DnAuthCookie";
     /** Boolean to indicate whether logout was done. */
     public static final String AUTH_LOGGED_OUT_USER = "loggedOutUser";
+    /** Boolean to indicate whether login was done. Sometimes an attempt at a login fails because
+     * the sourceId does not allow it, in which case an alternate approach is required. */
+    public static final String AUTH_LOGGED_IN_USER = "loggedInUser";
 
     /** Fields extracted from *authUserData*. */
     public static final String AUTH_ROLES = "roles";
@@ -169,9 +172,13 @@ public class UserConstants {
     public static final String AUTH_EP_LOGOUT = "authLogout";
     public static final String ADMIN_USER_INFO = "adminUserInfo";
     public static final String SELF_USER_INFO = "selfUserInfo";
-    public static final String AUTH_GET_FORM_TOKEN = "authGetFormToken";
+    public static final String AUTH_CREATE_FORM_TOKEN = "authGetFormToken";
+    public static final String ADMIN_CREATE_FORM_TOKEN = "adminCreateFormToken";
     public static final String AUTH_SEND_NEW_CONTACT_VERIFY_CODE = "authSendNewContactVerifyCode";
+    public static final String AUTH_SEND_USER_VERIFY_CODE = "authSendUserVerifyCode";
     // This may get renamed when there are more ways to create users.
     public static final String AUTH_CREATE_INITIAL_USER = "authCreateInitialUser";
     public static final String AUTH_SET_LOGIN_DATA = "authSetLoginData";
+    public static final String AUTH_LOGIN_BY_CODE = "authLoginByCode"; // TODO
+    public static final String AUTH_LOGIN_BY_PASSWORD = "authLoginByPassword"; // TODO
 }

@@ -145,6 +145,9 @@ public class UserSourceId {
     // Whether to force a regeneration of cookie.
     public boolean forceRegenerateCookie;
 
+    // Whether this sourceId does not yet exist in the database.
+    public boolean isNew;
+
     // Whether we made a change significant enough for us to save back to login source records.
     // Some of the changes can get captured in profile or special tracking storage, but
     // they will focus on more lightweight concerns not directly relevant to authentication.

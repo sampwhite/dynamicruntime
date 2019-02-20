@@ -28,11 +28,11 @@ public class NodeCoreSchema {
 
     public static DnRawType healthInfo = mkType("HealthInfoResponse",
             mList(startTime, startTime, uptime, nodeId, isMember, version));
-    public static DnRawEndpoint healthEndpoint = mkEndpoint(EPH_GET,"/health/info", ND_GET_HEALTH_FUNCTION,
+    public static DnRawEndpoint healthEndpoint = mkEndpoint(EPM_GET,"/health/info", ND_GET_HEALTH_FUNCTION,
             "Gets basic health status information for the node.", DNT_NONE, healthInfo.name);
 
     public static DnRawType memberInfo = mkType("NodeClusterMemberInfo", mList(isMember));
-    public static DnRawEndpoint membershipEndpoint = mkEndpoint(EPH_PUT,"/node/setClusterMembership",
+    public static DnRawEndpoint membershipEndpoint = mkEndpoint(EPM_PUT,"/node/setClusterMembership",
             ND_SET_CLUSTER_MEMBERSHIP,
             "Sets the cluster membership state.", memberInfo.name, healthInfo.name);
 

@@ -9,7 +9,7 @@ import org.dynamicruntime.user.UserSourceId;
  * communicate with each other. */
 @SuppressWarnings("WeakerAccess")
 public class AuthAllUserData {
-    public final long userId;
+    public long userId; // Mutable.
     public final String ipAddress;
     public final String userAgent;
     public boolean updateProfileSourceId;

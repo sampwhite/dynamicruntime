@@ -3,28 +3,32 @@ body {
     padding-right: 10px;
     font-size: 16px;
 }
+
 h1 {
     font-size: 26px;
 }
+
 h2 {
     font-size: 22px;
 }
 .sidenav {
     padding-left: 10px;
+    padding-top: 10px;
+    padding-right: 2px;
     height: 100%; /* Full-height: remove this if you want "auto" height */
-    width: 160px; /* Set the width of the sidebar */
+    width: 200px; /* Set the width of the sidebar */
     position: fixed; /* Fixed Sidebar (stay in place on scroll) */
     z-index: 1; /* Stay on top */
     top: 0; /* Stay at the top */
     left: 0;
     background-color: #AAAAAA;
     overflow-x: hidden; /* Disable horizontal scroll */
-    padding-top: 10px;
     font-size: 16px;
     color: #111122;
 }
+
 .main {
-    margin-left: 160px; /* Same as the width of the sidebar */
+    margin-left: 200px; /* Same as the width of the sidebar */
     padding: 0 10px;
 }
 
@@ -82,4 +86,29 @@ div.error {
 
 form {
     padding: 5px;
+}
+
+.loginFormTable {
+    width: 440px;
+    margin: 5px;
+}
+
+.activityLinks {
+    width: 500px;
+    text-align: center;
+}
+
+.centerCell {
+    text-align: center;
+}
+
+.clickText:hover {
+    color: darkred;
+    cursor: pointer;
+}
+
+.clickText {
+    padding: 3px;
+    color: darkmagenta;
+    text-decoration: underline;
 }

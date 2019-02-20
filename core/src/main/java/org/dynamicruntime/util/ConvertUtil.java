@@ -221,6 +221,11 @@ public class ConvertUtil {
         return retVal;
     }
 
+    public static long toOptLongWithDefault(Object o, long dflt) throws DnException {
+        Long l = toOptLong(o);
+        return l != null ? l : dflt;
+    }
+
     public static long toReqLong(Object o) throws DnException {
         Long l = toOptLong(o);
         if (l == null) {

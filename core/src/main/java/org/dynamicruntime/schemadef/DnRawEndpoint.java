@@ -28,7 +28,7 @@ public class DnRawEndpoint implements DnRawTypeInterface {
             epModel.put(DN_NAME, name);
         }
         if (!epModel.containsKey(EP_HTTP_METHOD)) {
-            epModel.put(EP_HTTP_METHOD, EPH_GET);
+            epModel.put(EP_HTTP_METHOD, EPM_GET);
         }
         epModel.put(DN_IS_ENDPOINT, true);
         epModel.put(DN_BUILDER, EP_ENDPOINT);
@@ -48,13 +48,13 @@ public class DnRawEndpoint implements DnRawTypeInterface {
 
     public static DnRawEndpoint mkListEndpoint(String path, String function, String description,
             String inTypeRef, String outTypeRef) {
-        return mkEndpoint(EPH_GET,path, function, description, inTypeRef, outTypeRef)
+        return mkEndpoint(EPM_GET,path, function, description, inTypeRef, outTypeRef)
                 .setAttribute(EP_IS_LIST_RESPONSE, true);
     }
 
     public static DnRawEndpoint mkSimpleListEndpoint(String path, String function, String description,
             String inTypeRef, String outTypeRef) {
-        return mkEndpoint(EPH_GET, path, function, description, inTypeRef, outTypeRef)
+        return mkEndpoint(EPM_GET, path, function, description, inTypeRef, outTypeRef)
                 .setAttribute(EP_IS_LIST_RESPONSE, true).setAttribute(EP_NO_LIMIT_PARAMETER, true);
     }
 

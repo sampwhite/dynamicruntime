@@ -5,14 +5,8 @@ import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.context.DnCxtConstants;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.schemadef.DnTable;
-import org.dynamicruntime.sql.DnSqlStatement;
-import org.dynamicruntime.sql.SqlCxt;
-import org.dynamicruntime.sql.SqlStmtUtil;
-import org.dynamicruntime.sql.SqlTableUtil;
-import org.dynamicruntime.sql.topic.SqlQueryHolderBase;
-import org.dynamicruntime.sql.topic.SqlTopic;
-import org.dynamicruntime.sql.topic.SqlTopicConstants;
-import org.dynamicruntime.sql.topic.SqlTopicUtil;
+import org.dynamicruntime.sql.*;
+import org.dynamicruntime.sql.topic.*;
 import org.dynamicruntime.user.UserSourceId;
 
 import java.util.List;
@@ -192,6 +186,13 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
     // Convenience methods for executing queries. These methods assume you are executing inside
     // an SQL session.
     //
+
+    public void executeUserTran(SqlCxt sqlCxt, long userId, String tranName, SqlFunction tranExecute)
+            throws DnException {
+        var userIdParam = mMap(USER_ID, userId);
+        SqlTopicTranProvider.executeTopicTran(sqlCxt, tranName, null,
+                userIdParam, tranExecute);
+    }
 
     public long insertAuthUser(DnCxt cxt, Map<String,Object> userDefData) throws DnException {
         SqlTopicUtil.prepForTranInsert(cxt, userDefData);

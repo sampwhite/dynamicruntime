@@ -91,7 +91,7 @@ public class DnRequestService implements ServiceInitializer {
                 handler.setIsLogout(true);
                 checkAddAuthCookies(cxt, handler);
             }
-            handler.sendRedirect("/" + CONTENT_ROOT + "/html/endpoints.html");
+            handler.sendRedirect("/" + CONTENT_ROOT + "/html/login.html");
             handler.logSuccess(cxt, handler.rptStatusCode);
             return;
         }
@@ -151,11 +151,12 @@ public class DnRequestService implements ServiceInitializer {
                             }
                         }
                         if (id == null) {
-                            throw DnException.mkConv("Parameter *userId* is required for user focused requests.");
+                            throw DnException.mkInput("Parameter *userId* is required for user focused requests.");
                         }
                         if (id != authData.userId) {
                             throw new DnException("User endpoints require a *userId* parameter that matches " +
-                                    "the userId of the current acting user.", DnException.NOT_AUTHORIZED);
+                                    "the userId of the current acting user.", null, DnException.NOT_AUTHORIZED,
+                                    DnException.SYSTEM, DnException.AUTH);
                         }
                     }
                     allowed = true;
@@ -166,10 +167,12 @@ public class DnRequestService implements ServiceInitializer {
             // If request is being made directly to this node and it does not change state, then we let
             // it through. Otherwise, we throw an exception.
             // Temporary code to always throw an exception.
-            //if (handler.isFromLoadBalancer || handler.method == null || !handler.method.equals(EPH_GET)) {
-            throw new DnException("Current acting user (if any) does not have the privilege " +
-                    "to execute this request", null, DnException.NOT_AUTHORIZED, DnException.SYSTEM,
-                    DnException.AUTH);
+            //if (handler.isFromLoadBalancer || handler.method == null || !handler.method.equals(EPM_GET)) {
+            int code = (authData != null && authData.determinedUserId) ? DnException.NOT_AUTHORIZED :
+                    DnException.AUTH_NEEDED;
+            String msg = (code == DnException.AUTH_NEEDED) ? "Request needs authentication." :
+                    "Acting user does not have the privilege to execute this request.";
+            throw new DnException(msg, null, code, DnException.SYSTEM, DnException.AUTH);
             //}
         }
 

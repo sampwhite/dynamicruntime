@@ -9,7 +9,6 @@ import org.dynamicruntime.function.DnPointer;
 import org.dynamicruntime.node.DnCoreNodeService;
 import org.dynamicruntime.sql.topic.SqlTopicConstants;
 import org.dynamicruntime.sql.topic.SqlTopicService;
-import org.dynamicruntime.sql.topic.SqlTopicTranProvider;
 import org.dynamicruntime.sql.topic.SqlTopicUtil;
 import org.dynamicruntime.user.LogUser;
 import org.dynamicruntime.user.UserAuthData;
@@ -30,32 +29,99 @@ import static org.dynamicruntime.util.DnCollectionUtil.*;
 
 /**
  * Code that handles the registration and login forms.
+ *
+ * Like all authentication code that I have every seen, it is complicated because it
+ * is trying to do complicated and subtle things.
  */
 @SuppressWarnings("WeakerAccess")
 public class AuthFormHandler {
+    public static class FormTokenComponents {
+        public final String tType;
+        public final String suffix;
+        public final Date creationDate;
+        public final String extraData;
+
+        public FormTokenComponents(String tType, String suffix, Date creationDate, String extraData) {
+            this.tType = tType;
+            this.suffix = suffix;
+            this.creationDate = creationDate;
+            this.extraData = extraData;
+        }
+    }
+    /** Used to set username and password, not to validate them. Value for username and password can be null. */
+    public static class VerifyLoginParams {
+        public final String formAuthToken;
+        public final String verifyCode;
+        public final String username;
+        public final String password;
+        /** Whether this is a password check. If this is false then we are using the *verifyCode*. */
+        public boolean checkPassword;
+
+        public VerifyLoginParams(String formAuthToken, String verifyCode, String username, String password) {
+            this.formAuthToken = formAuthToken;
+            this.verifyCode = verifyCode;
+            this.username = username;
+            this.password = password;
+        }
+    }
+    public static class CountTracker {
+        public final int maxCount;
+        public final CacheMap<String,Integer> trackCache = new CacheMap<>(10000, true);
+
+        public CountTracker(int maxCount) {
+            this.maxCount = maxCount;
+        }
+
+        public boolean checkExceedMaxCount(String key) {
+            Integer iVal = trackCache.get(key);
+            int newVal = (iVal != null) ? iVal + 1 : 1;
+            trackCache.put(key, newVal);
+            return newVal >= maxCount;
+        }
+        public void clear() {
+            trackCache.clear();
+        }
+    }
+
     public final int TOKEN_TIMEOUT_MILLIS = 15 * 60 * 1000; // Fifteen minutes
     public final UserService userService;
     public DnCoreNodeService coreNodeService;
     public DnMailService mailService;
     public DnContentService contentService;
 
-    // Used to prevent abuse of our free website.
-    public int maxExecsPerHour = 100;
+    // Used to prevent abuse of the web site. Our defaults are low because we are using free AWS infrastructure.
+    public int maxExecsPerHour = 10000;
+    public int maxActiveRequests = 3;
+    public int maxFormCodeCount = 10;
+    public int maxIpAddressCount = 100;
+
+    // Tracker fields.
     public int curNumberOfExecs = 0;
     public int curHourScope = 0;
-    public AtomicInteger activeRequests = new AtomicInteger(0);
+    public final AtomicInteger activeRequests = new AtomicInteger(0);
+    public CountTracker formTokenTracker;
+    public CountTracker ipAddressTracker;
 
     public AuthFormHandler(UserService userService) {
         this.userService = userService;
     }
 
-    public void init(DnCxt cxt) {
+    public void init(DnCxt cxt) throws DnException {
+        var config = cxt.instanceConfig;
+        // These should only be configured for testing.
+        maxExecsPerHour = (int)toOptLongWithDefault(config.get("auth.maxExecsPerHour"), maxExecsPerHour);
+        maxActiveRequests = (int)toOptLongWithDefault(config.get("auth.maxActiveRequests"), maxActiveRequests);
+        maxFormCodeCount = (int)toOptLongWithDefault(config.get("auth.maxFormCodeCount"), maxFormCodeCount);
+        maxIpAddressCount = (int)toOptLongWithDefault(config.get("auth.maxIpAddressCount"), maxIpAddressCount);
+        formTokenTracker = new CountTracker(maxFormCodeCount);
+        ipAddressTracker = new CountTracker(maxIpAddressCount);
+
         coreNodeService = DnCoreNodeService.get(cxt);
         contentService = DnContentService.get(cxt);
         mailService = DnMailService.get(cxt);
     }
 
-    public Map<String,Object> generateFormTokenData(DnCxt cxt) throws DnException {
+    public Map<String,Object> generateFormTokenData(DnCxt cxt, String extraData) throws DnException {
         String dateStr = DnDateUtil.formatDate(cxt.now());
         String formAuthType = FMT_SIMPLE;
         // Simulate captcha number of possible legal answers. In the future, the value
@@ -68,15 +134,50 @@ public class AuthFormHandler {
         // is in code that has access to the encryption key, so we can make sure to not allow anything
         // even close to that many checks.
         String randomStr = EncodeUtil.mkRndString(4);
-        String tokenValue = formAuthType + "@" + dateStr + formCode + ":" + randomStr;
+        String ed = (extraData != null) ? ":" + extraData : "";
+        String tokenValue = formAuthType + ed + "@" + dateStr + formCode + ":" + randomStr;
+
         // Encrypting also provides randomness for free.
-        String formToken = Objects.requireNonNull(coreNodeService).encryptString(tokenValue);
+        DnCoreNodeService nodeService = Objects.requireNonNull(coreNodeService);
+        String formToken = nodeService.encryptString(tokenValue);
 
         return mMap(FM_FORM_AUTH_TYPE, formAuthType, FM_FORM_AUTH_TOKEN, formToken,
-                FM_CAPTCHA_DATA, mMap(FM_FORM_AUTH_CODE, formCode));
+                FM_CAPTCHA_DATA, mMap(FM_FORM_AUTH_CODE, formCode,
+                        "message", "Eventually the auth code will not be " +
+                                "supplied in this response data, instead it will have " +
+                                "to be calculated by the browser based on input from the " +
+                                "captcha data."));
     }
 
-    public void sendVerifyToken(DnCxt cxt, UserContact contact, String formAuthToken,
+    public FormTokenComponents getTokenComponents(DnCxt cxt, String formAuthToken) throws DnException {
+        DnCoreNodeService nodeService = Objects.requireNonNull(coreNodeService);
+        String tokenValue = nodeService.decryptString(formAuthToken);
+        List<String> beginAndEnd = StrUtil.splitString(tokenValue, "@", 2);
+        if (beginAndEnd.size() < 2) {
+            throw new DnException("Form auth token is not valid.");
+        }
+        List<String> typeAndExtra = StrUtil.splitString(beginAndEnd.get(0), ":", 2);
+        String tokenType = typeAndExtra.get(0);
+        String extra = typeAndExtra.size() > 1 ? typeAndExtra.get(1) : "";
+
+        if (!tokenType.equals(FMT_SIMPLE)) {
+            throw DnException.mkInput("Form auth token is not a valid token type.");
+        }
+        String end = beginAndEnd.get(1);
+        int index2 = end.indexOf('Z');
+        if (index2 < 0) {
+            throw new DnException("Date is not encoded in form token.");
+        }
+        String dateStr = end.substring(0, index2);
+        Date d = DnDateUtil.parseDate(dateStr);
+        Date now = cxt.now();
+        if (now.getTime() - d.getTime() > TOKEN_TIMEOUT_MILLIS) {
+            throw DnException.mkInput("Form auth token has timed out.");
+        }
+        return new FormTokenComponents(tokenType, end.substring(index2 + 1), d, extra);
+    }
+
+    public void sendVerifyTokenToContact(DnCxt cxt, UserContact contact, String formAuthToken,
             String formAuthCode) throws DnException {
         String contactType = contact.cType;
         String contactAddress = contact.address;
@@ -86,11 +187,29 @@ public class AuthFormHandler {
         if (!contactAddress.contains("@")) {
             throw DnException.mkInput("Email address requires an at ('@') symbol.");
         }
-        if (!validateTokenCode(cxt, formAuthToken, formAuthCode)) {
-            throw DnException.mkInput("THe validation code is either incorrect or has expired.");
+        if (isInvalidTokenCode(cxt, formAuthToken, formAuthCode)) {
+            throw DnException.mkInput("The validation code is either incorrect or has expired.");
         }
 
-        String verifyCode = computeVerifyCode(cxt, formAuthToken, contactAddress);
+        String verifyCode = computeVerifyCode(formAuthToken, contactAddress);
+        sendVerifyCodeEmail(cxt, contactAddress, verifyCode);
+    }
+
+    public void sendVerifyTokenToUser(DnCxt cxt, String username, String formAuthToken, String formAuthCode)
+            throws DnException {
+        if (isInvalidTokenCode(cxt, formAuthToken, formAuthCode)) {
+            throw DnException.mkInput("The validation code is either incorrect or has expired.");
+        }
+        AuthUserRow userRow = userService.queryUsername(cxt, username);
+        if (userRow == null) {
+            throw new DnException(String.format("Username %s is not in the system on cannot receive messages.",
+                    username), DnException.NOT_FOUND);
+        }
+        String verifyCode = computeVerifyCode(formAuthToken, userRow.primaryId);
+        sendVerifyCodeEmail(cxt, userRow.primaryId, verifyCode);
+    }
+
+    public void sendVerifyCodeEmail(DnCxt cxt, String contactAddress, String verifyCode) throws DnException {
         var contentData = contentService.getTemplateContent(cxt, "auth/contactCodeTextEmail.ftl",
                 null, mMap("verifyCode", verifyCode));
         String text = Objects.requireNonNull(contentData).strContent;
@@ -102,7 +221,7 @@ public class AuthFormHandler {
     public AuthUserRow createInitialUser(DnCxt cxt, UserContact contact, String formAuthToken, String verifyCode)
         throws DnException {
         String contactAddress = contact.address;
-        if (!validateVerifyCode(cxt, formAuthToken, contactAddress, verifyCode)) {
+        if (checkInvalidVerifyCode(cxt, formAuthToken, contactAddress, verifyCode)) {
             throw DnException.mkInput("Verification code is incorrect.");
         }
 
@@ -133,7 +252,8 @@ public class AuthFormHandler {
                 if ((curRow.username != null && !curRow.username.startsWith(AUTH_USERNAME_TMP_PREFIX)) ||
                     curRow.encodedPassword != null) {
                     throw new DnException(String.format("Email %s is not available for creating a new user.",
-                            contactAddress), DnException.NOT_AUTHORIZED);
+                            contactAddress), null, DnException.NOT_AUTHORIZED, DnException.SYSTEM,
+                            DnException.AUTH);
                 }
                 if (!curRow.roles.contains(ROLE_USER)) {
                     throw new DnException("The specified user does not support a contact verified login " +
@@ -163,51 +283,209 @@ public class AuthFormHandler {
         return rowPtr.value;
     }
 
+    public Map<String,Object> createLoginDataForEmulation(DnCxt cxt, String username) throws DnException {
+        var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.AUTH_TOPIC);
+        if (cxt.userProfile == null) {
+            throw new DnException("Authenticated context required to generate user login data for " +
+                    "emulation.");
+        }
+        AuthQueryHolder aqh = AuthQueryHolder.get(sqlCxt);
+        Map<String,Object> retData = mMap();
+        aqh.sqlDb.withSession(cxt, () -> {
+            AuthUserRow usernameRow = aqh.queryByUsername(cxt, username);
+            if (usernameRow == null) {
+                throw new DnException(String.format("Username %s does not exist in the system.",
+                        username), DnException.NOT_FOUND);
+            }
+            long grantingId = cxt.userProfile.grantingUserId > 0 ? cxt.userProfile.grantingUserId :
+                    cxt.userProfile.userId;
+            String authId = cxt.userProfile.authId != null ? cxt.userProfile.authId : "" + grantingId;
+            // Encode who is granting this token+verify that can be used to do a login.
+            String extra = "" + grantingId + ":" + authId;
+            Map<String,Object> formTokenData = generateFormTokenData(cxt, extra);
+            String formAuthToken = getReqStr(formTokenData, FM_FORM_AUTH_TOKEN);
+            String verifyCode = computeVerifyCode(formAuthToken, usernameRow.primaryId);
+            retData.put(USER_ID, usernameRow.userId);
+            retData.put(FM_FORM_AUTH_TOKEN, formAuthToken);
+            retData.put(FM_VERIFY_CODE, verifyCode);
+        });
+        return retData;
+    }
+
+    /**
+     * Uses a username and token+verify to do a simple login. This is a trusted login so the
+     * UserSourceId will be added as a validated source.
+     */
+    public void loginByVerifyCode(DnCxt cxt, AuthAllUserData allData, String username,
+            String passwordToChange, String formAuthToken,
+            String verifyCode) throws DnException {
+        VerifyLoginParams loginParams = new VerifyLoginParams(formAuthToken, verifyCode, username, passwordToChange);
+        doLogin(cxt, "loginByVerifyCode", allData, loginParams);
+    }
+
+    public void loginByPassword(DnCxt cxt, AuthAllUserData allData, String username, String password,
+            String formAuthToken) throws DnException {
+        VerifyLoginParams loginParams = new VerifyLoginParams(formAuthToken, null, username, password);
+        loginParams.checkPassword = true;
+        doLogin(cxt, "loginByPassword", allData, loginParams);
+    }
+
     /** Used to set the username and password for a user. The data that is populated into AuthAllUserData can be
      * used by the caller to create the authentication & source cookies. */
     public void setLoginDataAndCreateProfile(DnCxt cxt, AuthAllUserData allData, String username, String password,
             String formAuthToken, String verifyCode) throws DnException {
-        var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.AUTH_TOPIC);
-        AuthQueryHolder aqh = AuthQueryHolder.get(sqlCxt);
-        long userId = allData.userId;
-        var userIdParam = mMap(USER_ID, userId);
+        VerifyLoginParams loginParams = new VerifyLoginParams(formAuthToken, verifyCode, username, password);
+        doLogin(cxt, "setLoginData", allData, loginParams);
+    }
 
-        aqh.sqlDb.withSession(cxt, () -> {
-            // Look for potential update conflict early so we can give a nice error to it.
-            AuthUserRow usernameRow = aqh.queryByUsername(cxt, username);
-            if (usernameRow != null && usernameRow.userId != userId) {
-                throw new DnException(String.format("Username %s has already been taken.",
-                        username), DnException.CONFLICT);
-            }
-            SqlTopicTranProvider.executeTopicTran(sqlCxt, "setLoginData", null,
-                    userIdParam, () -> {
-                        allData.authRow = AuthUserRow.extract(sqlCxt.tranData);
-                        // Verify code.
-                        validateVerifyCode(cxt, formAuthToken, allData.authRow.primaryId, verifyCode);
-                        // Populate or update sourceId. This inserts/updates rows in the login sources table.
-                        updateSourceId(cxt, allData, aqh);
-                        // Do the actual work of this method.
-                        setLoginDataTranInternal(allData, username, password);
-                         // Carry results back into database row.
-                        sqlCxt.tranData.putAll(allData.authRow.toMap());
-                    });
-        });
-        if (allData.authData == null || allData.profile == null) {
-            // This should never happen.
-            throw new DnException("Unable to perform user auth action.");
+    public void doLogin(DnCxt cxt, String tranName, AuthAllUserData allData, VerifyLoginParams loginParams)
+            throws DnException {
+        String formAuthToken = loginParams.formAuthToken;
+        checkForMaximumRequests(cxt, formAuthToken);
+        // Make sure we have a good username before proceeding.
+        String username = loginParams.username;
+        String verifyCode = loginParams.verifyCode;
+        if (username != null) {
+            checkValidUsername(username);
+        } else if (loginParams.checkPassword) {
+            throw DnException.mkInput("A username must be supplied when checking passwords.");
         }
 
-        // Create initial profile record, or if it exists, sync up data from auth row.
+        var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.AUTH_TOPIC);
+        AuthQueryHolder aqh = AuthQueryHolder.get(sqlCxt);
+
+        aqh.sqlDb.withSession(cxt, () -> {
+            boolean doTran = true;
+            long userId = allData.userId;
+            if (username != null) {
+                AuthUserRow usernameRow = aqh.queryByUsername(cxt, username);
+                allData.authRow = usernameRow;
+                if (userId <= 0) {
+                    // Filling in userId.
+                    if (usernameRow != null) {
+                        userId = usernameRow.userId;
+                        allData.userId = userId;
+                    } else {
+                        throw new DnException(String.format("Username %s could not be found.",
+                                username), DnException.NOT_FOUND);
+                    }
+                }
+                // Look for potential update conflict early so we can give a nice error to it.
+                else if (usernameRow != null && usernameRow.userId != userId) {
+                    String msg = (loginParams.checkPassword) ?
+                            "User ID and username have mismatched data." :
+                            String.format("Username %s has already been taken.", username);
+                    throw new DnException(msg, DnException.CONFLICT);
+                }
+                if (loginParams.checkPassword) {
+                    if (usernameRow == null) {
+                        // This should never happen. If it does, then a positive userId was set
+                        // but the username for that user does not find a row, implying mismatched data.
+                        throw new DnException("Password validation did not get a user to validate against.");
+                    }
+                    if (usernameRow.encodedPassword == null) {
+                        throw DnException.mkInput("The username is not set up to allow password validation.");
+                    }
+                    // We see if can bypass doing the database transaction.
+                    var curSourceId = getFamiliarSourceId(cxt, allData, aqh);
+                    if (curSourceId == null) {
+                        // We do not trust a general user's password management to have it allow a login in
+                        // all circumstances. It is why there is a separate token mechanism for admin
+                        // type authentication which can be done from unfamiliar sources. Admin token passwords
+                        // are expected to be longer and better protected. They also rotate out every
+                        // few months and are assigned to an admin and not self-assigned.
+                        throw new DnException("Login by password validation is not allowed from " +
+                                "this unfamiliar browser or device.", null, DnException.NOT_AUTHORIZED,
+                                DnException.SYSTEM, DnException.AUTH);
+                    }
+
+                    // Check password. Note that we are *not* trying to disguise whether the error
+                    // is a missing username or an invalid password. Any logged in user can figure out
+                    // which usernames exist in the system simply by trying to change their username
+                    // and seeing if they succeed. If they don't then the username already exists.
+                    // A more laborious version of this check can be done during initial registration as well.
+                    if (!EncodeUtil.checkPassword(loginParams.password, usernameRow.encodedPassword)) {
+                        throw DnException.mkInput("Password did not match.");
+                    }
+                    if (!curSourceId.isModified) {
+                        // Nothing interesting happening, we can skip the auth tran (but we will still
+                        // do the profile tran, but profile data, unlike auth data, is assumed to be sharded in heavy
+                        // use environments).
+                        doTran = false;
+                    } else {
+                        allData.sourceId = curSourceId;
+                    }
+                }
+            }
+
+            if (doTran) {
+                aqh.executeUserTran(sqlCxt, userId, tranName, () -> {
+                    allData.authRow = AuthUserRow.extract(sqlCxt.tranData);
+                    if (!loginParams.checkPassword) {
+                        // Verify code. Note that we are assuming primaryId is the email address
+                        // we used to send the verification code.
+                        if (checkInvalidVerifyCode(cxt, formAuthToken, allData.authRow.primaryId, verifyCode)) {
+                            throw DnException.mkInput("Supplied verification code is invalid.");
+                        }
+                    }
+
+                    // Populate or update sourceId. This inserts/updates rows in the login sources table.
+                    updateSourceId(cxt, allData, aqh);
+                    // Do the actual work of this method.
+                    if (!loginParams.checkPassword) {
+                        mergeIntoRowForTran(allData, loginParams);
+                    }
+
+                    // Carry results back into database row.
+                    sqlCxt.tranData.putAll(allData.authRow.toMap());
+                });
+            }
+
+        });
+
+        // Create/load profile and set up for setting cookie.
+        FormTokenComponents comps = getTokenComponents(cxt, formAuthToken);
+        setLoginProfileData(allData);
+        applyFormComponentsToAuth(allData.authData, comps);
+
+        // Login source information has changed, make sure to put it into profile data store.
         allData.updateProfileSourceId = true;
-        userService.loadProfileRecord(cxt, allData, true);
+
+        // Create initial profile record, or if it exists, sync up data from auth row.
+        userService.loadProfileRecord(cxt, tranName, allData, true);
     }
+
+
 
     /** Updates the sourceId information in the login sources table.
      * Should only be called in a database transaction and with *authRow* in AuthAllUserData already loaded. */
     public void updateSourceId(DnCxt cxt, AuthAllUserData allData, AuthQueryHolder aqh) throws DnException {
+        UserSourceId sourceId = getFamiliarSourceId(cxt, allData, aqh);
+        if (sourceId == null) {
+            sourceId = UserSourceId.createNew();
+            sourceId.userId = allData.userId;
+            sourceId.isNew = true;
+        }
+        sourceId.addSource(cxt, allData.ipAddress, allData.userAgent);
+        if (sourceId.isNew || sourceId.isModified) {
+            // Make sure we have all the related user data available for doing an update, and if user
+            // fields have changed, make sure the change is picked up as well.
+            sourceId.data = SqlTopicUtil.mergeUserFields(sourceId.data, allData.authRow.data);
+            aqh.updateLoginSourceId(cxt, sourceId, sourceId.isNew);
+            // Since we went through the work of interacting with the database, we might as well refresh
+            // the cookie in the browser as well.
+            sourceId.forceRegenerateCookie = true;
+        }
+        allData.sourceId = sourceId;
+    }
+
+    /** Sees if the source of the request comes from a browser or device that has been associated with
+     * a successful login. This method is the method that justifies the rest of the code
+     * that handles the *UserSourceId* object. */
+    public UserSourceId getFamiliarSourceId(DnCxt cxt, AuthAllUserData allData, AuthQueryHolder aqh)
+            throws DnException {
         UserSourceId sourceId = allData.sourceId;
         UserSourceId tSourceId = null; // Source ID from or for login sources tables.
-        boolean doInsert = false;
         if (sourceId != null) {
             // Query for it.
             tSourceId = aqh.queryLoginSourceId(cxt, allData.userId, sourceId.sourceCode);
@@ -217,39 +495,38 @@ public class AuthFormHandler {
             List<UserSourceId> recentIds = aqh.queryRecentLoginSourceIds(cxt, allData.userId);
             tSourceId = findItem(recentIds, sId ->
                     findItem(sId.ipAddresses, ipA -> ipA.ipAddress.equals(ipAddress)) != null);
-            if (tSourceId == null) {
-                doInsert = true;
-                tSourceId = UserSourceId.createNew();
-                tSourceId.userId = allData.userId;
+            if (tSourceId != null && sourceId != null) {
+                // The cookie and the sourceId code we want to apply are in disagreement.
+                tSourceId.forceRegenerateCookie = true;
             }
         }
-        tSourceId.addSource(cxt, allData.ipAddress, allData.userAgent);
-        if (doInsert || tSourceId.isModified) {
-            // Make sure we have all the related user data available for doing an update, and if user
-            // fields have changed, make sure the change is picked up as well.
-            tSourceId.data = SqlTopicUtil.mergeUserFields(tSourceId.data, allData.authRow.data);
-            aqh.updateLoginSourceId(cxt, tSourceId, doInsert);
-        }
-        // Since we went through the work of interacting with the database, we might as well refresh
-        // the cookie in the browser as well.
-        tSourceId.forceRegenerateCookie = true;
-        allData.sourceId = tSourceId;
+        return tSourceId;
     }
 
-    public void setLoginDataTranInternal(AuthAllUserData allData, String username, String password)
-            throws DnException {
+    public static void mergeIntoRowForTran(AuthAllUserData allData, VerifyLoginParams loginParams) throws DnException {
         AuthUserRow userRow = allData.authRow;
+        String username = loginParams.username;
+        String password = loginParams.password;
         checkValidUsername(username);
 
         // Verify row supports setting a username and password.
         if (!userRow.enabled || !userRow.roles.contains(ROLE_USER) ||
-            !userRow.authUserData.containsKey(CTE_CONTACTS)) {
+                !userRow.authUserData.containsKey(CTE_CONTACTS)) {
             throw new DnException("User is not in an appropriate state to get a login assigned to it.");
         }
 
-        userRow.username = username;
-        userRow.passwordEncodingRule = AUTH_DN_HASH;
-        userRow.encodedPassword = EncodeUtil.hashPassword(password);
+        if (username != null) {
+            userRow.username = username;
+        }
+        if (password != null) {
+            userRow.passwordEncodingRule = AUTH_DN_HASH;
+            userRow.encodedPassword = EncodeUtil.hashPassword(password);
+        }
+    }
+
+    public static void setLoginProfileData(AuthAllUserData allData) {
+        AuthUserRow userRow = allData.authRow;
+
         UserAuthData authData = new UserAuthData();
         userRow.populateAuthData(authData);
         if (allData.sourceId != null) {
@@ -258,6 +535,29 @@ public class AuthFormHandler {
         authData.determinedUserId = true;
         allData.authData = authData;
         allData.profile = authData.createProfile();
+    }
+
+    public static void applyFormComponentsToAuth(UserAuthData authData, FormTokenComponents comps) throws DnException {
+        if (authData == null) {
+            return;
+        }
+        String extra = comps.extraData;
+        if (isEmpty(extra)) {
+            return;
+        }
+        List<String> twoParts = StrUtil.splitString(extra, ":");
+        if (twoParts.size() < 2) {
+            return;
+        }
+        long grantingId = toReqLong(twoParts.get(0));
+        String grantingAuthId = twoParts.get(1);
+        // Form component was created directly by an admin user.
+        authData.grantingUserId = grantingId;
+        if (authData.authId == null) {
+            authData.authId = grantingAuthId + ":" + authData.userId;
+        } else if (authData.authId.indexOf(':') < 0) {
+            authData.authId = grantingAuthId + ":" + authData.authId;
+        }
     }
 
     public static void checkValidUsername(String username) throws DnException {
@@ -271,72 +571,64 @@ public class AuthFormHandler {
         }
     }
 
-    public boolean validateTokenCode(DnCxt cxt, String formAuthToken, String formAuthCode) throws DnException {
-        checkForMaximumRequests(cxt);
-        String suffix = getTokenSuffix(cxt, formAuthToken);
+    public boolean isInvalidTokenCode(DnCxt cxt, String formAuthToken, String formAuthCode) throws DnException {
+        checkForMaximumRequests(cxt, formAuthToken);
+        var components = getTokenComponents(cxt, formAuthToken);
+        String suffix = components.suffix;
         String code = StrUtil.getToNextIndex(suffix, 0, ":");
-        return code.equals(formAuthCode);
+        return !code.equals(formAuthCode);
     }
 
-    public boolean validateVerifyCode(DnCxt cxt, String formAuthToken, String contactAddress, String verifyCode)
-            throws DnException {
-        checkForMaximumRequests(cxt);
-        // Do the getTokenSuffix, just for the token validation.
-        String code = computeVerifyCode(cxt, formAuthToken, contactAddress);
+    public boolean checkInvalidVerifyCode(DnCxt cxt, String formAuthToken, String contactAddress,
+            String verifyCode) throws DnException {
+        checkForMaximumRequests(cxt, formAuthToken);
+        String code = computeVerifyCode(formAuthToken, contactAddress);
 
-        return code.equals(verifyCode);
+        // Make break point friendly ternary operator.
+        return !code.equals(verifyCode);
     }
 
-    public String computeVerifyCode(DnCxt cxt, String formAuthToken, String contactAddress) throws DnException {
+    public String computeVerifyCode(String formAuthToken, String contactAddress) {
         byte[] hash = EncodeUtil.stdHashToBytes(contactAddress + formAuthToken);
-        getTokenSuffix(cxt, formAuthToken);
         return EncodeUtil.convertToReadableChars(hash, 4);
     }
 
-    public String getTokenSuffix(DnCxt cxt, String formAuthToken) throws DnException {
-        String tokenValue = Objects.requireNonNull(coreNodeService.decryptString(formAuthToken));
-        int index = tokenValue.indexOf('@');
-        if (index <= 0) {
-            throw new DnException("Form auth token is not valid.");
-        }
-        String tokenType = tokenValue.substring(0, index);
-        if (!tokenType.equals(FMT_SIMPLE)) {
-            throw DnException.mkConv("Form auth token is not a valid token type.");
-        }
-        int index2 = tokenValue.indexOf('Z', index + 1);
-        String dateStr = tokenValue.substring(index + 1, index2);
-        Date d = DnDateUtil.parseDate(dateStr);
-        Date now = cxt.now();
-        if (now.getTime() - d.getTime() > TOKEN_TIMEOUT_MILLIS) {
-            throw DnException.mkInput("Form auth token has timed out.");
-        }
-        return tokenValue.substring(index2 + 1);
-    }
 
-    public void checkForMaximumRequests(DnCxt cxt) throws DnException {
-        // In a real prod environment, we would look at the forwardedFor address and count on
-        // a per forwardedFor address basis.
-
-        // Prevent pile up.
-        int numRequests = activeRequests.incrementAndGet();
-        if (numRequests > 3) {
-            throw new DnException("There are more than three active authentication requests occurring " +
-                    "simultaneously on this node.");
-        }
+    public void checkForMaximumRequests(DnCxt cxt, String formAuthToken) throws DnException {
         try {
+            // Prevent pile up.
+            int numRequests = activeRequests.incrementAndGet();
+            if (numRequests > 3) {
+                throw new DnException("There are more than three active authentication requests occurring " +
+                        "simultaneously on this node.");
+            }
             synchronized (this) {
                 int curHour = (int)(System.currentTimeMillis() / (3600 * 1000L));
                 if (curHour != curHourScope) {
                     curHourScope = curHour;
                     curNumberOfExecs = 0;
+                    formTokenTracker.clear();
+                    ipAddressTracker.clear();
                 } else {
-                    if (curNumberOfExecs++ > maxExecsPerHour) {
-                        throw new DnException("Too many authentication related requests have occurred in the last hour.");
+                    if (formTokenTracker.checkExceedMaxCount(formAuthToken)) {
+                        throw DnException.mkInput("The *formAuthToken* has been used too many times.");
                     }
-                    if (curNumberOfExecs > maxExecsPerHour/3) {
+                    if (!coreNodeService.checkIsInternalAddress(cxt.forwardedFor)) {
+                        if (ipAddressTracker.checkExceedMaxCount(cxt.forwardedFor)) {
+                            throw DnException.mkInput(String.format(
+                                    "The forwarded for IP %s address has made too many login related requests.",
+                                    cxt.forwardedFor));
+                        }
+                    }
+                    if (curNumberOfExecs++ > maxExecsPerHour) {
+                        throw new DnException(
+                                "Too many authentication related requests have occurred in the last hour.");
+                    }
+                    if (curNumberOfExecs > maxExecsPerHour/4) {
                         // Slow things down.
-                        LogUser.log.info(cxt, "Too many auth related requests coming during this hour.");
-                        SystemUtil.sleep(10000);
+                        LogUser.log.info(cxt,
+                                "Too many auth related requests coming during this hour.");
+                        SystemUtil.sleep(5000);
                     }
                 }
             }

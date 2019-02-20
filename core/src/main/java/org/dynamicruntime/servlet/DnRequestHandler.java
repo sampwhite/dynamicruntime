@@ -334,6 +334,11 @@ public class DnRequestHandler implements DnServletHandler {
                     LogServlet.log.debug(cxt,
                             String.format("%d User input on request %s was in error (%s ms). ", code,
                                     logRequestData, durStr) + msg);
+                } else if (activity.equals(DnException.AUTH)) {
+                    LogServlet.log.info(cxt,
+                            String.format("%d User action on %s was not allowed (%s ms). ", code,
+                                    logRequestData, durStr) + msg);
+
                 } else if (code == DnException.NOT_FOUND) {
                     LogServlet.log.info(cxt,
                             String.format("%d Request %s had target that did not exist (%s ms). %s",

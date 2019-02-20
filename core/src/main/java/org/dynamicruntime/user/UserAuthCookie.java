@@ -48,9 +48,11 @@ public class UserAuthCookie {
     public final Date creationDate;
     public Date modifiedDate;
     public Date expireDate;
+    public Date profileModifiedDate;
 
     public UserAuthCookie(String code, int version, long grantingUserId, long userId,
-            String sourceId, String account, List<String> roles, String authId, Date creationDate) {
+            String sourceId, String account, List<String> roles, String authId, Date creationDate,
+            Date profileModifiedDate) {
         this.code = code;
         this.version = version;
         this.grantingUserId = grantingUserId;
@@ -62,6 +64,7 @@ public class UserAuthCookie {
         this.creationDate = creationDate;
         this.modifiedDate = creationDate;
         this.expireDate = creationDate;
+        this.profileModifiedDate = profileModifiedDate;
     }
 
     public static String getDateDiffAsString(Date base, Date in) {
@@ -96,7 +99,8 @@ public class UserAuthCookie {
         String ed = getDateDiffAsString(modifiedDate, expireDate);
         return code + version + "," + grantingUserId + "," + userId + "," + s(sourceId) + "," + s(account) + "," +
                 l(roles) + "," + s(authId) + "," + s(publicName) + "," + s(groupName) + "," + s(shard) + "," +
-                s(authRulesAsStr) + "," + renewalCount + "," + fmtObject(creationDate) + "," + md + "," + ed;
+                s(authRulesAsStr) + "," + renewalCount + "," + fmtObject(creationDate) + "," + md + "," + ed
+                + "," + fmtObject(profileModifiedDate);
     }
 
     public static String s(String str) {
@@ -120,7 +124,7 @@ public class UserAuthCookie {
         if (!cv.startsWith(STD_AUTH_COOKIE_CODE) || cv.length() < 2) {
             throw new DnException("Cookie type is not supported by this application.");
         }
-        if (entries.length < 15) {
+        if (entries.length < 16) {
             throw new DnException("Cookie is not properly formatted.");
         }
         String code = cv.substring(0, 1);
@@ -139,12 +143,13 @@ public class UserAuthCookie {
         Date creationDate = toReqDate(entries[12]);
         Date modifiedDate = getDateWithDiff(creationDate, entries[13]);
         Date expireDate = getDateWithDiff(modifiedDate, entries[14]);
+        Date profileModifiedDate = toReqDate(entries[15]);
 
         // Additional entries can be added as the cookie grows in data that is put into it.
         //....
 
         var uac = new UserAuthCookie(code, version, grantingUserId, userId, sourceId, account, roles,
-                authId, creationDate);
+                authId, creationDate, profileModifiedDate);
         // Mutable values.
         uac.publicName = publicName;
         uac.groupName = groupName;

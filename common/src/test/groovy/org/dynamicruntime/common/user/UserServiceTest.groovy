@@ -72,23 +72,23 @@ class UserServiceTest extends Specification {
         def userService = UserService.get(cxt)
 
         when: "Adding an auth token for sysadmin 61 days ago"
-        userService.addToken(cxt, "sysadmin", "testTokenId", "abc", [:], null)
+        userService.addAdminToken(cxt, "sysadmin", "testTokenId", "abc", [:], null)
 
         then: "Should get nothing if provide wrong token value"
-        def ua1 = userService.queryCacheToken(cxt, "testTokenId", "xyz")
+        def ua1 = userService.queryByAdminCacheToken(cxt, "testTokenId", "xyz")
         ua1 == null
 
         then: "Should get something if provide correct token value"
-        def ua2 = userService.queryCacheToken(cxt, "testTokenId", "abc")
+        def ua2 = userService.queryByAdminCacheToken(cxt, "testTokenId", "abc")
         ua2?.username == "sysadmin"
 
         when: "Modifying auth token"
-        userService.addToken(cxt, "sysadmin", "testTokenId", "xyz", [:], null)
+        userService.addAdminToken(cxt, "sysadmin", "testTokenId", "xyz", [:], null)
 
         // We assume test code runs in under 10 seconds. We do not actually test the 10 second timeout.
         then: "Cache should still allow login for prior token and new token for 10 seconds"
-        def ua3 = userService.queryCacheToken(cxt, "testTokenId", "xyz")
-        def ua4 = userService.queryCacheToken(cxt, "testTokenId", "abc")
+        def ua3 = userService.queryByAdminCacheToken(cxt, "testTokenId", "xyz")
+        def ua4 = userService.queryByAdminCacheToken(cxt, "testTokenId", "abc")
         ua3 != null
         ua4 != null
 
@@ -96,14 +96,14 @@ class UserServiceTest extends Specification {
         userService.userCache.clearCache(userService.userCache.tokenCache)
 
         then: "Login on old token should not work anymore"
-        def ua5 = userService.queryCacheToken(cxt, "testTokenId", "abc")
+        def ua5 = userService.queryByAdminCacheToken(cxt, "testTokenId", "abc")
         ua5 == null
 
         when: "Advancing to current time"
         cxt.nowTimeOffsetInSeconds = 0
 
         then: "Should not get something even if provide correct token value"
-        def ua6 = userService.queryCacheToken(cxt, "testTokenId", "xyz")
+        def ua6 = userService.queryByAdminCacheToken(cxt, "testTokenId", "xyz")
         ua6== null
     }
 
@@ -113,7 +113,7 @@ class UserServiceTest extends Specification {
         def cxt = sqlCxt.cxt
         def userService = UserService.get(cxt)
         when: "Adding a valid auth token for sysadmin and executing a request using the token"
-        userService.addToken(cxt, "sysadmin", "validateTokenId", token, [:], null)
+        userService.addAdminToken(cxt, "sysadmin", "validateTokenId", token, [:], null)
         def servletClient = new DnTestServletClient(cxt.instanceConfig)
         servletClient.setHeader(UserConstants.AUTH_HDR_TOKEN, "validateTokenId#${token}")
 
@@ -135,9 +135,9 @@ class UserServiceTest extends Specification {
         def userService = UserService.get(cxt)
 
         when: "Logging in using a token"
-        userService.addToken(cxt, "sysadmin", "loginUsingToken", token, [:], null)
+        userService.addAdminToken(cxt, "sysadmin", "loginUsingToken", token, [:], null)
         def servletClient = new DnTestServletClient(cxt.instanceConfig)
-        def reqLogin = servletClient.sendEditRequest("/auth/token/login", [:], [authId:"loginUsingToken",
+        def reqLogin = servletClient.sendEditRequest("/auth/login/byAdminToken", [:], [authId:"loginUsingToken",
             authToken:"uvw"], false)
 
         then: "Should have successfully logged in"

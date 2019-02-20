@@ -25,7 +25,7 @@ class AddToken {
         def config = InstanceRegistry.getOrCreateInstanceConfig(instanceName, fileConfig)
         def cxt = InstanceRegistry.createCxt("addToken", config)
         def userService = UserService.get(cxt)
-        userService.addToken(cxt, username, authId, token, [:], null)
+        userService.addAdminToken(cxt, username, authId, token, [:], null)
         println("***\nAdded token ${authId} that allows access to ${username}\n***")
     }
 }
