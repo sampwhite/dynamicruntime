@@ -22,7 +22,7 @@
     <script type="text/babel">
         function mkMethodDisplay(item) {
             const {httpMethod} = item;
-            const className = httpMethod + "Method";
+            const className = `${httpMethod}Method`;
             return (
                 <span className={className}>{httpMethod}</span>
             )
@@ -30,22 +30,22 @@
 
         function mkPathDisplay(item) {
             const {path} = item;
-            const formPath = "/content/html/endpoint.html?endpoint=" + path;
+            const formPath = `/content/html/endpoint.html?endpoint=${path}`;
             const endpoint = <a href={formPath}>{path}</a>;
             return (
                 <span className="path">{endpoint}</span>
             )
         }
 
-        const cols = [{key: "httpMethod", label: "Method", mkDisplay: mkMethodDisplay},
+        const cols = [{key: 'httpMethod', label: 'Method', mkDisplay: mkMethodDisplay},
             {key: "path", label: "Endpoint", mkDisplay: mkPathDisplay},
             {key: "description", label: "Description"}];
 
         ReactDOM.render(
             <div>
-                <DnTable columns={cols} dataUrl={"/schema/endpoint/list"}
+                <DnTable columns={cols} dataUrl="/schema/endpoint/list"
                     desFunction={(items) =>
-                        <div className="intro">
+                        <div className='intro'>
                             This page presents the {items.length} available endpoints that
                             this particular node can execute.
                         </div>
