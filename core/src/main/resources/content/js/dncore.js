@@ -35,7 +35,7 @@ class DnTable extends Component {
 
     componentDidMount() {
         const {dataUrl} = this.props;
-        fetch(dataUrl)
+        fetch(dataUrl, {credentials: 'same-origin'})
             .then(res => res.json())
             .then(
                 (result) => {
@@ -126,7 +126,7 @@ class DnEndpointForm extends Component {
         const {dataUrl} = this.props;
         const baseUrl = (dataUrl.indexOf("?") > 0) ? dataUrl + "&" : dataUrl + "?";
         const fetchUrl = baseUrl + "endpoint=" + e;
-        fetch(fetchUrl)
+        fetch(fetchUrl, {credentials: 'same-origin'})
             .then(res => res.json())
             .then(
                 (result) => {
@@ -245,8 +245,9 @@ class DnEndpointForm extends Component {
         const {httpMethod} = items[0];
         const execUrl = (httpMethod === "GET") ? this.computeRequestUrl() : endpoint;
 
-        const args = (httpMethod === "GET") ? null :
+        const args = (httpMethod === "GET") ? {credentials: 'same-origin'} :
             {
+                credentials: 'same-origin',
                 headers: {
                     "content-type": "application/json: charset=utf-8"
                 },
@@ -523,7 +524,7 @@ class Login extends Component {
     doTokenRequest(method, endpoint, activity, data) {
         this.setState({progress: "Requesting Form Token", submitting: true});
         // First get token.
-        fetch("/auth/form/createToken", null)
+        fetch("/auth/form/createToken", {credentials: 'same-origin'})
             .then(res => res.json())
             .then(
                 (result) => {
@@ -552,6 +553,7 @@ class Login extends Component {
     doRequest(method, endpoint, activity, data) {
         this.setState({progress: "Executing request", submitting: true});
         const args = {
+            credentials: 'same-origin',
             headers: {
                 "content-type": "application/json: charset=utf-8"
             },
