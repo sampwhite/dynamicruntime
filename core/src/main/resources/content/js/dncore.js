@@ -651,15 +651,23 @@ class Login extends Component {
     render() {
         const {username, password, passwordVerify, contactAddress, verifyCode, activity, submitting,
             onChangeHasFired, progress, formAuthToken, sentCode} = this.state;
+
+        // If we have logged in, then render a success message.
+        if (activity === "afterLogin") {
+            return <DnMessage>{progress}</DnMessage>
+        }
+
         // Whether main submit button should be disabled. This gets modified based on activity
         // and current form state. Note that until *onChangeHasFired* we do not know the
         // actual values in our form fields (for username and password at least which can get browser
         // auto-completed). Fortunately *onChangeHasFired* gets set the instant the user interacts
         // with the page in any way.
-        let disabled = submitting && onChangeHasFired;
+        // If we know the true state of the form and the form is currently making a call to the
+        // server, then we can disable our main button by default
+        let disabled = onChangeHasFired && submitting;
+
         let submitLabel = "Login";
         const rows = [];
-        const doSubmit = activity !== "afterLogin";
         const settingPassword = activity === "forgotPassword" || activity === "loginSetData";
         let directionsMsg = <DnMessage/>;
         if (settingPassword) {
@@ -672,7 +680,11 @@ class Login extends Component {
         } else if (activity === "loginByPassword") {
             directionsMsg = <DnMessage>Enter username and password.</DnMessage>;
             submitLabel = "Login";
-        } else if (activity === "registerNewEmail") {
+        } else if (activity === "loginByCode") {
+            directionsMsg = <DnMessage>This browser or device is not recognized.
+                Login requires using a verification code sent by email.</DnMessage>
+        }
+        else if (activity === "registerNewEmail") {
             directionsMsg = <DnMessage>Enter an email address and then get and enter a verification code to
                 create a new user.</DnMessage>;
             submitLabel = "Register Email";
@@ -680,42 +692,40 @@ class Login extends Component {
         let disabledSend = submitting;
         if (activity !== "registerNewEmail") {
             // All forms have a *username* except when registering a new email address.
-            if (doSubmit) {
-                rows.push(
-                    <tr key="usernameRow">
-                        <td key="loginLabel" className="formLabel"><label className="standard">Username:</label></td>
-                        <td key="loginInput" className="formInput">
-                            <input name="username" type="text" value={username}
-                                   onChange={this.handleInputChange}/></td>
-                    </tr>
-                );
-                if (!username) {
-                    // Only disable if we truly know that the username is not set.
-                    if (onChangeHasFired) {
-                        disabledSend = true;
-                        disabled = true;
+            rows.push(
+                <tr key="usernameRow">
+                    <td key="loginLabel" className="formLabel"><label className="standard">Username:</label></td>
+                    <td key="loginInput" className="formInput">
+                        <input name="username" type="text" value={username}
+                               onChange={this.handleInputChange}/></td>
+                </tr>
+            );
+            if (!username) {
+                // Only disable if we truly know that the username is not set.
+                if (onChangeHasFired) {
+                    disabledSend = true;
+                    disabled = true;
+                }
+            } else {
+                let userMsg ="";
+                if (activity !== "loginByPassword") {
+                    if (Login.checkInvalidUsernameChars(username)) {
+                        userMsg = <DnMessage>Username must not start with a number and must have
+                        only alphabetic, numeric, or underscore characters.</DnMessage>
+                    } else if (username.length < 3) {
+                        userMsg = <DnMessage>Username must be at least three characters in length.</DnMessage>
+                    } else if (username.length > 20) {
+                        userMsg = <DnMessage>Username cannot be more than twenty characters in length.</DnMessage>
                     }
-                } else {
-                    let userMsg ="";
-                    if (activity !== "loginByPassword") {
-                        if (Login.checkInvalidUsernameChars(username)) {
-                            userMsg = <DnMessage>Username must not start with a number and must have
-                            only alphabetic, numeric, or underscore characters.</DnMessage>
-                        } else if (username.length < 3) {
-                            userMsg = <DnMessage>Username must be at least three characters in length.</DnMessage>
-                        } else if (username.length > 20) {
-                            userMsg = <DnMessage>Username cannot be more than twenty characters in length.</DnMessage>
-                        }
-                    }
-                    if (userMsg) {
-                        disabledSend = true;
-                        disabled = true;
-                        rows.push(
-                            <tr key="usernameErrMsg">
-                                <td key="usernameErrMsgRow" colSpan="2">{userMsg}</td>
-                            </tr>
-                        )
-                    }
+                }
+                if (userMsg) {
+                    disabledSend = true;
+                    disabled = true;
+                    rows.push(
+                        <tr key="usernameErrMsg">
+                            <td key="usernameErrMsgRow" colSpan="2">{userMsg}</td>
+                        </tr>
+                    )
                 }
             }
         } else {
@@ -744,56 +754,6 @@ class Login extends Component {
             }
         }
 
-        // Password handling is complicated because on some forms there is also a password verify field
-        // and there are rules for what constitutes a valid password. We do not want to enable
-        // the main form button until the password passes all tests. Note: if doing verification by code,
-        // the password fields are not presented until a code is entered.
-        let passwordRows = null;
-        if (settingPassword || activity === "loginByPassword") {
-            passwordRows = [];
-            const passwordLabel = (activity === "loginByPassword") ? "Password" : "New Password";
-            passwordRows.push(
-                <tr key="passwordRow">
-                    <td key="passwordInput" className="formLabel"><label className="standard">{passwordLabel}:</label></td>
-                    <td key="passwordLabel" className="formInput">
-                        <input name="password" type="password" value={password}
-                               onChange={this.handleInputChange}/></td>
-                </tr>
-            );
-            if (settingPassword) {
-                passwordRows.push(
-                    <tr key="passwordVerifyRow">
-                        <td key="passwordVerifyInput" className="formLabel">
-                            <label className="standard">Verify Password:</label></td>
-                        <td key="passwordVerifyLabel" className="formInput">
-                            <input name="passwordVerify" type="password" value={passwordVerify}
-                                   onChange={this.handleInputChange}/></td>
-
-                    </tr>
-                );
-                let passwdMsg = "";
-                if (!Login.checkForOneNumber(password) || !/[^a-zA-Z0-9]/.test(password)) {
-                    passwdMsg = <DnMessage>The password must have one numeric character and one special
-                    (non-alphanumeric) character in it.</DnMessage>
-                } else if (!password || password.length < 6) {
-                    passwdMsg = <DnMessage>The password must be at least six characters in length.</DnMessage>
-                } else if (password.length > 16) {
-                    passwdMsg = <DnMessage>The password cannot have more than sixteen characters in it.</DnMessage>
-                } else if (/\s/.test(password)) {
-                    passwdMsg = <DnMessage>The password cannot have whitespace in it.</DnMessage>
-                } else if (!passwordVerify || passwordVerify !== password) {
-                    passwdMsg = <DnMessage>The verify password must be equal to the password.</DnMessage>
-                }
-                if (passwdMsg) {
-                    disabled = true;
-                    passwordRows.push(
-                        <tr key="passwordErrMsg">
-                            <td key="passwordErrMsgRow" colSpan="2">{passwdMsg}</td>
-                        </tr>
-                    )
-                }
-            }
-        }
         let addPasswordRows = true;
         if (activity === "loginByCode" || activity === "registerNewEmail" || activity === "forgotPassword") {
             // We are doing verification by email sent verification code. Correctly entering the code allows us
@@ -804,7 +764,7 @@ class Login extends Component {
                     <td key="verifyCodeInput" className="formLabel"><label className="standard">Code:</label></td>
                     <td key="verifyCodeLabel" className="formInput">
                         DN-<input name="verifyCode" type="text" size="8" value={verifyCode}
-                               onChange={this.handleInputChange}/>
+                               disabled={!formAuthToken} onChange={this.handleInputChange}/>
                      </td>
                 </tr>,
                 <tr key="sendCodeRow">
@@ -831,11 +791,63 @@ class Login extends Component {
                 disabled = true;
             }
         }
-        if (passwordRows && addPasswordRows) {
+
+        // Password handling is complicated because on some forms there is also a password verify field
+        // and there are rules for what constitutes a valid password. We do not want to enable
+        // the main form button until the password passes all tests. Note: if doing verification by code,
+        // the password fields are not presented until a code is entered.
+        let passwordRows = null;
+        if (addPasswordRows && (settingPassword || activity === "loginByPassword")) {
+            passwordRows = [];
+            const passwordLabel = (activity === "loginByPassword") ? "Password" : "New Password";
+            passwordRows.push(
+                <tr key="passwordRow">
+                    <td key="passwordInput" className="formLabel"><label className="standard">{passwordLabel}:</label></td>
+                    <td key="passwordLabel" className="formInput">
+                        <input name="password" type="password" value={password}
+                               onChange={this.handleInputChange}/></td>
+                </tr>
+            );
+            if (settingPassword) {
+                passwordRows.push(
+                    <tr key="passwordVerifyRow">
+                        <td key="passwordVerifyInput" className="formLabel">
+                            <label className="standard">Verify Password:</label></td>
+                        <td key="passwordVerifyLabel" className="formInput">
+                            <input name="passwordVerify" type="password" value={passwordVerify}
+                                   onChange={this.handleInputChange}/></td>
+
+                    </tr>
+                );
+                let passwdMsg = "";
+                if (!Login.checkForOneNumber(password) || !/[^a-zA-Z0-9]/.test(password)) {
+                    passwdMsg = <DnMessage>The password must have one numeric character and one special
+                        (non-alphanumeric) character in it.</DnMessage>
+                } else if (!password || password.length < 6) {
+                    passwdMsg = <DnMessage>The password must be at least six characters in length.</DnMessage>
+                } else if (password.length > 16) {
+                    passwdMsg = <DnMessage>The password cannot have more than sixteen characters in it.</DnMessage>
+                } else if (/\s/.test(password)) {
+                    passwdMsg = <DnMessage>The password cannot have whitespace in it.</DnMessage>
+                } else if (!passwordVerify || passwordVerify !== password) {
+                    passwdMsg = <DnMessage>The verify password must be equal to the password.</DnMessage>
+                }
+                if (passwdMsg) {
+                    disabled = true;
+                    passwordRows.push(
+                        <tr key="passwordErrMsg">
+                            <td key="passwordErrMsgRow" colSpan="2">{passwdMsg}</td>
+                        </tr>
+                    )
+                }
+            }
+        }
+        if (passwordRows) {
             rows.push(passwordRows);
         }
 
-        const links = doSubmit ? (
+        // Links to take us to the different entry activities supported by this object.
+        const links = (
             <div>
                 <span key="loginLink" className="clickText"
                       onClick={() => this.setState({activity:'loginByPassword', progress:""})}>[Login]</span>
@@ -846,18 +858,7 @@ class Login extends Component {
                       onClick={() => this.setState({activity:"registerNewEmail", password:"",
                           passwordVerify:"", progress: "", sentCode: false, verifyCode: ""})}>[Register]</span>
             </div>
-        ) : "";
-        /*
-        rows.push(
-            <tr key="links">
-                <td key="activityLinks" colSpan="2" className="centerCell">
-                    <p/>{links}
-                </td>
-            </tr>
-        );*/
-
-        const submitButton = doSubmit ?
-            (<p key="submitButton"><input type="submit" value={submitLabel} disabled={disabled}/></p>) :"";
+        );
 
         return (
             <div>
@@ -869,7 +870,7 @@ class Login extends Component {
                         </tbody>
                     </table>
                     {(addPasswordRows && passwordRows && sentCode) ? "" : progress}
-                    {submitButton}
+                     <p key="submitButton"><input type="submit" value={submitLabel} disabled={disabled}/></p>
                 </form>
                 <div key="activityLinks" className="activityLinks">{links}</div>
             </div>

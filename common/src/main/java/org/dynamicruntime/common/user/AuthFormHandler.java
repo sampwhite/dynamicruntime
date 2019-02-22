@@ -7,6 +7,7 @@ import org.dynamicruntime.context.DnCxtConstants;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.function.DnPointer;
 import org.dynamicruntime.node.DnCoreNodeService;
+import org.dynamicruntime.schemadata.CoreConstants;
 import org.dynamicruntime.sql.topic.SqlTopicConstants;
 import org.dynamicruntime.sql.topic.SqlTopicService;
 import org.dynamicruntime.sql.topic.SqlTopicUtil;
@@ -491,7 +492,7 @@ public class AuthFormHandler {
             tSourceId = aqh.queryLoginSourceId(cxt, allData.userId, sourceId.sourceCode);
         }
         if (tSourceId == null) {
-            String ipAddress = cxt.forwardedFor != null ? cxt.forwardedFor : "127.0.0.1";
+            String ipAddress = cxt.forwardedFor != null ? cxt.forwardedFor : CoreConstants.ND_LOCAL_IP_ADDRESS;
             List<UserSourceId> recentIds = aqh.queryRecentLoginSourceIds(cxt, allData.userId);
             tSourceId = findItem(recentIds, sId ->
                     findItem(sId.ipAddresses, ipA -> ipA.ipAddress.equals(ipAddress)) != null);

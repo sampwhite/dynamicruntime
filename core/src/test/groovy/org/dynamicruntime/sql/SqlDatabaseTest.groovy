@@ -51,7 +51,7 @@ class SqlDatabaseTest extends Specification {
         !fullTbType.fieldsByName.total?.isRequired
         fullTbType.fieldsByName.createdDate.coreType == "Date"
 
-        then: "Should a full table definition usable for creating tables"
+        then: "Should have a full table definition usable for creating tables"
         def tableDef = schemaStore.getTable("UserTotal")
         tableDef != null
         tableDef.primaryKey.fieldDeclarations == ['userId']
@@ -96,6 +96,7 @@ class SqlDatabaseTest extends Specification {
         summaries == predictedIndexes
 
         when: "Converting queries that use fields to ones that use columns"
+        // Note that the first c:userId is inside a quoted construct.
         def testStr = "abc 'cde '' c:userId'''(c:userId) t:xyz t: :p : 'x t:UserTotal'"
         def predictedTbName = sqlDb.mkSqlTableName(sqlCxt, "xyz")
         def predictedStr = "abc 'cde '' c:userId'''(user_id) ${predictedTbName} t: ? : 'x t:UserTotal';"

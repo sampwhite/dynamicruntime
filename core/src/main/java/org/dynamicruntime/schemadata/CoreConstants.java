@@ -31,9 +31,15 @@ public class CoreConstants {
     public static final String ND_CONFIG_DATA = "configData";
 
     //
+    // Node communication constants.
+    //
+    public static final String ND_LOCAL_IP_ADDRESS = "127.0.0.1";
+
+    //
     // Inter node communication http headers.
     //
     public static final String NDH_HDR_REQUEST_PATH = "DnRequestPath";
+
 
     // Currently known node configuration types.
     /** Auth data type. */

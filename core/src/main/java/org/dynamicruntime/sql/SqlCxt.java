@@ -26,6 +26,9 @@ public class SqlCxt {
      * that row. */
     public Map<String,Object> tranData;
 
+    /** Set to true if current transaction did an insert. */
+    public boolean didInsert;
+
     /** Set to true, if transaction already done. */
     public boolean tranAlreadyDone;
 

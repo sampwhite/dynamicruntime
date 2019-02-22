@@ -21,7 +21,7 @@ class ConvertUtilTest extends Specification {
         // Test maps, arrays dates, and putting double quotes around strings that have backslashes or commas in them.
         [x : "\\", y: [1, date], z: ["a,b", "c"]]     || "[x:\"\\\\\",y:[1,${dateStr}],z:[\"a,b\",c]]"
         // Test too deep nesting.
-        [x : [y : [z : [aa:1], bb:[2]]]]  || "[x:[y:[z:[.:.],bb:[...]]]]"
+        [x : [y : [z : [aa:1], bb:[2]]]]              || "[x:[y:[z:[.:.],bb:[...]]]]"
     }
 
     def "Test conversion functions"() {

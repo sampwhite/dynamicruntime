@@ -3,6 +3,7 @@ package org.dynamicruntime.sql.topic;
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.sql.*;
+import org.dynamicruntime.util.DnCollectionUtil;
 
 import java.util.Map;
 import java.util.UUID;
@@ -39,8 +40,7 @@ public class SqlTopicTranProvider implements SqlTranExecProvider {
             throw new RuntimeException("Sql Context object needs to provide a SQL topic with an insert query.");
         }
         this.sqlTopic = sqlCxt.sqlTopic;
-        this.isUserTran = sqlTopic.iTranLockQuery.fields.containsKey(USER_ID) &&
-                sqlTopic.iTranLockQuery.fields.containsKey(USER_GROUP);
+        this.isUserTran = SqlTopicUtil.hasUserFields(sqlTopic.iTranLockQuery);
         if (this.isUserTran ) {
             SqlTopicUtil.checkAddUserFields(cxt, this.sqlCxt.tranData);
         }
@@ -107,7 +107,9 @@ public class SqlTopicTranProvider implements SqlTranExecProvider {
 
     public static void executeTopicTran(SqlCxt sqlCxt, String tranName, String tranId, Map<String,Object> tranData,
             SqlFunction tranExecute) throws DnException {
-        sqlCxt.tranData = tranData;
+        // We are going to mutate, the *sqlCxt.tranData*. We do not want to surprise caller that the tranData they
+        // passed in got changed. If they need the changed version, they can always get it from sqlCxt.
+        sqlCxt.tranData = DnCollectionUtil.cloneMap(tranData);
         var provider = new SqlTopicTranProvider(sqlCxt, tranName, tranId, tranExecute);
         SqlTranUtil.doTran(sqlCxt, tranName, provider);
     }

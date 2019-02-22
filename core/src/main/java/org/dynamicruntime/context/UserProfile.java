@@ -96,9 +96,17 @@ public class UserProfile {
         this.roles = roles;
     }
 
+    /** Creates a response for endpoints. */
     public Map<String,Object> toMap() {
         return mMap(USER_ID, userId, AUTH_ID, authId, USER_ACCOUNT, account, USER_GROUP, userGroup,
-                AUTH_ROLES, roles, UP_PUBLIC_NAME, publicName, UP_USER_LOCALE, locale,
-                UP_USER_TIMEZONE, timezone, UP_USER_DATA, profileData);
+                AUTH_ROLES, roles, UP_PUBLIC_NAME, publicName, UP_USER_LOCALE, locale.toString(),
+                UP_USER_TIMEZONE, timezone.toString(), UP_USER_DATA, profileData);
+    }
+
+    /** Creates a starter insert row. */
+    public Map<String,Object> createInitialProfileDbRow() {
+        return mMap(USER_ID, userId, USER_GROUP, userGroup,
+                UP_USER_TIMEZONE, timezone.toString(), UP_USER_LOCALE, locale.toString(),
+                UP_USER_DATA, profileData);
     }
 }

@@ -91,6 +91,10 @@ public class SqlTopicUtil {
         return true;
     }
 
+    public static boolean hasUserFields(DnSqlStatement stmt) {
+        return stmt.fields.containsKey(USER_ID) && stmt.fields.containsKey(USER_GROUP);
+    }
+
     public static Map<String,Object> mergeUserFields(Map<String,Object> into, Map<String,Object> from) {
         Map<String,Object> retVal = (into != null) ? into : mMap();
         mList(USER_ID, USER_GROUP).forEach(uId -> {

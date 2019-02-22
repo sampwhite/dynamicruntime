@@ -3,7 +3,7 @@ package org.dynamicruntime.util
 import spock.lang.Specification
 
 class EncodeUtilTest extends Specification {
-    // This also implicitly does simple validation of uuEncode and uuDecode.
+    // This also implicitly does simple validation of base64Encode and base64Decode.
     def "Verify encryption algorithm can do encryption"() {
         String inText = "abc"
         String key = EncodeUtil.mkEncryptionKey()
@@ -25,7 +25,7 @@ class EncodeUtilTest extends Specification {
         EncodeUtil.checkPassword(inText, hash)
     }
 
-    def "Verify generating readable code"() {
+    def "Verify generating readable verification code"() {
         List<Byte> bytes = [0x3A, 0xE2]
         when: "Producing a string"
 

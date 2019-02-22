@@ -87,11 +87,16 @@ public class DnRequestService implements ServiceInitializer {
         String method = handler.method;
         // Redirect top-level request to current preferred location.
         if (target.equals("/") || target.equals("/logout")) {
+            String redirectUrlSuffix;
             if (target.equals("/logout")) {
                 handler.setIsLogout(true);
+                // Add cookies based on our logged out status.
                 checkAddAuthCookies(cxt, handler);
+                redirectUrlSuffix = "/html/login.html";
+            } else {
+                redirectUrlSuffix = "/html/endpoints.html";
             }
-            handler.sendRedirect("/" + CONTENT_ROOT + "/html/login.html");
+            handler.sendRedirect("/" + CONTENT_ROOT + redirectUrlSuffix);
             handler.logSuccess(cxt, handler.rptStatusCode);
             return;
         }
@@ -272,12 +277,14 @@ public class DnRequestService implements ServiceInitializer {
     }
 
     public void checkAddAuthCookies(DnCxt cxt, DnRequestHandler handler) throws DnException {
+        // The hook call may also set a AUTH_COOKIE_NAME cookie (if doing a logout for example).
         UserAuthHook.prepAuthCookies.callHook(cxt, this, handler);
         if (handler.setAuthCookie && handler.userAuthCookie != null) {
             var authCookie = handler.userAuthCookie;
             String cookieString = authCookie.toString();
             String cookieVal = coreNode.encryptString(cookieString);
-            // Let old cookies hang out for 400 days.
+            // Let old cookies hang out for 400 days, even if the cookie only provides a login
+            // for day or so.
             Date cookieExpireDate = DnDateUtil.addDays(authCookie.modifiedDate, 400);
             handler.addResponseCookie(AUTH_COOKIE_NAME, cookieVal, cookieExpireDate);
         }

@@ -4,6 +4,7 @@ import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.request.DnRequestCxt;
 import org.dynamicruntime.request.DnServletHandler;
+import org.dynamicruntime.schemadata.CoreConstants;
 import org.dynamicruntime.user.UserAuthData;
 
 import static org.dynamicruntime.user.UserConstants.AUTH_LOGGED_IN_USER;
@@ -33,7 +34,7 @@ public class AuthUserUtil {
     public static AuthAllUserData mkAllUserData(long userId, DnServletHandler servletHandler) {
         String ipAddress = servletHandler.getForwardedFor();
         if (ipAddress == null) {
-            ipAddress = "localhost";
+            ipAddress = CoreConstants.ND_LOCAL_IP_ADDRESS;
         }
         String userAgent = servletHandler.getUserAgent();
         if (userAgent == null) {

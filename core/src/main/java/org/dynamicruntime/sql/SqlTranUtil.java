@@ -16,6 +16,8 @@ public class SqlTranUtil {
         boolean[] didIt = {false};
         boolean doInsert = false;
         boolean didInsert = false;
+        sqlCxt.didInsert = false;
+
         DnException lastException = null;
         for (int i = 0; i < 3 && !didIt[0]; i++) {
             if (doInsert) {
@@ -25,6 +27,7 @@ public class SqlTranUtil {
 
                     doInsert = false;
                     didInsert = true;
+                    sqlCxt.didInsert = true; // Advertise what we did to code that implements *execute*.
                 } catch (DnException e) {
                     lastException = e;
                     if (!e.source.equals(DnException.DATABASE)) {

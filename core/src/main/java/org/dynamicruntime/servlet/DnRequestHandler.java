@@ -133,11 +133,11 @@ public class DnRequestHandler implements DnServletHandler {
                 }
             }
         }
-        String ff = getRequestHeader("X-Forwarded-For");
-        this.forwardedFor = (ff != null && ff.length() > 0) ? ff : null;
 
         this.testHeaders = convertedHdrs;
         this.rptResponseHeaders = mMapT();
+        String ff = getRequestHeader("X-Forwarded-For");
+        this.forwardedFor = (ff != null && ff.length() > 0) ? ff : null;
         String ct = getRequestHeader("content-type");
         this.contentType = (ct != null) ? ct : "application/json";
         this.cookies = cookies;
@@ -385,7 +385,7 @@ public class DnRequestHandler implements DnServletHandler {
             output.write(data);
             response.flushBuffer();
         } else {
-            rptResponseData = EncodeUtil.uuEncode(data);
+            rptResponseData = EncodeUtil.base64Encode(data);
         }
     }
 
@@ -542,15 +542,15 @@ public class DnRequestHandler implements DnServletHandler {
     @Override
     public void addResponseCookie(String cookieName, String cookieValue, Date expireDate) {
         List<String> cookieVals = mList(cookieName + "=" + cookieValue);
+       if (expireDate != null) {
+            String expireStr = DnDateUtil.formatCookieDate(expireDate);
+            cookieVals.add("Expires=" + expireStr);
+        }
+        cookieVals.add("Path=/");
         if (forwardedFor != null) {
-            cookieVals.add("Secure");
+            cookieVals.add("secure");
         }
         cookieVals.add("HttpOnly");
-        cookieVals.add("Path=/");
-        if (expireDate != null) {
-            String expireStr = DnDateUtil.formatCookieDate(expireDate);
-            cookieVals.add("Expired=" + expireStr);
-        }
         String cookieVal = String.join("; ", cookieVals);
         addResponseHeader("Set-Cookie", cookieVal);
     }

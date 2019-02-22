@@ -1,8 +1,10 @@
 package org.dynamicruntime.servlet;
 
 import org.dynamicruntime.context.InstanceConfig;
+import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.util.HttpUtil;
 import org.dynamicruntime.util.ParsingUtil;
+import org.dynamicruntime.util.StrUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -42,6 +44,11 @@ public class DnTestServletClient {
         return requestHandler;
     }
 
+    public Map<String,Object> sendJsonGetRequest(String endpoint, Map<String,Object> args) throws DnException {
+        DnRequestHandler requestHandler = sendGetRequest(endpoint, args);
+        return ParsingUtil.toJsonMap(requestHandler.rptResponseData);
+    }
+
     public DnRequestHandler sendEditRequest(String endpoint, Map<String,Object> args, Map<String,Object> data,
             boolean isPut) {
         String method = (isPut) ? EPM_PUT : EPM_POST;
@@ -55,15 +62,25 @@ public class DnTestServletClient {
         return requestHandler;
     }
 
+    public Map<String,Object> sendJsonPostRequest(String endpoint, Map<String,Object> data) throws DnException {
+        DnRequestHandler requestHandler = sendEditRequest(endpoint, null, data, false);
+        return ParsingUtil.toJsonMap(requestHandler.rptResponseData);
+    }
+
+    public Map<String,Object> sendJsonPutRequest(String endpoint, Map<String,Object> data) throws DnException {
+        DnRequestHandler requestHandler = sendEditRequest(endpoint, null, data, true);
+        return ParsingUtil.toJsonMap(requestHandler.rptResponseData);
+    }
+
     public void extractCookies(DnRequestHandler requestHandler) {
         // Add code to add cookies to *curHeaders*.
         List<String> cookieStrs = requestHandler.rptResponseHeaders.get("set-cookie");
         if (cookieStrs != null) {
             for (String cookieStr : cookieStrs) {
                 String[] args = cookieStr.split(";");
-                String[] nameValue = args[0].split("=");
-                if (nameValue.length == 2) {
-                    cookies.put(nameValue[0].trim(), nameValue[1].trim());
+                var nameValue = StrUtil.splitString(args[0],"=", 2);
+                if (nameValue.size() == 2) {
+                    cookies.put(nameValue.get(0).trim(), nameValue.get(1).trim());
                 }
             }
         }

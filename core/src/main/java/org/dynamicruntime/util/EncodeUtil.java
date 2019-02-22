@@ -32,16 +32,16 @@ public class EncodeUtil {
             ThreadLocal.withInitial(EncodeUtil::mkCipher);
 
 
-    public static String uuEncode(byte[] bytes) {
+    public static String base64Encode(byte[] bytes) {
         return Base64.getEncoder().encodeToString(bytes);
     }
 
-    public static byte[] uuDecode(String str) {
+    public static byte[] base64Decode(String str) {
         return Base64.getDecoder().decode(str);
     }
 
     public static String stdHash(String text) {
-        return uuEncode(stdHashToBytes(text));
+        return base64Encode(stdHashToBytes(text));
     }
 
     public static byte[] stdHashToBytes(String text) {
@@ -76,7 +76,7 @@ public class EncodeUtil {
         var rnd = RandomUtil.getRandom();
         byte[] b = new byte[numBytes];
         rnd.nextBytes(b);
-        return uuEncode(b);
+        return base64Encode(b);
     }
 
     public static String convertToReadableChars(byte[] bytes, int numBytes) {
@@ -145,9 +145,9 @@ public class EncodeUtil {
         try {
             SecretKey key = keyFactory.generateSecret(spec);
             byte[] hash = key.getEncoded();
-            String saltStr = uuEncode(salt);
-            String hashStr = uuEncode(hash);
-            // Use pipe separator because it is not one of the characters produced by uuEncode.
+            String saltStr = base64Encode(salt);
+            String hashStr = base64Encode(hash);
+            // Use pipe separator because it is not a commonly used separator.
             return PASSWORD_ENCODE_ALG + "|" + saltStr + "|" + hashStr;
         } catch (InvalidKeySpecException e) {
             throw new RuntimeException("Could not generate hash", e);
@@ -168,7 +168,7 @@ public class EncodeUtil {
         if (!alg.equals(PASSWORD_ENCODE_ALG)) {
             throw DnException.mkConv(String.format("Algorithm %s for passwords is not supported.", alg));
         }
-        byte[] salt = uuDecode(parts[1]);
+        byte[] salt = base64Decode(parts[1]);
         String predictedHash = hashPassword(salt, password);
         boolean result = predictedHash.equals(storedHash);
         // Randomize a little more the amount of time taken to execute this method, though given the way
@@ -201,7 +201,7 @@ public class EncodeUtil {
     }
 
     public static String encodeKey(byte[] keyBytes) {
-        String s = uuEncode(keyBytes);
+        String s = base64Encode(keyBytes);
         return KEY_SIG + s;
     }
 
@@ -232,7 +232,7 @@ public class EncodeUtil {
             byteBuffer.put(iv);
             byteBuffer.put(encodedBytes);
             byte[] cipherMessage = byteBuffer.array();
-            return ENCRYPTION_SIG + uuEncode(cipherMessage);
+            return ENCRYPTION_SIG + base64Encode(cipherMessage);
         } catch (IllegalBlockSizeException e) {
             throw DnException.mkConv("Could not encrypt bytes because of block size issue.", e);
         } catch (BadPaddingException e) {
@@ -245,7 +245,7 @@ public class EncodeUtil {
             throw new DnException("Encryption key is not usable for doing encryption.");
         }
         byte[] keyBytes = new byte[16];
-        byte[] ourBytes = uuDecode(key.substring(KEY_SIG.length()));
+        byte[] ourBytes = base64Decode(key.substring(KEY_SIG.length()));
         int l = ourBytes.length;
         if (l > 16) {
             l = 16;
@@ -259,7 +259,7 @@ public class EncodeUtil {
             throw DnException.mkConv("Encrypted text does not start with proper signature.");
         }
         byte[] keyBytes = getKeyBytes(key);
-        byte[] encryptedBytes = uuDecode(encryptedText.substring(ENCRYPTION_SIG.length()));
+        byte[] encryptedBytes = base64Decode(encryptedText.substring(ENCRYPTION_SIG.length()));
         ByteBuffer byteBuffer = ByteBuffer.wrap(encryptedBytes);
         byte[] iv = new byte[NUM_RANDOM_ENCRYPT_BYTES];
         byteBuffer.get(iv);

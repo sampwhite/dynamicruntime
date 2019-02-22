@@ -97,7 +97,7 @@ public class UserService implements ServiceInitializer {
 
         if (expireDate == null) {
             // Sixty days expiration by default.
-            expireDate = new Date(cxt.now().getTime() + 60*24*1000*1000L);
+            expireDate = new Date(cxt.now().getTime() + 60*24*3600*1000L);
         }
         final var ed = expireDate; // So it can be passed into closure.
         var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.AUTH_TOPIC);
@@ -276,7 +276,7 @@ public class UserService implements ServiceInitializer {
                 var authContacts = getOptListOfMaps(profile.authData, CTE_CONTACTS);
                 if (authContacts != null && authContacts.size() > 0) {
                     profileUserData.put(CTE_CONTACTS, authContacts);
-                    needsUpdate = (row != null);
+                    needsUpdate = true;
                 }
             }
 
@@ -292,7 +292,7 @@ public class UserService implements ServiceInitializer {
                 }
                 sourceId.addSource(cxt, allData.ipAddress, allData.userAgent);
                 profileUserData.put(UP_LOGIN_SOURCES, sourceId.toProfileMap());
-                needsUpdate = (row != null);
+                needsUpdate = true;
             }
 
             // Capture into another variable so it can be used in code blocks below.
@@ -300,18 +300,23 @@ public class UserService implements ServiceInitializer {
 
             if (row == null || doUpdate) {
                 // Need to create a new row.  Note that the transaction will populate the data with userId,
-                // userGroup, and a number of other protocol fields.
-                Map<String, Object> tranData = mMap(USER_ID, userId, USER_GROUP, profile.userGroup,
-                        UP_USER_TIMEZONE, profile.timezone.toString(),
-                        UP_USER_LOCALE, profile.locale.toString(), UP_USER_DATA, profileUserData);
+                // userGroup, and a number of other protocol fields. We use our current provisional
+                // UserProfile object to create or update the current row.
+                profile.profileData = profileUserData;
+                Map<String, Object> profileTranData = profile.createInitialProfileDbRow();
                 SqlTopicTranProvider.executeTopicTran(sqlCxt, tranName, null,
-                        tranData, () -> {
-                            if (doUpdate) {
+                        profileTranData, () -> {
+                            if (doUpdate && !sqlCxt.didInsert) {
+                                // The sqlCxt.tranData will have been replaced with data from
+                                // the current row. Anything we wish to persist in an update
+                                // needs to be set again.
+
                                 // Update profile data with data extracted from auth data. This is
-                                // meant as a motivating example, not a real useful usage.
+                                // meant as a motivating example.
                                 sqlCxt.tranData.put(UP_USER_DATA, profileUserData);
                             } else {
-                                // We did this transaction only to get the record inserted, skip the update.
+                                // We did this transaction only to get the record inserted, skip the update if
+                                // row has already been inserted.
                                 sqlCxt.tranAlreadyDone = true;
                             }
                             profileRowPtr.value = sqlCxt.tranData;

@@ -68,7 +68,7 @@ class UserServiceTest extends Specification {
         def sqlCxt = createSqlCxt("validateAuthTokens")
         def cxt = sqlCxt.cxt
         // Go back 61 days.
-        cxt.nowTimeOffsetInSeconds = -61*24*1000
+        cxt.nowTimeOffsetInSeconds = -61*24*3600
         def userService = UserService.get(cxt)
 
         when: "Adding an auth token for sysadmin 61 days ago"
@@ -88,6 +88,8 @@ class UserServiceTest extends Specification {
         // We assume test code runs in under 10 seconds. We do not actually test the 10 second timeout.
         then: "Cache should still allow login for prior token and new token for 10 seconds"
         def ua3 = userService.queryByAdminCacheToken(cxt, "testTokenId", "xyz")
+        // Entry under authToken "abc" has not expired (unless you sit on a break point for more then 10 seconds
+        // on the next line.
         def ua4 = userService.queryByAdminCacheToken(cxt, "testTokenId", "abc")
         ua3 != null
         ua4 != null
@@ -137,8 +139,8 @@ class UserServiceTest extends Specification {
         when: "Logging in using a token"
         userService.addAdminToken(cxt, "sysadmin", "loginUsingToken", token, [:], null)
         def servletClient = new DnTestServletClient(cxt.instanceConfig)
-        def reqLogin = servletClient.sendEditRequest("/auth/login/byAdminToken", [:], [authId:"loginUsingToken",
-            authToken:"uvw"], false)
+        def reqLogin = servletClient.sendEditRequest("/auth/login/byAdminToken", [:],
+                [authId:"loginUsingToken", authToken:token], false)
 
         then: "Should have successfully logged in"
         reqLogin.createdCxt?.userProfile?.userId == 1

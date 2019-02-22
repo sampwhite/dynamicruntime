@@ -109,7 +109,7 @@ public class DnCxt {
     }
 
     public Date now() {
-        long n = System.currentTimeMillis() + 1000 * nowTimeOffsetInSeconds;
+        long n = System.currentTimeMillis() + 1000L * nowTimeOffsetInSeconds;
         return new Date(n);
     }
 }
