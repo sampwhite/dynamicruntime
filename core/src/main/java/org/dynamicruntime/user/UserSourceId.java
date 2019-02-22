@@ -293,7 +293,9 @@ public class UserSourceId {
 
     public static String computeUserAgentKey(String userAgent) {
         String browserType = "unknown";
-        if (userAgent.contains("Chrome")) {
+        if (userAgent.contains("Edge")) {
+            browserType = "Edge";
+        } else if (userAgent.contains("Chrome")) {
             browserType = "Chrome";
         } else if (userAgent.contains("Firefox")) {
             browserType = "Firefox";
