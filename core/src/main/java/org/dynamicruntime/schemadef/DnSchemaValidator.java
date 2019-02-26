@@ -164,6 +164,7 @@ public class DnSchemaValidator {
         }
         boolean isNoCommas = type != null && type.noCommas;
         boolean isNoTrim = type != null && type.noTrimming;
+        boolean checkIsSmall = (coreType.equals(DNT_STRING) && type == null)  || (type != null && !type.isLarge);
         Object out = null;
 
         if (isList) {
@@ -176,6 +177,13 @@ public class DnSchemaValidator {
                 }
             } else if (obj instanceof CharSequence) {
                 // Still have a chance to parse this.
+                if (checkIsSmall) {
+                    CharSequence cs = (CharSequence)obj;
+                    if (cs.length() > 255) {
+                        throw DnException.mkConv(String.format("The multi-value for the field %s has size %d " +
+                                "which exceeds the maximum for a small field of 255.", fieldName, cs.length()));
+                    }
+                }
                 if ((coreType.equals(DNT_STRING) && isNoCommas) || coreType.equals(DNT_BOOLEAN) ||
                         coreType.equals(DNT_INTEGER) || coreType.equals(DNT_FLOAT) || coreType.equals(DNT_DATE)) {
                     var c = StrUtil.splitString(obj.toString(), ",");
@@ -209,6 +217,15 @@ public class DnSchemaValidator {
                     switch (coreType) {
                         case DNT_STRING:
                             String s = isNoTrim ? toOptStr(obj) : toTrimmedOptStr(obj);
+                            if (checkIsSmall && s != null) {
+                                if (s.length() > 255) {
+                                    throw DnException.mkConv(String.format(
+                                            "The multi-value for the field %s has size %d " +
+                                            "which exceeds the maximum for a small field of 255.",
+                                            fieldName, s.length()));
+                                }
+                            }
+
                             if (isNoCommas && s != null && s.indexOf(',') >= 0) {
                                 throw DnException.mkConv(String.format(
                                         "String '%s' is not allowed to have commas for field %s.", s, fieldName));
@@ -230,7 +247,11 @@ public class DnSchemaValidator {
                             out = toOptDate(obj);
                             break;
                         case DNT_MAP:
-                            out = toOptMap(obj);
+                            if (obj instanceof CharSequence) {
+                                out = ParsingUtil.toJsonMap(obj.toString());
+                            } else {
+                                out = toOptMap(obj);
+                            }
                             break;
                         default:
                             // Just let the object float through.

@@ -52,13 +52,13 @@ up using the H2 in-memory database. This means you can clone the git repository 
 
 The application can send email using a free [mailgun](https://www.mailgun.com) service.
 
-We split the application into independently loadable components and configuration controls which components are to l
+We split the application into independently loadable components and configuration controls which components are to be
 loaded on startup. Also, components can extend or add schema. Testing uses this to control exactly what functionality
 is loaded for a particular test.
 
 This application is deployed to [dynamicruntime.org](https://dynamicruntime.org). The entry to the website 
 uses an AWS load balancer, which talks to multiple nodes running the base application.  At startup the nodes connect
-to an AWS postgres database. The multiple nodes are automatically updated (using AWS CodeDeploy)
+to an AWS Postgres database. The multiple nodes are automatically updated (using AWS CodeDeploy)
 when code is contributed to the git repository.
 
 # Near Future

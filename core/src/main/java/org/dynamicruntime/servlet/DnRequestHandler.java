@@ -187,6 +187,13 @@ public class DnRequestHandler implements DnServletHandler {
         // Assume using AWS for now; use its user-agent for requests from load balancer.
         isFromLoadBalancer = (userAgent != null && userAgent.contains("ELB-Health"));
 
+        // Check for maximum size of query string so we do not get abused.
+        if (queryStr != null && queryStr.length() > 2048) {
+            // We make this a 500 error, because this is probably a call done with hostility.
+            throw new DnException("Query string has length " + queryStr.length() + " " +
+                    "which exceeds the maximum size of 2048.");
+        }
+
         List<NameValuePair> params = URLEncodedUtils.parse(queryStr, StandardCharsets.UTF_8);
         Map<String,Object> parsed = mMapT();
         for (var param : params) {
@@ -201,6 +208,12 @@ public class DnRequestHandler implements DnServletHandler {
         queryParams = parsed;
         if (contentType.startsWith("application/json") && postData == null) {
             String s = readInputStream();
+            // At some point we may configure this maximum. We keep this small because we
+            // are currently on a free AWS server and do not want to be abused.
+            if (s.length() > 16000) {
+                throw new DnException("JSON data of size " + s.length() + " exceeded maximum size " +
+                        "allowed of 16000.");
+            }
             postData = ParsingUtil.toJsonMap(s);
             logRequestUri = logRequestUri + encodePostDataForLogging();
         }

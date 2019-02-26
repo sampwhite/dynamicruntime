@@ -62,10 +62,23 @@ public class UserEndpoints {
         requestCxt.mapResponse.putAll(profileReport);
     }
 
+    public static void selfSetData(DnRequestCxt requestCxt) throws DnException {
+        var cxt = requestCxt.cxt;
+        var data = requestCxt.requestData;
+        long userId = cxt.userProfile.userId;
+        var userService = Objects.requireNonNull(UserService.get(cxt));
+        AuthAllUserData allUserData = AuthUserUtil.mkAllUserData(userId, requestCxt.webRequest);
+        allUserData.profile = cxt.userProfile;
+        userService.updateUserData(cxt, allUserData, data);
+
+        AuthUserUtil.setUpdatedProfileResponse(requestCxt, allUserData);
+    }
+
     public static List<DnEndpointFunction> getFunctions() {
         return mList(
                 mkEndpoint(ADMIN_USER_INFO, UserEndpoints::adminQueryInfo),
-                mkEndpoint(SELF_USER_INFO, UserEndpoints::selfQueryInfo));
+                mkEndpoint(SELF_USER_INFO, UserEndpoints::selfQueryInfo),
+                mkEndpoint(SELF_SET_DATA, UserEndpoints::selfSetData));
     }
 
 }

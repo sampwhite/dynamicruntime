@@ -180,6 +180,35 @@ class AuthFormHandlerTest extends Specification {
         loginResponse3.publicName == jason
     }
 
+    def "Test updating password"() {
+        def cxt = createCxt("testLoginSources")
+        // Note that we get none of the cookies from prior test. We are essentially starting over.
+        def servletClient = new DnTestServletClient(cxt.instanceConfig)
+        // Use user agent and ip address from first test (though this should not matter).
+        servletClient.setHeader("User-Agent", "Fake Safari (Internal OS)")
+        servletClient.setHeader("X-Forwarded-For", machineIP1)
+
+        when: "Changing password for user"
+        // First login using second password applied above.
+        def ftData = getFormAuthToken(servletClient)
+        def newLoginParams = [username: jason, password: jasonPassword2] + ftData
+        def loginResponse1 = servletClient.sendJsonPostRequest("/auth/login/byPassword", newLoginParams)
+
+        // Then change back to our first password.
+        def changePasswordParams = [currentPassword: jasonPassword2, password: jasonPassword]
+        def changeResponse = servletClient.sendJsonPutRequest("/user/self/setData", changePasswordParams)
+
+        // And login again (note that we can reuse form token).
+        def oldLoginParams = [username: jason, password: jasonPassword] + ftData
+        def loginResponse2 = servletClient.sendJsonPostRequest("/auth/login/byPassword", oldLoginParams)
+
+        then: "Should have logged in under new password."
+        def userId = loginResponse1.userId
+        userId != null
+        changeResponse.userId == userId
+        loginResponse2.userId == userId
+    }
+
     /** Full common & core initialization */
     static def createCxt(String cxtName) {
         // Other tests that use the same instance name will not pay a startup cost, but they

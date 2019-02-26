@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!--HEAD content extracted and put into layout.ftl-->
+    <!--B-HEAD-->
+    <title>DR User Profile</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
+    <script src="https://unpkg.com/react@16/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.15.0/babel.min.js"></script>
+    <!-- Dynamic Runtime JSX javascript. -->
+    <script type="text/babel" src="/content/js/dncore.js"></script>
+    <!--E-HEAD-->
+    <link href="/content/css/dynrt.css" rel="stylesheet">
+</head>
+<body>
+<!--BODY content extracted and put into layout.ftl-->
+<!--B-BODY-->
+<h1>User Profile</h1>
+<div class="intro">
+    Page that presents user profile information.
+</div>
+
+<div id="root" style="padding: 40px">
+    <script type="text/babel">
+        // Suppress ReactDOM cannot find IntelliJ warning.
+        // noinspection JSUnusedAssignment
+        //const ReactDOM = ReactDOM;
+
+        ReactDOM.render(
+            <div>
+                <UserProfile/>
+            </div>,
+            document.getElementById('root')
+        );
+    </script>
+</div>
+<!--E-BODY-->
+</body>
+</html>

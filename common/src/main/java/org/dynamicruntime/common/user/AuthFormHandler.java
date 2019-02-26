@@ -347,7 +347,7 @@ public class AuthFormHandler {
         String username = loginParams.username;
         String verifyCode = loginParams.verifyCode;
         if (username != null) {
-            checkValidUsername(username);
+            AuthUserUtil.checkValidUsername(username);
         } else if (loginParams.checkPassword) {
             throw DnException.mkInput("A username must be supplied when checking passwords.");
         }
@@ -445,8 +445,8 @@ public class AuthFormHandler {
         });
 
         // Create/load profile and set up for setting cookie.
+        AuthUserUtil.setLoginProfileData(allData);
         FormTokenComponents comps = getTokenComponents(cxt, formAuthToken);
-        setLoginProfileData(allData);
         applyFormComponentsToAuth(allData.authData, comps);
 
         // Login source information has changed, make sure to put it into profile data store.
@@ -508,34 +508,7 @@ public class AuthFormHandler {
         AuthUserRow userRow = allData.authRow;
         String username = loginParams.username;
         String password = loginParams.password;
-        checkValidUsername(username);
-
-        // Verify row supports setting a username and password.
-        if (!userRow.enabled || !userRow.roles.contains(ROLE_USER) ||
-                !userRow.authUserData.containsKey(CTE_CONTACTS)) {
-            throw new DnException("User is not in an appropriate state to get a login assigned to it.");
-        }
-
-        if (username != null) {
-            userRow.username = username;
-        }
-        if (password != null) {
-            userRow.passwordEncodingRule = AUTH_DN_HASH;
-            userRow.encodedPassword = EncodeUtil.hashPassword(password);
-        }
-    }
-
-    public static void setLoginProfileData(AuthAllUserData allData) {
-        AuthUserRow userRow = allData.authRow;
-
-        UserAuthData authData = new UserAuthData();
-        userRow.populateAuthData(authData);
-        if (allData.sourceId != null) {
-            authData.sourceId = allData.sourceId.sourceCode;
-        }
-        authData.determinedUserId = true;
-        allData.authData = authData;
-        allData.profile = authData.createProfile();
+        AuthUserUtil.updateUsernameAndPassword(userRow, username, password);
     }
 
     public static void applyFormComponentsToAuth(UserAuthData authData, FormTokenComponents comps) throws DnException {
@@ -558,17 +531,6 @@ public class AuthFormHandler {
             authData.authId = grantingAuthId + ":" + authData.userId;
         } else if (authData.authId.indexOf(':') < 0) {
             authData.authId = grantingAuthId + ":" + authData.authId;
-        }
-    }
-
-    public static void checkValidUsername(String username) throws DnException {
-        // When this code gets internationalized, we will need to allow other non-separator characters
-        // into the username.
-        if (!StrUtil.isJavaName(username) || username.length() < 4) {
-            throw DnException.mkInput(String.format("Username '%s' has invalid characters or matches " +
-                    "a disallowed reserved word. A username should start with a letter, have only " +
-                    "letters, numbers, or underscores. It should also be at least four characters in length.",
-                    username));
         }
     }
 
@@ -611,7 +573,7 @@ public class AuthFormHandler {
                     formTokenTracker.clear();
                     ipAddressTracker.clear();
                 } else {
-                    if (formTokenTracker.checkExceedMaxCount(formAuthToken)) {
+                    if (formAuthToken != null && formTokenTracker.checkExceedMaxCount(formAuthToken)) {
                         throw DnException.mkInput("The *formAuthToken* has been used too many times.");
                     }
                     if (!coreNodeService.checkIsInternalAddress(cxt.forwardedFor)) {

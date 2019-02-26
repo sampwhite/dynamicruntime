@@ -70,6 +70,8 @@ public class UserConstants {
     public static final String FM_CAPTCHA_DATA = "captchaData";
     /** The verification code sent to a targeted contact address. */
     public static final String FM_VERIFY_CODE = "verifyCode";
+    /** The original password of a user if user is making a change to the password. */
+    public static final String FM_CURRENT_PASSWORD = "currentPassword";
     /** The password for a user. */
     public static final String FM_PASSWORD = "password";
 
@@ -160,6 +162,8 @@ public class UserConstants {
     public static final String UP_USER_TIMEZONE = "userTimezone";
     /** The general user profile data, including preferences and contacts information. */
     public static final String UP_USER_DATA = "userProfileData";
+    /** Data that can be set by client with its definition and usage being owned by the client. */
+    public static final String UP_EXTRA_DATA = "extraData";
     /** The login source data captured for reporting purposes. */
     public static final String UP_LOGIN_SOURCES = "loginSources";
     /** The public username for the user. */
@@ -172,6 +176,7 @@ public class UserConstants {
     public static final String AUTH_EP_LOGOUT = "authLogout";
     public static final String ADMIN_USER_INFO = "adminUserInfo";
     public static final String SELF_USER_INFO = "selfUserInfo";
+    public static final String SELF_SET_DATA = "selfSetData";
     public static final String AUTH_CREATE_FORM_TOKEN = "authGetFormToken";
     public static final String ADMIN_CREATE_FORM_TOKEN = "adminCreateFormToken";
     public static final String AUTH_SEND_NEW_CONTACT_VERIFY_CODE = "authSendNewContactVerifyCode";

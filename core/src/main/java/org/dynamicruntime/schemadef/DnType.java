@@ -19,6 +19,7 @@ public class DnType {
     public final String baseType;
     public final boolean noTrimming;
     public final boolean noCommas;
+    public final boolean isLarge;
     public final Double min;
     public final Double max;
     public final List<DnField> fields;
@@ -55,12 +56,13 @@ public class DnType {
         String baseType;
     }
 
-    public DnType(String name, String baseType, boolean noTrimming, boolean noCommas, Double min, Double max,
-            List<DnField> fields, Map<String,Object> model) {
+    public DnType(String name, String baseType, boolean noTrimming, boolean noCommas, boolean isLarge,
+            Double min, Double max, List<DnField> fields, Map<String,Object> model) {
         this.name = name;
         this.baseType = baseType;
         this.noTrimming = noTrimming;
         this.noCommas = noCommas;
+        this.isLarge = isLarge;
         this.min = min;
         this.max = max;
 
@@ -106,6 +108,7 @@ public class DnType {
     public static DnType extractNamed(String name, Map<String,Object> model, Map<String,DnRawType> types) throws DnException {
         boolean noTrimming = getBoolWithDefault(model, DN_NO_TRIMMING, false);
         boolean noCommas = getBoolWithDefault(model, DN_NO_COMMAS, false);
+        boolean isLarge = getBoolWithDefault(model, DN_IS_LARGE_STRING, false);
 
         // Merge in base types, with a particular focus on fields.
         MergeData md = mergeWithBaseType(model, types, 0);
@@ -126,12 +129,15 @@ public class DnType {
         } else {
             baseType = md.baseType;
         }
+        if (dnFields != null && dnFields.size() > 0) {
+            isLarge = true;
+        }
 
         // Remove *dnFields* from model since they have been fully extracted and after the merging
         // with base type, they may have no correspondence with the version we extracted.
         newModel.remove(DN_FIELDS);
 
-        return new DnType(name, baseType, noTrimming, noCommas, min, max, dnFields, newModel);
+        return new DnType(name, baseType, noTrimming, noCommas, isLarge, min, max, dnFields, newModel);
     }
 
     public static List<RawField> collapseRawFields(MergeData mergeData) {

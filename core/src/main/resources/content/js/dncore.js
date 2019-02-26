@@ -6,6 +6,8 @@
 // Mimic *import* statements. We cannot do imports because we are doing standalone React.
 const React = React;
 const {Component} = React;
+// noinspection JSUnusedAssignment
+const moment = moment;
 if (!Component.setState) {
     // Suppress warnings on usage of setState.
     Component.setState = {};
@@ -14,6 +16,37 @@ if (!Component.setState) {
 function extractParams(url) {
     return new URLSearchParams(url);
 }
+
+function doJsonFetch(method, endpoint, data, successFunc, errorFunc) {
+    const args = {
+        credentials: 'same-origin',
+        headers: {
+            "content-type": "application/json: charset=utf-8"
+        },
+        method: method
+    };
+    if (method !== "GET") {
+        args.body = JSON.stringify(data);
+    }
+    fetch(endpoint, args)
+    .then(res => res.json())
+    .then(
+        (result) => {
+            let {httpCode} = result;
+            httpCode = httpCode || 200;
+            successFunc(httpCode, result);
+        },
+        (error) => {
+            // No longer processing form submit.
+            errorFunc(error);
+        }
+    )
+}
+
+function doJsonGet(endpoint, successFunc, errorFunc) {
+    doJsonFetch("GET", endpoint, null, successFunc, errorFunc);
+}
+
 
 class DnMessage extends Component {
     render() {
@@ -35,22 +68,20 @@ class DnTable extends Component {
 
     componentDidMount() {
         const {dataUrl} = this.props;
-        fetch(dataUrl, {credentials: 'same-origin'})
-            .then(res => res.json())
-            .then(
-                (result) => {
-                   this.setState({
-                        isLoaded: true,
-                        items: result.items
-                    });
-                },
-                (error) => {
-                    this.setState({
-                        isLoaded: true,
-                        error
-                    });
-                }
-            )
+        doJsonGet(dataUrl,
+            (httpCode, result) => {
+                this.setState({
+                    isLoaded: true,
+                    items: result.items
+                })
+            },
+            (error) => {
+                this.setState({
+                    isLoaded: true,
+                    error
+                });
+            }
+        );
     }
 
     static columnValue(item, col) {
@@ -125,20 +156,18 @@ class DnEndpointForm extends Component {
         }
         const {dataUrl} = this.props;
         const baseUrl = (dataUrl.indexOf("?") > 0) ? dataUrl + "&" : dataUrl + "?";
-        const fetchUrl = baseUrl + "endpoint=" + e;
-        fetch(fetchUrl, {credentials: 'same-origin'})
-            .then(res => res.json())
-            .then(
-                (result) => {
-                    this.setFormBuildingState(result.items)
-                },
-                (error) => {
-                    this.setState({
-                        isLoaded: true,
-                        error
-                    });
-                }
-            )
+        const endpointInfoUrl = baseUrl + "endpoint=" + e;
+        doJsonGet(endpointInfoUrl,
+            (httpCode, result) => {
+                this.setFormBuildingState(result.items)
+            },
+            (error) => {
+                this.setState({
+                    isLoaded: true,
+                    error
+                });
+            }
+        );
     }
 
     setFormBuildingState(items) {
@@ -245,6 +274,7 @@ class DnEndpointForm extends Component {
         const {httpMethod} = items[0];
         const execUrl = (httpMethod === "GET") ? this.computeRequestUrl() : endpoint;
 
+        // Cannot use doJsonFetch, because we do not want to parse the JSON result.
         const args = (httpMethod === "GET") ? {credentials: 'same-origin'} :
             {
                 credentials: 'same-origin',
@@ -264,7 +294,7 @@ class DnEndpointForm extends Component {
                     });
                 },
                 (error) => {
-                     this.setState({
+                    this.setState({
                         results: error.message
                     });
                 }
@@ -404,7 +434,7 @@ class DnEndpointForm extends Component {
  * * forgotPassword - This is identical to the *loginByCode* except that the user must provide a new password
  *   as a part of performing the login.
  *
- * * registerNewEmail - Provides a form to enter an email, a button to sent a generate verification code
+ * * registerNewEmail - Provides a form to enter an email, a button to send a generated verification code
  *   to that email, and will create a new user using the new email as the registration email if the verification
  *   code is entered into the form. After this activity is successfully submitted, it will transition to the
  *   *loginSetData* activity.
@@ -417,7 +447,7 @@ class DnEndpointForm extends Component {
  * and send a verification code to the registration email. Testing on this activity shows up in the
  * processRequestResult method.
  *
- * This implementation also tries to dynamically indicate the user an awareness of the current inputs and
+ * This implementation also tries to dynamically indicate to the user an awareness of the current inputs and
  * the actions that have been performed up to that point. All the forms have a progress area where the form reports
  * either progress or errors. There is also instruction text which is chosen by activity. Once the login
  * is performed, the class calls a callback function to allow the main HTML page to choose how it wants to handle
@@ -524,27 +554,24 @@ class Login extends Component {
     doTokenRequest(method, endpoint, activity, data) {
         this.setState({progress: "Requesting Form Token", submitting: true});
         // First get token.
-        fetch("/auth/form/createToken", {credentials: 'same-origin'})
-            .then(res => res.json())
-            .then(
-                (result) => {
-                    const {captchaData} = result;
-                    data.formAuthToken = result.formAuthToken;
-                    data.formAuthCode = captchaData.formAuthCode;
-                    this.setState({
-                        formAuthToken: data.formAuthToken,
-                        formAuthCode: data.formAuthCode,
-                    });
-                    this.doRequest(method, endpoint, activity, data);
-                },
-                (error) => {
-                    this.setState({
-                        progress: (<DnMessage error={true}>{error.message}</DnMessage>),
-                        sentCode: false
-                    });
-                }
-            )
-
+        doJsonGet("/auth/form/createToken",
+            (httpCode, result) => {
+                const {captchaData} = result;
+                data.formAuthToken = result.formAuthToken;
+                data.formAuthCode = captchaData.formAuthCode;
+                this.setState({
+                    formAuthToken: data.formAuthToken,
+                    formAuthCode: data.formAuthCode,
+                });
+                this.doRequest(method, endpoint, activity, data);
+            },
+            (error) => {
+                this.setState({
+                    progress: (<DnMessage error={true}>{error.message}</DnMessage>),
+                    sentCode: false
+                });
+            }
+        );
     }
 
     /** Classic request handling. This code takes advantage of the fact that
@@ -552,28 +579,16 @@ class Login extends Component {
      * response a bit simpler. */
     doRequest(method, endpoint, activity, data) {
         this.setState({progress: "Executing request", submitting: true});
-        const args = {
-            credentials: 'same-origin',
-            headers: {
-                "content-type": "application/json: charset=utf-8"
+        doJsonFetch(method, endpoint, data,
+            (httpCode, result) => {
+                this.processRequestResult(activity, httpCode, data, result);
             },
-            body: JSON.stringify(data),
-            method: method
-        };
-        fetch(endpoint, args)
-            .then(res => res.json())
-            .then(
-                (result) => {
-                    let {httpCode} = result;
-                    httpCode = httpCode || 200;
-                    this.processRequestResult(activity, httpCode, data, result);
-                },
-                (error) => {
-                    // No longer processing form submit.
-                    this.setState({submitting: false,
-                        progress: (<DnMessage error={true}>{error.message}</DnMessage>)});
-                }
-            )
+            (error) => {
+                // No longer processing form submit.
+                this.setState({submitting: false,
+                    progress: (<DnMessage error={true}>{error.message}</DnMessage>)});
+            }
+        );
     }
 
     /** Processes both successful and failed results. It takes into account the current
@@ -634,16 +649,16 @@ class Login extends Component {
         return m && m.length >= 1;
     }
 
-    /** Tests the username in a way that matches the same test in the server code. */
+    /** Tests the username for invalid characters in a way that matches the same test in the server code. */
     static checkInvalidUsernameChars(username) {
         if (!username || username.length === 0) {
             return false;
         }
         let c = username.charAt(0);
-        if (c >= '0' || c <= '9') {
-            return false;
+        if (c >= '0' && c <= '9') {
+            return true;
         }
-        /[^a-zA-Z0-9_]/.test(username)
+        return /[^a-zA-Z0-9_]/.test(username)
     }
 
     /** A multi-way rendering of forms with pieces spliced together based on the current *activity*.
@@ -800,49 +815,8 @@ class Login extends Component {
         // the password fields are not presented until a code is entered.
         let passwordRows = null;
         if (addPasswordRows && (settingPassword || activity === "loginByPassword")) {
-            passwordRows = [];
-            const passwordLabel = (activity === "loginByPassword") ? "Password" : "New Password";
-            passwordRows.push(
-                <tr key="passwordRow">
-                    <td key="passwordInput" className="formLabel"><label className="standard">{passwordLabel}:</label></td>
-                    <td key="passwordLabel" className="formInput">
-                        <input name="password" type="password" value={password}
-                               onChange={this.handleInputChange}/></td>
-                </tr>
-            );
-            if (settingPassword) {
-                passwordRows.push(
-                    <tr key="passwordVerifyRow">
-                        <td key="passwordVerifyInput" className="formLabel">
-                            <label className="standard">Verify Password:</label></td>
-                        <td key="passwordVerifyLabel" className="formInput">
-                            <input name="passwordVerify" type="password" value={passwordVerify}
-                                   onChange={this.handleInputChange}/></td>
-
-                    </tr>
-                );
-                let passwdMsg = "";
-                if (!Login.checkForOneNumber(password) || !/[^a-zA-Z0-9]/.test(password)) {
-                    passwdMsg = <DnMessage>The password must have one numeric character and one special
-                        (non-alphanumeric) character in it.</DnMessage>
-                } else if (!password || password.length < 6) {
-                    passwdMsg = <DnMessage>The password must be at least six characters in length.</DnMessage>
-                } else if (password.length > 16) {
-                    passwdMsg = <DnMessage>The password cannot have more than sixteen characters in it.</DnMessage>
-                } else if (/\s/.test(password)) {
-                    passwdMsg = <DnMessage>The password cannot have whitespace in it.</DnMessage>
-                } else if (!passwordVerify || passwordVerify !== password) {
-                    passwdMsg = <DnMessage>The verify password must be equal to the password.</DnMessage>
-                }
-                if (passwdMsg) {
-                    disabled = true;
-                    passwordRows.push(
-                        <tr key="passwordErrMsg">
-                            <td key="passwordErrMsgRow" colSpan="2">{passwdMsg}</td>
-                        </tr>
-                    )
-                }
-            }
+            ({passwordRows, disabled} = Login.createPasswordRows(activity, settingPassword, null, password,
+                passwordVerify, this.handleInputChange));
         }
         if (passwordRows) {
             rows.push(passwordRows);
@@ -865,7 +839,7 @@ class Login extends Component {
         return (
             <div>
                 {directionsMsg}<p/>
-                <form key="mainForm" onSubmit={this.onSubmit}>
+                <form key="mainForm" className="loginForm" onSubmit={this.onSubmit}>
                     <table className="loginFormTable">
                         <tbody>
                         {rows}
@@ -875,6 +849,337 @@ class Login extends Component {
                      <p key="submitButton"><input type="submit" value={submitLabel} disabled={disabled}/></p>
                 </form>
                 <div key="activityLinks" className="activityLinks">{links}</div>
+            </div>
+        );
+    }
+
+    static createPasswordRows(activity, settingPassword, currentPassword, password, passwordVerify,
+                              handleInputChange) {
+        const passwordRows = [];
+        const passwordLabel = (activity === "loginByPassword") ? "Password" : "New Password";
+        let disabled = false;
+        const isChange = (activity === "changePassword");
+        if (isChange) {
+            passwordRows.push(
+                <tr key="currentPasswordRow">
+                    <td key="passwordInput" className="formLabel currentPassword">
+                        <label className="standard">Current Password:</label></td>
+                    <td key="passwordLabel" className="formInput currentPassword">
+                        <input name="currentPassword" type="password" value={currentPassword}
+                               onChange={handleInputChange}/></td>
+                </tr>
+
+            );
+        }
+        passwordRows.push(
+            <tr key="passwordRow">
+                <td key="passwordInput" className="formLabel password">
+                    <label className="standard">{passwordLabel}:</label></td>
+                <td key="passwordLabel" className="formInput password">
+                    <input name="password" type="password" value={password}
+                           onChange={handleInputChange}/></td>
+            </tr>
+        );
+        if (settingPassword) {
+            passwordRows.push(
+                <tr key="passwordVerifyRow">
+                    <td key="passwordVerifyInput" className="formLabel passwordVerify">
+                        <label className="standard">Verify Password:</label></td>
+                    <td key="passwordVerifyLabel" className="formInput passwordVerify">
+                        <input name="passwordVerify" type="password" value={passwordVerify}
+                               onChange={handleInputChange}/></td>
+
+                </tr>
+            );
+            let passwdMsg = "";
+            const isNewUser = (activity === "loginSetData");
+            const passwordEntity = (isNewUser) ? "password" : "new password";
+
+            if (!Login.checkForOneNumber(password) || !/[^a-zA-Z0-9]/.test(password)) {
+                passwdMsg = <DnMessage>The {passwordEntity} must have one numeric character and one special
+                    (non-alphanumeric) character in it.</DnMessage>
+            } else if (!password || password.length < 6) {
+                passwdMsg = <DnMessage>The {passwordEntity} must be at least six characters in length.</DnMessage>
+            } else if (password.length > 16) {
+                passwdMsg = <DnMessage>The {passwordEntity} cannot have more than sixteen characters in it.</DnMessage>
+            } else if (/\s/.test(password)) {
+                passwdMsg = <DnMessage>The {passwordEntity} cannot have whitespace in it.</DnMessage>
+            } else if (!passwordVerify || passwordVerify !== password) {
+                passwdMsg = <DnMessage>The verify password must be equal to the {passwordEntity}.</DnMessage>
+            } else if (isChange && !currentPassword) {
+                passwdMsg = <DnMessage>Your current password is required in order to change your password.</DnMessage>
+            }
+            if (passwdMsg) {
+                disabled = true;
+                passwordRows.push(
+                    <tr key="passwordErrMsg">
+                        <td key="passwordErrMsgRow" colSpan="2">{passwdMsg}</td>
+                    </tr>
+                )
+            }
+        }
+        return {disabled, passwordRows};
+    }
+}
+
+class UserProfile extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            isLoaded: false,
+            username: "",
+            progress: "",
+            currentPassword:"",
+            password: "",
+            passwordVerify: "",
+            message: <DnMessage>Page loading...</DnMessage>,
+            activity: "showInfo"
+        };
+        this.handleUserSelfData = this.handleUserSelfData.bind(this);
+        this.handleInputChange = this.handleInputChange.bind(this);
+        this.onSubmit = this.onSubmit.bind(this);
+        this.doRequest = this.doRequest.bind(this);
+        this.processRequestResult = this.processRequestResult.bind(this);
+    }
+
+    componentDidMount() {
+        doJsonGet( "/user/self/info",
+            this.handleUserSelfData,
+           (error) => {
+                this.setState({
+                    isLoaded: true,
+                    message: <DnMessage error={true}>{error.message}</DnMessage>
+                });
+            }
+        );
+    }
+
+    handleInputChange(event) {
+        const target = event.target;
+        const value = target.value;
+        const name = target.name;
+        //console.log("Changed name " + name + " to value " + value);
+
+        this.setState({
+            onChangeHasFired: true,
+            [name]: value
+        }, null);
+    }
+
+    onSubmit(event) {
+        event.preventDefault();
+
+        const {activity} = this.state;
+
+        if (activity === "changePassword") {
+            this.setState({progress: "Sending password change request", submitting: true});
+            const {userId, currentPassword, password} = this.state;
+                this.doRequest("PUT", "/user/self/setData", activity,
+                    {userId, currentPassword, password});
+        }
+    }
+
+    doRequest(method, endpoint, activity, data) {
+        doJsonFetch(method, endpoint, data,
+            (httpCode, result) => {
+                this.processRequestResult(activity, httpCode, data, result);
+            },
+            (error) => {
+                // No longer processing form submit.
+                this.setState({submitting: false,
+                    progress: (<DnMessage error={true}>{error.message}</DnMessage>)});
+            }
+        );
+    }
+
+    processRequestResult(activity, httpCode, data, result) {
+        let newState;
+        if (httpCode === 200 || httpCode === 201) {
+            newState = {progress: <DnMessage>Updated password.</DnMessage>, activity: "showInfo",
+                currentPassword: "", password: "", passwordVerify: ""}
+
+        } else if (httpCode === 403) {
+             newState = {progress: <DnMessage error={true}>"Request is not allowed for
+                    security reasons."</DnMessage>}
+        } else {
+            newState = {progress: (<DnMessage error={true}>{result.message}</DnMessage>)};
+        }
+        // No longer submitting form.
+        newState.submitting = false;
+        this.setState(newState)
+    }
+
+
+    static extractLoginSources(sources) {
+        const {capturedIps} = sources;
+        const srcList = [];
+        for (const cIp of capturedIps) {
+            const {ipAddress, captureDate} = cIp;
+            const {userAgents} = cIp;
+            const uaList = [];
+            for (const ua of userAgents) {
+                const uas = ua.split("@");
+                const dStrs = uas[0].split("#");
+                const d1 = Date.parse(dStrs[0]);
+                const d2 = Date.parse(dStrs[1]);
+                const uaStr = uas[1];
+                const uaDes = UserProfile.extractRelevantUaInfo(uaStr);
+                const on = UserProfile.formatDate(d1);
+                const last = UserProfile.formatDate(d2);
+                uaList.push({uaDes, on, last});
+            }
+            const formattedCaptureDate = UserProfile.formatDate(Date.parse(captureDate));
+            srcList.push({ip: ipAddress, captureDate: formattedCaptureDate, uaList: uaList});
+        }
+        return srcList;
+    }
+
+    static formatDate(dateVal) {
+        return moment(dateVal).format('MMM Do YYYY, h:mm:ss a');
+    }
+
+    // Mimics similar code in UserSourceId.java.
+    static MACHINE_TERMINATORS = ["OS", "NT", "nux", "ome"];
+
+    static extractRelevantUaInfo(userAgent) {
+        let browserType = "Unknown Browser";
+        if (userAgent.includes("Edge")) {
+            browserType = "Edge";
+        } else if (userAgent.includes("Chrome")) {
+            browserType = "Chrome";
+        } else if (userAgent.includes("Firefox")) {
+            browserType = "Firefox";
+        } else if (userAgent.includes("Safari")) {
+            browserType = "Safari";
+        }
+        const index1 = userAgent.indexOf("(");
+        let machineDes = "Unknown OS";
+        if (index1 > 0) {
+            const index2 = userAgent.indexOf(")", index1);
+            if (index2 > 0) {
+                machineDes = userAgent.substring(index1 + 1, index2);
+                for (const term of UserProfile.MACHINE_TERMINATORS) {
+                    const index3 = machineDes.indexOf(term);
+                    if (index3 > 0) {
+                        machineDes = machineDes.substring(0, index3 + term.length);
+                        break;
+                    }
+                }
+            }
+        }
+        return browserType + " [" + machineDes + "]";
+    }
+
+    handleUserSelfData(httpCode, result) {
+        let newState;
+        if (httpCode === 200) {
+            const {publicName: username, userProfileData} = result;
+            const {contacts, loginSources} = userProfileData;
+            const regContact = contacts.find((c) => c["contactUsage"] === "registration");
+            const {contactAddress: email} = regContact;
+            const sourcesInfo = UserProfile.extractLoginSources(loginSources);
+            newState = {message: "", email, username, sourcesInfo, userInfo: result};
+        } else if (httpCode === 401) {
+            newState = {
+                message: <DnMessage error={true}>Profile page needs a login to view.</DnMessage>
+            }
+        } else {
+            // Should never get here.
+            const message = result.message || "Error in requesting user profile data.";
+            newState = {
+                message: <DnMessage error={true}>{message}</DnMessage>
+            }
+        }
+        newState.isLoaded = true;
+        this.setState(newState);
+    }
+
+    render() {
+        const {username, currentPassword, password, passwordVerify, email, sourcesInfo,
+            activity, submitting, progress, message, isLoaded} = this.state;
+        if (!isLoaded) {
+            return <DnMessage>Loading profile...</DnMessage>
+        }
+        const profileRows = [];
+        profileRows.push(
+            <tr key="emailRow">
+                <td key="usernameLabel" width="140"><span className="formLabel">Email:</span></td>
+                <td key="usernameValue">{email}</td>
+            </tr>,
+            <tr key="usernameRow">
+                <td key="usernameLabel"><span className="formLabel">Username:</span></td>
+                <td key="usernameValue">{username}</td>
+            </tr>
+        );
+
+        const sourcesRows = sourcesInfo.map(info => {
+            const {ip, captureDate, uaList} = info;
+            const uaRows = uaList.map(ua => {
+                const {uaDes, on, last} = ua;
+                return <tr key={uaDes}><td>{uaDes}
+                    <span className="loginDates"> (<i>first:</i> {on}, <i>latest:</i> {last})</span></td></tr>
+            });
+            return (
+                <tr key={ip}>
+                    <td key="ip" className="border cellLabel"><span className="formLabel">{ip}</span></td>
+                    <td key="captureDate" className="border">{captureDate}</td>
+                    <td key="uaList" className="border"><table><tbody>{uaRows}</tbody></table></td>
+                </tr>
+            );
+        });
+
+        const doPasswordEdit = (activity === "changePassword");
+        const linkLabel = doPasswordEdit ? "[Hide Change Password]" : "[Change Password]";
+        const newActivity = doPasswordEdit ? "showInfo" : "changePassword";
+        const links = (
+            <div className="activityLinks">
+                <span key="passwordChange" className="clickText"
+                      onClick={() => this.setState({activity:newActivity, progress:""})}>{linkLabel}</span>
+            </div>
+        );
+
+        let disabled = false;
+        let passwordRows = [];
+        let submitButton = "";
+        if (doPasswordEdit) {
+            ({passwordRows, disabled} =  Login.createPasswordRows(activity, true, currentPassword, password, passwordVerify,
+                this.handleInputChange));
+            submitButton = <p key="submitButton" className="profileSubmitButton">
+                <input type="submit" value="Change Password" disabled={disabled || submitting}/></p>
+        }
+
+        return (
+            <div>
+                <div className="profileBox">
+                    <h3>User Information</h3>
+                    {message}
+                    <form key="mainForm" className="profileForm" onSubmit={this.onSubmit}>
+                        <table className="profileFormTable">
+                            <tbody>
+                            {profileRows}
+                            {passwordRows}
+                            </tbody>
+                        </table>
+                        {progress}
+                        {submitButton}
+                    </form>
+                    {links}
+                </div>
+                <div className="profileBox">
+                <h3>IP Addresses and Times of Login</h3>
+                    <table className="loginSourcesTable">
+                        <thead>
+                        <tr>
+                            <th key="ip">IP Address</th>
+                            <th key="captureDate">Capture Date</th>
+                            <th key="uaList">Browsers and Dates</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {sourcesRows}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         );
     }

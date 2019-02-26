@@ -42,11 +42,12 @@ th {
 }
 
 td {
-    padding: 3px;
+    padding: 1px 3px;
 }
 
 td.border {
-    border: 1px solid black;
+    border: 1px solid lightgray;
+    border-radius: 5px;
 }
 
 tr {
@@ -75,22 +76,70 @@ div.error {
     font-weight: bolder;
 }
 
+/*noinspection CssUnusedSymbol*/
 .httpMethod {
     text-align: center;
     font-weight: bold;
 }
 
+/*noinspection CssUnusedSymbol*/
 .GETMethod {
     color: darkgreen;
 }
 
 form {
-    padding: 5px;
+    padding: 2px;
+}
+
+.loginForm {
+    padding: 2px;
 }
 
 .loginFormTable {
     width: 440px;
     margin: 5px;
+    border-collapse: separate;
+}
+
+.profileFormTable {
+    width: 440px;
+    margin: 5px;
+    border-collapse: separate;
+}
+
+.loginSourcesTable {
+    width: 100%;
+}
+
+.cellLabel {
+    padding: 8px;
+}
+
+.profileBox {
+    margin: 2px;
+    padding: 5px;
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: lightgray;
+    border-style: solid;
+}
+
+.profileForm {
+    padding: 1px;
+}
+
+.profileSubmitButton {
+    margin-left: 10px;
+}
+
+.currentPassword {
+    color: darkslategray;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.loginDates {
+    color: dimgray;
 }
 
 .activityLinks {

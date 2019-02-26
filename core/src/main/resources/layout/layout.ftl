@@ -18,9 +18,9 @@
     <h4>
         <#if username??>
             <#--noinspection FtlReferencesInspection-->
-            Hello <span class="highlight">${username}</span><br/>
+            Hello <a href="/content/html/userprofile.html">${username}</a>.<br/>
             <#--noinspection HtmlUnknownTarget-->
-            <a href="/logout">Logout</a>
+            &nbsp;[<a href="/logout">Logout</a>]
          </#if>
     </h4>
     <p>Changing your data model as your application runs.</p>

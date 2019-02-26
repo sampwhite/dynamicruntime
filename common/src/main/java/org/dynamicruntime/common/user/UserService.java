@@ -260,38 +260,28 @@ public class UserService implements ServiceInitializer {
             // All the queries we need are at the transaction level of the topic.
             var row = sqlDb.queryOneDnStatement(cxt, profileTopic.qTranLockQuery, dbParams);
             boolean needsUpdate = false;
+
+            // See if we need to copy over username or contacts to profile.
             Map<String,Object> profileUserData;
             if (row != null) {
                 profileUserData = getMapDefaultEmpty(row, UP_USER_DATA);
                 String username = getOptStr(profileUserData, UP_PUBLIC_NAME);
                 if (profile.publicName != null && (username == null || !username.equals(profile.publicName))) {
                     needsUpdate = true;
-                    profileUserData.put(UP_PUBLIC_NAME, profile.publicName);
+                }
+                // See if we need to copy over initial contacts from auth provisioning (if necessary).
+                if (!profileUserData.containsKey(CTE_CONTACTS)) {
+                    var authContacts = getOptListOfMaps(profile.authData, CTE_CONTACTS);
+                    if (authContacts != null && authContacts.size() > 0) {
+                        needsUpdate = true;
+                    }
                 }
             } else {
+                // Put in some provisional data for new row.
                 profileUserData = mMap(UP_PUBLIC_NAME, profile.publicName);
             }
-            // Copy over initial contacts from auth provisioning (if necessary).
-            if (!profileUserData.containsKey(CTE_CONTACTS)) {
-                var authContacts = getOptListOfMaps(profile.authData, CTE_CONTACTS);
-                if (authContacts != null && authContacts.size() > 0) {
-                    profileUserData.put(CTE_CONTACTS, authContacts);
-                    needsUpdate = true;
-                }
-            }
 
-            // See if we need to capture some changes in the login sourceId state.
-            if (allData.updateProfileSourceId) {
-                Map<String,Object> sourceIdData = getMapDefaultEmpty(profileUserData, UP_LOGIN_SOURCES);
-                UserSourceId sourceId = new UserSourceId(false, "canBeIgnored",
-                        null);
-                try {
-                    sourceId.fillFromSourceData(sourceIdData);
-                } catch (DnException e) {
-                    LogUser.log.error(cxt, e, "Failed to fill in login source data from profile.");
-                }
-                sourceId.addSource(cxt, allData.ipAddress, allData.userAgent);
-                profileUserData.put(UP_LOGIN_SOURCES, sourceId.toProfileMap());
+            if (allData.extraData != null || allData.updateProfileSourceId) {
                 needsUpdate = true;
             }
 
@@ -300,25 +290,20 @@ public class UserService implements ServiceInitializer {
 
             if (row == null || doUpdate) {
                 // Need to create a new row.  Note that the transaction will populate the data with userId,
-                // userGroup, and a number of other protocol fields. We use our current provisional
-                // UserProfile object to create or update the current row.
-                profile.profileData = profileUserData;
+                // userGroup, and a number of other protocol fields. We use our current
+                // UserProfile object to help create the provisional new row (if necessary).
+                profile.profileData = profileUserData; // Initial version, still may make changes in transaction.
                 Map<String, Object> profileTranData = profile.createInitialProfileDbRow();
                 SqlTopicTranProvider.executeTopicTran(sqlCxt, tranName, null,
                         profileTranData, () -> {
-                            if (doUpdate && !sqlCxt.didInsert) {
-                                // The sqlCxt.tranData will have been replaced with data from
-                                // the current row. Anything we wish to persist in an update
-                                // needs to be set again.
+                            // The sqlCxt.tranData will have been replaced with data from
+                            // the current row. Anything we wish to persist in an update
+                            // needs to be set again.
 
-                                // Update profile data with data extracted from auth data. This is
-                                // meant as a motivating example.
-                                sqlCxt.tranData.put(UP_USER_DATA, profileUserData);
-                            } else {
-                                // We did this transaction only to get the record inserted, skip the update if
-                                // row has already been inserted.
-                                sqlCxt.tranAlreadyDone = true;
-                            }
+                            // Update profile data with data extracted from auth data. This is
+                            // meant as a motivating example.
+                            inTranUpdateProfileUserData(cxt, sqlCxt.tranData, allData);
+
                             profileRowPtr.value = sqlCxt.tranData;
                         });
             } else {
@@ -326,6 +311,100 @@ public class UserService implements ServiceInitializer {
             }
         });
         return profileRowPtr.value;
+    }
+
+    public void inTranUpdateProfileUserData(DnCxt cxt, Map<String,Object> tranData, AuthAllUserData allData) {
+        UserProfile profile = allData.profile;
+        Map<String,Object> profileUserData = getOptMap(tranData, UP_USER_DATA);
+        if (profileUserData == null) {
+            profileUserData = mMap();
+            tranData.put(UP_USER_DATA, profileUserData);
+        }
+        String username = getOptStr(profileUserData, UP_PUBLIC_NAME);
+        if (profile.publicName != null && (username == null || !username.equals(profile.publicName))) {
+            profileUserData.put(UP_PUBLIC_NAME, profile.publicName);
+        }
+
+        // Copy over initial contacts from auth provisioning (if necessary).
+        if (!profileUserData.containsKey(CTE_CONTACTS)) {
+            var authContacts = getOptListOfMaps(profile.authData, CTE_CONTACTS);
+            if (authContacts != null && authContacts.size() > 0) {
+                profileUserData.put(CTE_CONTACTS, authContacts);
+            }
+        }
+
+        if (allData.extraData != null) {
+            var extraData = allData.extraData;
+            Map<String,Object> curExtraData = getOptMap(profileUserData, UP_EXTRA_DATA);
+            if (curExtraData == null) {
+                curExtraData = extraData;
+            } else {
+                curExtraData.putAll(extraData);
+            }
+            profileUserData.put(UP_EXTRA_DATA, curExtraData);
+        }
+
+        // See if we need to capture some changes in the login sourceId state.
+        if (allData.updateProfileSourceId) {
+            Map<String,Object> sourceIdData = getMapDefaultEmpty(profileUserData, UP_LOGIN_SOURCES);
+            UserSourceId sourceId = new UserSourceId(false, "canBeIgnored",
+                    null);
+            try {
+                sourceId.fillFromSourceData(sourceIdData);
+            } catch (DnException e) {
+                LogUser.log.error(cxt, e, "Failed to fill in login source data from profile.");
+            }
+            sourceId.addSource(cxt, allData.ipAddress, allData.userAgent);
+            profileUserData.put(UP_LOGIN_SOURCES, sourceId.toProfileMap());
+        }
+    }
+
+    public void updateUserData(DnCxt cxt, AuthAllUserData allData, Map<String,Object> newData)
+            throws DnException {
+        formHandler.checkForMaximumRequests(cxt, null);
+        String username = getOptStr(newData, AUTH_USERNAME);
+        String password = getOptStr(newData, FM_PASSWORD);
+
+        // Caller must supply a UserProfile.
+        UserProfile userProfile = Objects.requireNonNull(allData.profile);
+
+        if ((username != null && !username.equals(userProfile.publicName)) || password != null) {
+            // Updating auth data.
+            var sqlCxt = SqlTopicService.mkSqlCxt(cxt, SqlTopicConstants.AUTH_TOPIC);
+            AuthQueryHolder aqh = AuthQueryHolder.get(sqlCxt);
+            aqh.sqlDb.withSession(cxt, () -> {
+                // Do transaction to update username and password.
+                Map<String,Object> userIdParam = mMap(USER_ID, allData.userId);
+                SqlTopicTranProvider.executeTopicTran(sqlCxt, "updateUserData", null,
+                        userIdParam, () -> {
+                            allData.authRow = AuthUserRow.extract(sqlCxt.tranData);
+                            var authRow = allData.authRow;
+                            // If modifying password, check to see if original password is OK.
+                            if (password != null) {
+                                String originalPassword = getOptStr(newData, FM_CURRENT_PASSWORD);
+                                if (originalPassword == null) {
+                                    throw DnException.mkInput("Current password must be supplied with " +
+                                            "the desired changed password.");
+                                }
+                                if (authRow.encodedPassword == null) {
+                                    throw DnException.mkInput("The username is not set up to allow password validation.");
+                                }
+                                if (!EncodeUtil.checkPassword(originalPassword, authRow.encodedPassword)) {
+                                    throw DnException.mkInput("Current password did not match.");
+                                }
+                            }
+                            AuthUserUtil.updateUsernameAndPassword(allData.authRow, username, password);
+                            sqlCxt.tranData.putAll(allData.authRow.toMap());
+                        });
+            });
+
+            // Recreate profile data.
+            AuthUserUtil.setLoginProfileData(allData);
+        }
+        allData.extraData = getOptMap(newData, UP_EXTRA_DATA);
+
+        // This will merge in our changes that are relevant to the user profile.
+        loadProfileRecord(cxt, "updateUserData", allData, true);
     }
 
 

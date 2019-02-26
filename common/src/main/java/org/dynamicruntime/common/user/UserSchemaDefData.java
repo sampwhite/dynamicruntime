@@ -212,6 +212,26 @@ public class UserSchemaDefData {
             "Retrieves profile information for the current acting user.",
             DNT_NONE, selfUserInfoResponse.name);
 
+    static public DnRawField usernameChanged = mkField(AUTH_USERNAME, "Username",
+            "Provided if the caller wishes to change the username.");
+    static public DnRawField originalPassword = mkField(FM_CURRENT_PASSWORD, "Current Password",
+            "The current password for the user. This must be supplied if a password value is " +
+                    "being supplied to change the password.")
+            .setAttribute(EP_IS_PASSWORD, true);
+    static public DnRawField passwordChanged = mkField(FM_PASSWORD, "New Password",
+            "Provided if the caller wishes to change the password.")
+            .setAttribute(EP_IS_PASSWORD, true);
+    static public DnRawField extraUserData = mkField(UP_EXTRA_DATA, "Extra Data",
+            "Extra data provided by the client and whose definition is owned entirely by the client. " +
+                    "The data is in the structure of a map and new data is merged with the current extra data.")
+            .setTypeRef(DNT_MAP);
+    static public DnRawType selfUserSetDataRequest = mkType("SelfUserSetDataRequest",
+            mList(usernameChanged, originalPassword, passwordChanged, extraUserData));
+    static public DnRawEndpoint selfUserSetDataEndpoint = mkEndpoint(EPM_PUT, "/user/self/setData",
+            SELF_SET_DATA,
+            "Sets basic user data allowing user to change username, password, and " +
+                    "other various user settings.", selfUserSetDataRequest.name, selfUserInfoResponse.name);
+
     //
     //
     // Registration and login page support.
@@ -336,8 +356,10 @@ public class UserSchemaDefData {
         return DnRawSchemaPackage.mkPackage("UserSchema", USER_NAMESPACE,
                 mList(authUserTable, authContactTable, authLoginSourcesTable, authTokensTable,
                         userProfileTable, tokenLoginRequest, tokenLoginResponse, tokenLoginEndpoint,
-                        authLogoutResponse, authLogoutEndpoint, adminUserInfoRequest, adminUserInfoResponse,
-                        adminUserInfoEndpoint, selfUserInfoResponse, selfUserInfoEndpoint,
+                        authLogoutResponse, authLogoutEndpoint,
+                        adminUserInfoRequest, adminUserInfoResponse, adminUserInfoEndpoint,
+                        selfUserInfoResponse, selfUserInfoEndpoint,
+                        selfUserSetDataRequest, selfUserSetDataEndpoint,
                         formCreateTokenResponse, createAuthTokenEndpoint,
                         adminCreateFormTokenRequest, adminCreateFormTokenResponse, adminCreateFormTokenEndpoint,
                         sendNewContactVerifyCodeRequest, sendVerifyCodeResponse, sendVerifyCodeForNewContactEndpoint,
