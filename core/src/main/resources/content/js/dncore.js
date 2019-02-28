@@ -155,7 +155,7 @@ class DnEndpointForm extends Component {
             return;
         }
         const {dataUrl} = this.props;
-        const baseUrl = (dataUrl.indexOf("?") > 0) ? dataUrl + "&" : dataUrl + "?";
+        const baseUrl = (dataUrl.includes("?")) ? dataUrl + "&" : dataUrl + "?";
         const endpointInfoUrl = baseUrl + "endpoint=" + e;
         doJsonGet(endpointInfoUrl,
             (httpCode, result) => {
@@ -177,7 +177,7 @@ class DnEndpointForm extends Component {
             if (endpointInputType) {
                 const {dnFields} = endpointInputType;
                 const fields = dnFields ? dnFields : [];
-                fields.map(fld => {
+                fields.forEach(fld => {
                     const {name} = fld;
                     const fldName = "fld_" + name;
                     // Controlled forms need an initial state value.
@@ -358,7 +358,7 @@ class DnEndpointForm extends Component {
                 }
             });
             let inputLinkStr = "";
-            if (inputBaseType && inputBaseType.indexOf(".") > 0) {
+            if (inputBaseType && inputBaseType.includes(".")) {
                 const url = "/schema/dnType/list?dnTypeName=" + inputBaseType;
                 inputLinkStr = <div>The core input type definition for endpoint <b>{endpoint} </b>
                     can be found at <a href={url}>{inputBaseType}</a>. This does not include
@@ -376,7 +376,7 @@ class DnEndpointForm extends Component {
             if (outputFields) {
                 const itemsField = outputFields.find(oField => oField.name === "items");
                 const {dnTypeRef: outputTypeRef} = itemsField || {};
-                if (outputTypeRef && outputTypeRef.indexOf(".") > 0) {
+                if (outputTypeRef && outputTypeRef.includes(".")) {
                     const url = "/schema/dnType/list?dnTypeName=" + outputTypeRef;
                     outputLinkStr = <div>The definition of the type for <i>items</i> in the response
                         can be found at <a href={url}>{outputTypeRef}</a>.</div>;
@@ -615,6 +615,9 @@ class Login extends Component {
                 newState = {progress: "", activity: "loginSetData",
                     userId: userId, username: "", password: ""}
             }
+            else {
+                newState = {progress: <DnMessage error={true}>Invalid activity.</DnMessage>}
+            }
         } else if (httpCode === 404) {
             newState = {progress:
                     (<DnMessage error={true}>User <i>{username}</i> is not available for doing a login.</DnMessage>)};
@@ -626,8 +629,7 @@ class Login extends Component {
                 newState = {progress: (<DnMessage error={true}>Email <i>{contactAddress}</i> is not available
                         for creating a new user.</DnMessage>)};
             } else {
-                newState = {progress: <DnMessage error={true}>"Request is not allowed for
-                        security reasons."</DnMessage>}
+                newState = {progress: <DnMessage error={true}>Request is not allowed for security reasons.</DnMessage>}
             }
         } else {
             newState = {progress: (<DnMessage error={true}>{result.message}</DnMessage>)};
