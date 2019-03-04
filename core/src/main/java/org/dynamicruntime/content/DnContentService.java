@@ -4,34 +4,40 @@ import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
 import org.commonmark.node.Node;
 import org.commonmark.node.Text;
+import org.dynamicruntime.config.ConfigLoadUtil;
+import org.dynamicruntime.context.DnConfigUtil;
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.startup.ServiceInitializer;
 
-import org.dynamicruntime.util.IoUtil;
-import org.dynamicruntime.util.PageUtil;
-import org.dynamicruntime.util.StrUtil;
+import org.dynamicruntime.util.*;
 
 import static org.dynamicruntime.util.ConvertUtil.*;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 
 import java.io.File;
-import java.net.FileNameMap;
-import java.net.URLConnection;
+import java.io.IOException;
 import java.util.Date;
 import java.util.Map;
 
 @SuppressWarnings("WeakerAccess")
 public class DnContentService implements ServiceInitializer {
     public static final String DN_CONTENT_SERVICE = DnContentService.class.getSimpleName();
-    ClassLoader classLoader;
-    public FileNameMap fileNameMap;
+    public static final String DN_USE_AWS_KEY = "portal.useAws";
+    public static final String SITES_BUCKET_NAME = "dn-sites";
+    public static final String SITE_ID = "siteId";
+    public final ClassLoader classLoader = this.getClass().getClassLoader();
+    public final DnAwsClient awsClient = new DnAwsClient();
+    public boolean usingAws;
+    public String dfltSiteId;
     public Parser mdParser;
     /** Markdown to HTML */
     public HtmlRenderer mdHtmlRenderer;
     /** FreeMarker templates to Strings */
     public DnTemplates templates;
-
+    public String portalDir;
+    public String siteDir;
+    public DatedCacheMap<String,DnContentData> cachedSiteConfig = new DatedCacheMap<>(100);
 
     @Override
     public String getServiceName() {
@@ -44,11 +50,25 @@ public class DnContentService implements ServiceInitializer {
     }
 
     public void onCreate(DnCxt cxt) {
-        classLoader = this.getClass().getClassLoader();
-        fileNameMap = URLConnection.getFileNameMap();
+        usingAws = DnConfigUtil.getConfigBool(cxt, DN_USE_AWS_KEY, false,
+                "Whether to use AWS to server portal javascript, css, and images.");
         mdParser = Parser.builder().build();
         mdHtmlRenderer = HtmlRenderer.builder().build();
         templates = new DnTemplates();
+        dfltSiteId = DnConfigUtil.getConfigString(cxt, "portal.defaultSiteId", "dn/current",
+                "The siteId used to serve portal content when the *siteId* is not explicitly " +
+                        "provided as a parameter.");
+        portalDir = DnConfigUtil.getConfigString(cxt, "portal.resourceLocation",
+                "./portal",
+                "Directory or URL root of where top level portal content is returned, if not using AWS.");
+        siteDir = DnConfigUtil.getConfigString(cxt, "sitesRoot.resourceLocation",
+                portalDir,
+                "Directory or URL root where static web resources are located if not using AWS. " +
+                        "Resources referenced here are assumed to not change.");
+        if (usingAws) {
+            awsClient.init();
+        }
+
     }
 
     @Override
@@ -56,35 +76,97 @@ public class DnContentService implements ServiceInitializer {
 
     }
 
+    public DnContentData getPortalContent(DnCxt cxt, Map<String,Object> queryParams) throws DnException {
+        String qSiteId = getOptStr(queryParams, SITE_ID);
+        String siteId = (qSiteId != null) ? qSiteId : dfltSiteId;
+        return cachedSiteConfig.getItem(siteId, 2, false,
+                (existing) -> {
+            String yamlFileName = siteId + ".yaml";
+            Map<String,Object> yamlParams;
+            if (usingAws) {
+                DnContentData yamlData = awsClient.getContent(SITES_BUCKET_NAME, yamlFileName, true);
+                if (yamlData == null) {
+                    throw DnException.mkFileIo(String.format("Cannot find site yaml fle %s in AWS bucket %s.",
+                            yamlFileName, SITES_BUCKET_NAME), null, DnException.NOT_FOUND);
+                }
+                // First see if we can reuse content.
+                if (existing != null && existing.item != null && yamlData.timestamp != null &&
+                    yamlData.timestamp.equals(existing.item.timestamp)) {
+                    return existing.item;
+                }
+                try {
+                    yamlParams = ConfigLoadUtil.parseYamlText(yamlData.strContent);
+                    String entryPoint = getReqStr(yamlParams, "site.entryPoint");
+                    DnContentData data = awsClient.getContent(SITES_BUCKET_NAME, entryPoint, true);
+                    if (data == null) {
+                        throw new DnException(String.format("Could not retrieve data from AWS at key %s that " +
+                                        "was retrieved from AWS file %s.", entryPoint, yamlFileName),
+                                DnException.NOT_FOUND);
+                    }
+                    // Use timestamp of config file as timestamp of index page that we retrieved. This way
+                    // we can test against it for the caching.
+                    data.timestamp = yamlData.timestamp;
+                    return data;
+                } catch (IOException e) {
+                    throw new DnException("Could not parse yaml file " + yamlFileName + " with content " +
+                            yamlData.strContent);
+                }
+            } else {
+                /* Get file locally. Useful for tests and in-memory deployment. */
+                File portalFile = new File(portalDir, yamlFileName);
+                if (!portalFile.exists()) {
+                    throw DnException.mkFileIo(String.format("Cannot find portal configuration file %s.",
+                            portalFile.getAbsolutePath()), null, DnException.NOT_FOUND);
+                }
+                yamlParams = ConfigLoadUtil.parseYaml(portalFile);
+                // The config file tells us where to find our website.
+                String entryPoint = getReqStr(yamlParams, "site.entryPoint");
+                File f = new File(portalDir, entryPoint);
+                if (!f.exists()) {
+                    throw DnException.mkFileIo(String.format("Cannot find portal entry point %s.", f.getAbsolutePath()), null,
+                            DnException.NOT_FOUND);
+                }
+                return getContentForFile(cxt, f);
+            }
+        });
+    }
+
+    public DnContentData getSiteContent(DnCxt cxt, String relativePath) throws DnException {
+        File f = new File(siteDir, relativePath);
+        if (!f.exists()) {
+            throw DnException.mkFileIo(String.format("Cannot find site resource %s.", f.getAbsolutePath()), null,
+                    DnException.NOT_FOUND);
+        }
+        DnContentData retVal = getContentForFile(cxt, f);
+
+        if (relativePath.contains("static")) {
+            retVal.immutable = true;
+        }
+        return retVal;
+    }
+
     public DnContentData getContent(DnCxt cxt, String resourcePath) throws DnException {
-        File f = getFileResource(resourcePath);
-        Date resTimestamp = new Date(f.lastModified());
-        DnContentData templatedData = getTemplateContent(cxt, resourcePath, f,
+        File resource = getFileResource(resourcePath);
+        return getContentForFile(cxt, resource);
+    }
+
+    public DnContentData getContentForFile(DnCxt cxt, File resource) throws DnException {
+        String resourcePath = resource.getPath();
+        Date resTimestamp = new Date(resource.lastModified());
+        DnContentData templatedData = getTemplateContent(cxt, resourcePath, resource,
                 mMap());
         if (templatedData != null) {
             return templatedData;
         }
 
-        String mimeType = fileNameMap.getContentTypeFor(resourcePath);
-        if (mimeType == null && resourcePath.endsWith(".ico")) {
-            mimeType = "image/ico";
-        }
-        if (mimeType == null && resourcePath.endsWith(".js")) {
-            mimeType = "application/javascript";
-        }
-        if (mimeType == null && resourcePath.endsWith(".css")) {
-            mimeType = "text/css";
-        }
-        if (mimeType == null) {
-            mimeType = "text/plain";
-        }
+        String mimeType = DnContentUtil.determineMimeType(resourcePath);
         boolean isBinary = mimeType.startsWith("image") || mimeType.startsWith("video") ||
                 mimeType.startsWith("audio");
         if (isBinary) {
-            var bytes = IoUtil.readInBinaryFile(f);
+            var bytes = IoUtil.readInBinaryFile(resource);
             return new DnContentData(mimeType, true, null, bytes, resTimestamp);
         } else {
-            String resp = IoUtil.readInFile(f);
+            String resp = IoUtil.readInFile(resource);
             return new DnContentData(mimeType, false, resp, null, resTimestamp);
         }
     }

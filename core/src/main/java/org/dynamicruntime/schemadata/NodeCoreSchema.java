@@ -19,6 +19,8 @@ public class NodeCoreSchema {
             "Date and time at which the node started.");
     public static DnRawField uptime = mkReqField(ND_UPTIME, "Uptime",
             "The amount of time that the node has been up.");
+    public static DnRawField currentTime = mkReqDateField(ND_CURRENT_TIME, "Current Time",
+            "Current time on the node being asked.");
     public static DnRawField nodeId = mkReqField(ND_NODE_ID, "Node ID",
             "Unique identifier of node.");
     public static DnRawField isMember = mkReqBoolField(ND_IS_CLUSTER_MEMBER, "Is Cluster Member",
@@ -27,7 +29,7 @@ public class NodeCoreSchema {
             "Current version information for the code running the node.");
 
     public static DnRawType healthInfo = mkType("HealthInfoResponse",
-            mList(startTime, startTime, uptime, nodeId, isMember, version));
+            mList(startTime, startTime, uptime, currentTime, nodeId, isMember, version));
     public static DnRawEndpoint healthEndpoint = mkEndpoint(EPM_GET,"/health/info", ND_GET_HEALTH_FUNCTION,
             "Gets basic health status information for the node.", DNT_NONE, healthInfo.name);
 

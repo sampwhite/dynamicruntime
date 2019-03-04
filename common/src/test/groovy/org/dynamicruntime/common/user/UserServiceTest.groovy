@@ -95,7 +95,7 @@ class UserServiceTest extends Specification {
         ua4 != null
 
         when: "Clearing cache"
-        userService.userCache.clearCache(userService.userCache.tokenCache)
+        userService.userCache.tokenCache.clearCache()
 
         then: "Login on old token should not work anymore"
         def ua5 = userService.queryByAdminCacheToken(cxt, "testTokenId", "abc")

@@ -30,6 +30,7 @@ import java.util.*;
 
 @SuppressWarnings("WeakerAccess")
 public class DnRequestHandler implements DnServletHandler {
+    public static final String ETAG_NEVER_CHANGES = "NeverChanges";
     public static boolean enableLengthRounding = false;
     public static boolean logHttpHeaders = false;
     public String instance;
@@ -151,6 +152,11 @@ public class DnRequestHandler implements DnServletHandler {
     public void handleRequest() {
         DnCxt cxt = null;
         try {
+            String ifModifiedSince = getRequestHeader("If-None-Match");
+            if (ifModifiedSince != null && ifModifiedSince.equals(ETAG_NEVER_CHANGES)) {
+                sendNotChanged("NeverChanges");
+                return;
+            }
             if (instance == null) {
                 instance = InstanceRegistry.defaultInstance;
             }
@@ -446,6 +452,16 @@ public class DnRequestHandler implements DnServletHandler {
         if (rptResponseHeaders != null) {
             rptResponseHeaders.put(header.toLowerCase(), mList(value));
         }
+    }
+
+    public void sendNotChanged(String eTag) throws IOException {
+        setStatusCode(304);
+        addResponseHeader("Etag", eTag);
+        addResponseHeader("Cache-Control", "immutable, max-age: 3153600");
+        if (response != null) {
+            response.flushBuffer();
+        }
+        sentResponse = true;
     }
 
     @Override

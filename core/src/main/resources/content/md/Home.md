@@ -50,7 +50,10 @@ to aid in the creation and design of queries. If the database connection is not 
 up using the H2 in-memory database. This means you can clone the git repository and run `./gradlew execute`
 (after installing the Java 10 or 11 VM) and have the server running with no additional labors.
 
-The application can send email using a free [mailgun](https://www.mailgun.com) service.
+The application can send email using a free [mailgun](https://www.mailgun.com) service. We use the email to
+do new user registration and support *forgot password* logic.
+
+The application has a login and profile page rendered with React using a live babel compile.
 
 We split the application into independently loadable components and configuration controls which components are to be
 loaded on startup. Also, components can extend or add schema. Testing uses this to control exactly what functionality
@@ -63,6 +66,6 @@ when code is contributed to the git repository.
 
 # Near Future
 
-The current focus is on allowing users to self-register on the website and access and update their profile. We
-may get distracted by trying to create a self-contained Docker image of our current work. For those who wish
-to communicate with the developers of this project, they can be reached at *dev@mg.dynamicruntime.org*.
+The current focus is on publishing React websites to the application. The idea is for all the javascript, css,
+and image assets to be served by AWS Cloudfront. The React websites can use any of the endpoints made available
+by the application.

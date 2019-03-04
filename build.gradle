@@ -1,8 +1,31 @@
+// This construction is suggested by AWS help but we ignore it because it does
+// not work as well as advertised.
+/*
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "io.spring.gradle:dependency-management-plugin:1.0.3.RELEASE"
+    }
+} */
+
 // IntelliJ supplied entries.
 plugins {
     id 'groovy'
     id 'java'
+    // Kotlin, Java 1.10, and IntelliJ do not get along with each other.
     //id 'org.jetbrains.kotlin.jvm' version '1.2.70'
+}
+
+/*
+// Suggested by AWS help (which we ignore).
+apply plugin: "io.spring.dependency-management"
+*/
+
+repositories {
+    // Because we are pure open source, no complications in our repository usage.
+    mavenCentral()
 }
 
 // Who we are.
@@ -15,10 +38,13 @@ version '1.0-SNAPSHOT'
 // Ubuntu's Java 11 is actually Java 10 that has been labelled as 11. But toolchains using Java are not fooled.
 sourceCompatibility = 1.10
 
-// Because we are pure open source, no complications in our repository usage.
-repositories {
-    mavenCentral()
-}
+// Suggested by AWS. However, limits multi-project configurations, so commented out.
+/*
+dependencyManagement {
+    imports {
+        mavenBom 'com.amazonaws:aws-java-sdk-bom:1.11.509'
+    }
+} */
 
 dependencies {
     // Kotlin pulls in jetbrains annotations as well (such as @NotNull). Currently not used
@@ -30,6 +56,11 @@ dependencies {
     compile group: 'org.eclipse.jetty', name: 'jetty-server', version: '9.4.14.v20181114'
     // Writing our own servlet implementation so *not* including this.
     //compile group: 'org.eclipse.jetty', name: 'jetty-servlet', version: '9.4.14.v20181114'
+
+    // S3 API for AWS, specifying an explicit version and not using the BOM approach. For us
+    // the BOM increases complexity and makes the BOM dependencies not visible to other projects
+    // that are dependent on this one.
+    compile 'com.amazonaws:aws-java-sdk-s3:1.11.509'
 
     // Use a simple Json library.
     compile group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1.1'
@@ -58,10 +89,10 @@ dependencies {
     compile group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.9.7'
     compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.7'
 
-    // We are using AWS Aurora Postgres, so we use a postgres connector.
+    // We are using AWS Postgres, so we use a postgres connector.
     compile group: 'org.postgresql', name: 'postgresql', version: '42.2.5'
 
-    // Database to be used for unit testing and when running code in simulation mode.
+    // Database to be used for "in-memory" unit testing and when running code in simulation mode.
     compile group: 'com.h2database', name: 'h2', version: '1.4.197'
 
     // Bring in *markdown* conversion to HTML support.
@@ -71,7 +102,6 @@ dependencies {
     // Java makes test writing easier and produces better presentations in results. 
     // Spock expands on that approach and adds additional language features specific to testing.
     testCompile group: 'org.spockframework', name: 'spock-core', version: '1.2-groovy-2.5'
-
 }
 
 sourceSets {
@@ -119,8 +149,8 @@ task execute(type: JavaExec) {
         args(argsStr.split("\\^"))
     }
     workingDir = System.getProperty("user.dir")
-    // Make sure executable does not use up all the memory on a 1 GIG AWS node, even if
-    // running gradle script on the side.
+    // Make sure executable does not use up all the memory on a 1 GIG AWS node. This assumes
+    // we might also be running a gradle script on the side.
     jvmArgs = ['-Xmx400m']
     classpath = sourceSets.main.runtimeClasspath
 }

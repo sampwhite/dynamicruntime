@@ -13,6 +13,8 @@ public class CoreConstants {
     public static final String ND_START_TIME = "nodeStartTime";
     /** Uptime in days (in floating point). */
     public static final String ND_UPTIME = "uptime";
+    /** Current time. */
+    public static final String ND_CURRENT_TIME = "currentTime";
     /** Node ID **/
     public static final String ND_NODE_ID = "nodeId";
     /** Version */

@@ -16,7 +16,7 @@ public class DnCollectionUtil {
      * Every two arguments becomes a key-value pair. */
     public static Map<String,Object> mMap(Object... args) {
         if (args.length % 2 != 0) {
-            throw new RuntimeException("Number of arguments to map creation but be even.");
+            throw new RuntimeException("Number of arguments to map creation must be even.");
         }
         var map = new HashMap<String,Object>();
         for (int i = 0; i < args.length; i += 2) {
@@ -34,7 +34,7 @@ public class DnCollectionUtil {
     @SuppressWarnings("unchecked")
     public static <U,V> Map<U,V> mMapT(Object... args) {
         if (args.length % 2 != 0) {
-            throw new RuntimeException("Number of arguments to map creation but be even.");
+            throw new RuntimeException("Number of arguments to map creation must be even.");
         }
         var map = new HashMap<U,V>();
         for (int i = 0; i < args.length; i += 2) {

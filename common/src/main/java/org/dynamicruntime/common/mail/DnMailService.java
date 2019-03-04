@@ -49,7 +49,7 @@ public class DnMailService implements ServiceInitializer {
                     "https://api.mailgun.net/v3/mg.dynamicruntime.org/messages",
                     "Mailgun URI path");
             fromAddressForApp = DnConfigUtil.getConfigString(cxt, MAIL_APP_FROM_ADDRESS_KEY,
-                    "automail@mg.dynamicruntime.org", "From address for application " +
+                    "dn-automail@mg.dynamicruntime.org", "From address for application " +
                             "generated emails.");
             apiKey = toOptStr(cxt.instanceConfig.get(API_KEY));
             httpClient = new DnHttpClient(cxt, "Mailgun", false);

@@ -29,14 +29,14 @@ public class NodeEndpoints {
                 requestCxt.logRequest = false;
             }
         }
-        requestCxt.mapResponse.putAll(nodeService.getHealth());
+        requestCxt.mapResponse.putAll(nodeService.getHealth(requestCxt.cxt));
     }
 
     static void setClusterMembership(DnRequestCxt requestCxt) throws DnException {
         boolean setMembership = getBoolWithDefault(requestCxt.requestData, ND_IS_CLUSTER_MEMBER, true);
         var nodeService = Objects.requireNonNull(DnCoreNodeService.get(requestCxt.cxt));
         nodeService.isInCluster = setMembership;
-        requestCxt.mapResponse.putAll(nodeService.getHealth());
+        requestCxt.mapResponse.putAll(nodeService.getHealth(requestCxt.cxt));
     }
 
     /** Bind endpoint code to names so that they can be found to endpoint definitions. */

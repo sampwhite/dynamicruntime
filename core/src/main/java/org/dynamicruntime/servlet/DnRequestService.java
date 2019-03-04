@@ -1,5 +1,6 @@
 package org.dynamicruntime.servlet;
 
+import org.dynamicruntime.content.DnContentData;
 import org.dynamicruntime.content.DnContentService;
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
@@ -33,13 +34,16 @@ import java.util.Objects;
  * for this class is supplied by other service objects from the various components that are loaded. */
 @SuppressWarnings("WeakerAccess")
 public class DnRequestService implements ServiceInitializer {
-    public static String DN_REQUEST_SERVICE = DnRequestService.class.getSimpleName();
-    public static String CONTENT_ROOT = "content";
-    public static String USER_ROOT = "user";
+    public static final String DN_REQUEST_SERVICE = DnRequestService.class.getSimpleName();
+    public static final String CONTENT_ROOT = "content";
+    public static final String PORTAL_ROOT = "portal";
+    public static final String SITE_ROOT = "site";
+    public static final List<String> WEB_ROOTS = mList(CONTENT_ROOT, PORTAL_ROOT, SITE_ROOT);
+    public static final String USER_ROOT = "user";
 
     public final Map<String,ContextRootRules> contextRulesMap = mMapT();
 
-    public List<String> anonRoots = mList(CONTENT_ROOT, "auth", "health", "schema");
+    public List<String> anonRoots = mList(CONTENT_ROOT, PORTAL_ROOT, SITE_ROOT,"auth", "health", "schema");
     public List<String> userRoots = mList(USER_ROOT);
     public List<String> adminRoots = mList("node", "admin");
     public DnCoreNodeService coreNode;
@@ -105,8 +109,12 @@ public class DnRequestService implements ServiceInitializer {
             subTarget = "images/favicon.ico";
         }
         if (subTarget == null || subTarget.isEmpty()) {
-            throw new DnException("Path is not a fully constructed endpoint.", null,
-                    DnException.NOT_FOUND, DnException.SYSTEM, DnException.CODE);
+            if (contextRoot.equals(PORTAL_ROOT)) {
+                subTarget = "index.html";
+            } else {
+                throw new DnException("Path is not a fully constructed endpoint.", null,
+                        DnException.NOT_FOUND, DnException.SYSTEM, DnException.CODE);
+            }
         }
         ContextRootRules contextRules = contextRulesMap.get(contextRoot);
         if (contextRules == null) {
@@ -206,16 +214,31 @@ public class DnRequestService implements ServiceInitializer {
         int code = DnException.OK;
 
         // First up, we handle the serving up of files.
-        if (method.equals("GET") && contextRoot.equals(CONTENT_ROOT)) {
+        if (method.equals("GET") && WEB_ROOTS.contains(contextRoot)) {
             DnContentService contentService = DnContentService.get(cxt);
             if (contentService != null) {
-                var content = contentService.getContent(cxt, CONTENT_ROOT + "/" + subTarget);
+                DnContentData content;
+                switch (contextRoot) {
+                    case SITE_ROOT:
+                        content = contentService.getSiteContent(cxt, subTarget);
+                        break;
+                    case PORTAL_ROOT:
+                        content = contentService.getPortalContent(cxt, handler.queryParams);
+                        break;
+                    default:
+                        content = contentService.getContent(cxt, CONTENT_ROOT + "/" + subTarget);
+                }
 
                 handler.sentResponse = true;
                 checkAddAuthCookies(cxt, handler);
+                if (content.immutable) {
+                    handler.setResponseHeader("Cache-Control",
+                            "public, immutable, max-age: 3153600");
+                    handler.setResponseHeader("Etag", DnRequestHandler.ETAG_NEVER_CHANGES);
+                }
                 if (content.isBinary) {
                     handler.sendBinaryResponse(content.binaryContent, code, content.mimeType);
-               } else {
+                } else {
                     handler.sendStringResponse(content.strContent, code, content.mimeType);
                 }
             }

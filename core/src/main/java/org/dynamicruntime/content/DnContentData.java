@@ -10,10 +10,7 @@ public class DnContentData {
     public boolean isBinary;
     public String strContent;
     public byte[] binaryContent;
-    public int cacheMaxAge;
-    // Maybe someday used for *Etag* headers. Also may be used for an internal in-memory cache, especially if
-    // conversions are being performed on content (such as transforming images).
-    @SuppressWarnings("unused")
+    public boolean immutable;
     public Date timestamp;
 
     public DnContentData(String mimeType, boolean isBinary, String strContent, byte[] binaryContent, Date timestamp) {
@@ -21,9 +18,10 @@ public class DnContentData {
         this.isBinary = isBinary;
         this.strContent = strContent;
         this.binaryContent = binaryContent;
+        this.timestamp = timestamp;
     }
 
     public static DnContentData mkHtml(String html) {
-        return new DnContentData("text/html", false, html, null, null);
+        return new DnContentData("text/html; charset=utf-8", false, html, null, null);
     }
  }

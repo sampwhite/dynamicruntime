@@ -59,7 +59,6 @@ public class DnTemplates {
         try {
             var exec = dnTemplate.template.createProcessingEnvironment(params, sw);
             exec.process();
-            String result  = sw.toString();
             var namespace = exec.getCurrentNamespace();
             var keys = namespace.keys().iterator();
             Map<String,Object> outVals = mMap();
@@ -92,11 +91,12 @@ public class DnTemplates {
                 String content = IoUtil.readInFile(file);
                 DnOutput contentOutput = (mkOutput != null) ? mkOutput.apply(content) :
                         new DnOutput(content, mMap());
+                String key = (path.startsWith("/")) ? path.substring(1) : path;
                 if (contentOutput.output != null) {
-                    fmLoader.putTemplate(path, contentOutput.output, ts);
+                     fmLoader.putTemplate(key, contentOutput.output, ts);
                 }
                 try {
-                    var fmTemplate = (contentOutput.output != null) ? fmConfig.getTemplate(path) : null;
+                    var fmTemplate = (contentOutput.output != null) ? fmConfig.getTemplate(key) : null;
                     t = new DnTemplate(path, contentOutput.output, fmTemplate, contentOutput.outVals, new Date(ts));
                     templates.put(path, t);
                 } catch (IOException e) {
