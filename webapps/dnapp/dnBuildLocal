@@ -1,0 +1,2 @@
+export PUBLIC_URL="http://localhost:7070/site/dnapp/build"
+npm run build

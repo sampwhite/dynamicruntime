@@ -1,0 +1,3 @@
+# Configures where to find build for previewing build in local dynamicruntime server. This assumes
+# portal.useAws = false  is set in the dnConfig.groovy file.
+site.entryPoint: "build/index.html"

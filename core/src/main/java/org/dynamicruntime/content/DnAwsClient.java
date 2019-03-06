@@ -173,6 +173,9 @@ public class DnAwsClient {
                     }
 
                     var metadata = createMetadata(s3Path, lastModified);
+                    // We assume the content in the directory never changes. To change content,
+                    // we publish to a new directory and point a yaml config file at the new location.
+                    metadata.setCacheControl("public, immutable, max-age=3153600");
 
                     String verb = (existingData != null) ? "Upload replacing" : "Upload inserting";
                     LogContent.log.debug(uploadJob.cxt,

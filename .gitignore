@@ -4,3 +4,4 @@ build/
 out/
 logs/
 **/*.pid
+**/node_modules/

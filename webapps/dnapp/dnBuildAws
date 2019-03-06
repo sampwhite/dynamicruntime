@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Create elements needed for a date based path.
+MONTH_DATE=`date -u +"%Y-%m"`
+ISO_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
+
+# Determine our siteId. Caller can provide a branch value to override our default of *current*.
+BRANCH=current
+if [[ "$1" ]]; then
+    BRANCH="$1"
+fi
+SITE_ID=dnapp/${BRANCH}
+
+# Build up the target S3 directory to hold immutable content and predict what the URL needed
+# to serve it through cloud front.
+DEST_DIR="${SITE_ID}/$MONTH_DATE/$ISO_DATE"
+export PUBLIC_URL="https://dilpalkvv16lk.cloudfront.net/$DEST_DIR"
+# Do the build using *PUBLIC_URL* as input.
+npm run build
+
+# Prep for building a command line path.
+SCRIPT=$(readlink -f "$0")
+PATH_TO_DIR=`dirname "$SCRIPT"`
+# Predict where the script directory holding the Groovy script file is located.
+PATH_TO_EXEC_SCRIPT="$PATH_TO_DIR/../../launch/entrypoints/script"
+# Get rid of *..*s in path (found this construction by using Google).
+PATH_TO_EXEC_SCRIPT=`eval "cd ${PATH_TO_EXEC_SCRIPT};pwd;cd - > /dev/null"`
+# Create the command line that needs to be executed to upload the build we just created.
+UPLOAD_COMMAND_LINE="$PATH_TO_EXEC_SCRIPT/execScript.sh script.AwsUploadWebapp ${SITE_ID} $PATH_TO_DIR/build $DEST_DIR"
+
+# Create a shell script file that performs the upload and put into the build directory.
+echo -e "#!/usr/bin/env bash\n$UPLOAD_COMMAND_LINE" > ${PATH_TO_DIR}/build/awsUpload.sh
+chmod a+x ${PATH_TO_DIR}/build/awsUpload.sh
+echo -e "***\nExecute 'build/awsUpload.sh' to publish the site with siteId' ${SITE_ID}' to AWS S3\n***"

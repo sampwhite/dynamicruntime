@@ -233,7 +233,7 @@ public class DnRequestService implements ServiceInitializer {
                 checkAddAuthCookies(cxt, handler);
                 if (content.immutable) {
                     handler.setResponseHeader("Cache-Control",
-                            "public, immutable, max-age: 3153600");
+                            "public, immutable, max-age=3153600");
                     handler.setResponseHeader("Etag", DnRequestHandler.ETAG_NEVER_CHANGES);
                 }
                 if (content.isBinary) {

@@ -35,8 +35,8 @@ public class DnContentService implements ServiceInitializer {
     public HtmlRenderer mdHtmlRenderer;
     /** FreeMarker templates to Strings */
     public DnTemplates templates;
+    public String dynSrcDir;
     public String portalDir;
-    public String siteDir;
     public DatedCacheMap<String,DnContentData> cachedSiteConfig = new DatedCacheMap<>(100);
 
     @Override
@@ -49,26 +49,32 @@ public class DnContentService implements ServiceInitializer {
         return (obj instanceof DnContentService) ? (DnContentService)obj : null;
     }
 
-    public void onCreate(DnCxt cxt) {
+    public void onCreate(DnCxt cxt) throws DnException {
         usingAws = DnConfigUtil.getConfigBool(cxt, DN_USE_AWS_KEY, false,
                 "Whether to use AWS to server portal javascript, css, and images.");
         mdParser = Parser.builder().build();
         mdHtmlRenderer = HtmlRenderer.builder().build();
         templates = new DnTemplates();
-        dfltSiteId = DnConfigUtil.getConfigString(cxt, "portal.defaultSiteId", "dn/current",
+        dfltSiteId = DnConfigUtil.getConfigString(cxt, "portal.defaultSiteId", "dnapp/current",
                 "The siteId used to serve portal content when the *siteId* is not explicitly " +
                         "provided as a parameter.");
-        portalDir = DnConfigUtil.getConfigString(cxt, "portal.resourceLocation",
-                "./portal",
-                "Directory or URL root of where top level portal content is returned, if not using AWS.");
-        siteDir = DnConfigUtil.getConfigString(cxt, "sitesRoot.resourceLocation",
-                portalDir,
-                "Directory or URL root where static web resources are located if not using AWS. " +
-                        "Resources referenced here are assumed to not change.");
         if (usingAws) {
             awsClient.init();
+        } else {
+            // Build up a default for portalDir by using a file in the classpath as a starting point.
+            File resFile = getFileResource("dnCoreConfig.yaml");
+            // Go up four directories (we are catering to our actual source code layout, code should
+            // be changed as layout is changed).
+            File rootDir = resFile.getParentFile().getParentFile().getParentFile().getParentFile();
+            dynSrcDir = rootDir.getAbsolutePath();
+            if (!dynSrcDir.endsWith("/")) {
+                dynSrcDir = dynSrcDir + "/";
+            }
+            String dfltPortalDir = dynSrcDir + "webapps";
+            portalDir = DnConfigUtil.getConfigString(cxt, "portal.resourceLocation",
+                    dfltPortalDir,
+                    "Directory or URL root of where top level portal content is returned, if not using AWS.");
         }
-
     }
 
     @Override
@@ -121,7 +127,9 @@ public class DnContentService implements ServiceInitializer {
                 yamlParams = ConfigLoadUtil.parseYaml(portalFile);
                 // The config file tells us where to find our website.
                 String entryPoint = getReqStr(yamlParams, "site.entryPoint");
-                File f = new File(portalDir, entryPoint);
+                // Entry point is relative to the actual directory that holds the yaml file.
+                File parentFile = portalFile.getParentFile();
+                File f = new File(parentFile, entryPoint);
                 if (!f.exists()) {
                     throw DnException.mkFileIo(String.format("Cannot find portal entry point %s.", f.getAbsolutePath()), null,
                             DnException.NOT_FOUND);
@@ -132,7 +140,7 @@ public class DnContentService implements ServiceInitializer {
     }
 
     public DnContentData getSiteContent(DnCxt cxt, String relativePath) throws DnException {
-        File f = new File(siteDir, relativePath);
+        File f = new File(portalDir, relativePath);
         if (!f.exists()) {
             throw DnException.mkFileIo(String.format("Cannot find site resource %s.", f.getAbsolutePath()), null,
                     DnException.NOT_FOUND);
@@ -162,13 +170,16 @@ public class DnContentService implements ServiceInitializer {
         String mimeType = DnContentUtil.determineMimeType(resourcePath);
         boolean isBinary = mimeType.startsWith("image") || mimeType.startsWith("video") ||
                 mimeType.startsWith("audio");
+        DnContentData retVal;
         if (isBinary) {
             var bytes = IoUtil.readInBinaryFile(resource);
-            return new DnContentData(mimeType, true, null, bytes, resTimestamp);
+            retVal = new DnContentData(mimeType, true, null, bytes, resTimestamp);
         } else {
             String resp = IoUtil.readInFile(resource);
-            return new DnContentData(mimeType, false, resp, null, resTimestamp);
+            retVal = new DnContentData(mimeType, false, resp, null, resTimestamp);
         }
+        retVal.fileLocation = resource;
+        return retVal;
     }
 
     public DnContentData getTemplateContent(@SuppressWarnings("unused") DnCxt cxt, String resourcePath,

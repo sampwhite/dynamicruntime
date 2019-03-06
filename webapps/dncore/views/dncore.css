@@ -1,0 +1,19 @@
+td {
+    text-align: left;
+    padding: 3px;
+}
+
+.label {
+    font-weight: bold;
+}
+
+.title {
+    font-size: larger;
+}
+.description {
+    font-size: medium;
+}
+
+.titleValue {
+    color: lightblue;
+}
