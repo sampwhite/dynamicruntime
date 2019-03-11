@@ -1,25 +1,30 @@
-import React, { Component } from 'react';
-import logo from './logo.svg';
+import React, {Component} from 'react';
+import {BrowserRouter as Router, Route, Switch, Redirect} from "react-router-dom";
 import './App.css';
-//import {dnl} from 'dncore/api/Functions';
-import NodeHealth from 'dncore/views/NodeHealth'
+import NodeHealthPage from './NodeHealthPage'
+import LoginPage from './LoginPage'
+import UserInfoPage from './UserInfoPage';
+import LogoutPage from './LogoutPage'
+import Home from './Home'
+import MainLayout from './MainLayout'
+import {dnl} from 'dncore/api/Functions';
 
 class App extends Component {
   render() {
     return (
       <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <a
-            className="App-link"
-            href="https://reactjs.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Learn React
-          </a>
-          <p><NodeHealth/></p>
-        </header>
+        <Router>
+          <MainLayout>
+            <Switch>
+              <Route exact path="/portal" component={Home}/>
+              <Route path="/portal/healthInfo" component={NodeHealthPage}/>
+              <Route path="/portal/login" component={LoginPage}/>
+              <Route path="/portal/userInfo" component={UserInfoPage}/>
+              <Route path="/portal/logout" component={LogoutPage}/>
+              <Redirect to={dnl("/portal")}/>
+            </Switch>
+          </MainLayout>
+        </Router>
       </div>
     );
   }

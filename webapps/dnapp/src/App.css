@@ -1,33 +1,219 @@
-.App {
-  text-align: center;
-}
+/*
+Has most of the CSS for the application. The supporting *dncore* of shared code only supplies minimal
+CSS allowing a webapp to have a lot of control over display characteristics.
+ */
 
-.App-logo {
-  animation: App-logo-spin infinite 20s linear;
-  height: 200pt;
-  pointer-events: none;
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+/*
+  Layout CSS
+ */
+.layout {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: 24pt;
-  color: white;
 }
 
-.App-link {
+aside.primary-aside {
+  background-color: #4b4f57;
+  width: 160px;
+}
+
+main {
+  flex: 1;
+  background-color: #282c34;
+  font-size: 20px;
+  color: white;
+  min-height: 100vh;
+}
+
+.presentBox {
+  padding-top: 50px;
+  text-align: center;
+  margin-right: 10%; /* Login is a bit left of center to take into account the nav bar to the left. */
+}
+
+/**
+Navigation CSS
+ */
+ul.navList {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.navItem {
+  margin: 4px;
+}
+
+.navLink {
+  border-radius: 12px;
+  color: #222222;
+  display: block;
+  padding: 3px 10px;
+  background-color: #8daeba;
+  #width: 100%;
+}
+
+.activeLink {
+  background-color: #ccffff;
+}
+
+.navLink:hover {
+  background-color: #aaffff;
+}
+
+/**
+Default common CSS styles.
+ */
+
+.stdContent {
+  padding: 50px;
+}
+
+.stdLink {
   color: #61dafb;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+
+.titleValue {
+  color: lightblue;
 }
+
+.infoMsg {
+  font-size: smaller;
+  color: #AAAAAA;
+}
+
+.statusMsg {
+  font-size: smaller;
+  color: #DDDDDD;
+}
+
+.warnMsg {
+  font-size: smaller;
+  color: lightyellow;
+}
+
+.errorMsg {
+  font-size: smaller;
+  color: red;
+}
+
+
+
+.headerLabel {
+  font-size: smaller;
+}
+
+input {
+  padding: 2px;
+}
+
+input[type=submit],
+button {
+  padding: 5px;
+  font-size: medium;
+  background-color: #BBBBBB
+}
+
+.inputPrefix {
+  display: inline-block;
+  vertical-align: bottom;
+  padding-bottom: 3px;
+}
+
+/*
+Header titled info box CSS
+ */
+
+.infoBox {
+  margin: 10px;
+  border-radius: 10px;
+  border-width: 1px;
+  border-color: lightgray;
+  border-style: solid;
+}
+
+.infoHeader {
+  background-color: #494d55;
+  padding: 10px;
+  border-radius: 10px 10px 0 0;
+  display: block;
+  text-align: center;
+}
+
+.infoBody {
+  padding: 10px;
+  background-color: #393d45;
+  border-radius: 0 0 10px 10px;
+}
+
+/**
+Form processing.
+ */
+
+/** When transitioning after login or logout, message that is shown before the redirect kicks in. */
+.actionInProgress {
+  font-size: larger;
+  padding: 50px;
+}
+
+.clickText:hover {
+  color: #FFFFFF;
+  cursor: pointer;
+}
+
+.clickText {
+  padding: 3px;
+  color: #AAAAAA;
+  text-decoration: underline;
+}
+
+.infoLink {
+  color: lightgreen;
+}
+
+.msgRow {
+  padding: 0 10px;
+}
+
+input {
+  font-size: medium;
+}
+
+/**
+Promo page
+ */
+.promoText {
+  font-size: smaller;
+  text-align: left;
+  width: 540px;
+  padding-bottom: 40px;
+}
+/**
+Nav username display.
+*/
+
+.loginIcon {
+  padding-right: 5px;
+  width: 16px;
+  height: 16px;
+}
+
+.usernameHeader {
+  padding: 8px;
+  text-align: center;
+  font-size: larger;
+  background-color: #393d45;
+  color: white;
+  /*
+  border-width: 5px;
+  border-color: #494d55;
+  border-style: solid;
+  border-radius: 10px 10px 10px 10px; */
+}
+
+
+
+
+
+
+
+
+

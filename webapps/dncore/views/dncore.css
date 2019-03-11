@@ -5,15 +5,28 @@ td {
 
 .label {
     font-weight: bold;
+    padding-right: 5px;
 }
 
 .title {
     font-size: larger;
 }
 .description {
-    font-size: medium;
+    font-size: smaller;
 }
 
-.titleValue {
-    color: lightblue;
+.nodeInfo {
+    width: 650px;
 }
+
+.formBox {
+    width: 540px;
+    display: inline-block;
+}
+
+.centerContent {
+    padding: 50px;
+    text-align: center;
+}
+
+

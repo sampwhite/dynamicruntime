@@ -5,6 +5,15 @@ class Client {
     static pathname;
     static query;
     static parsedArgs;
+    static isLoggedIn;
+    static profileRegistry = {};
+    static currentProfileData;
+
+    // Used to see how user interface behaves if there are delays in calls to server.
+    // noinspection JSUnusedGlobalSymbols
+    static sleep (time) {
+        return new Promise((resolve) => setTimeout(resolve, time));
+    }
 
     static init(path, query) {
         Client.pathname = path;
@@ -57,6 +66,7 @@ class Client {
         if (method !== "GET") {
             args.body = JSON.stringify(data);
         }
+        //await Client.sleep(2000);
         fetch(endpoint, args)
             .then(res => res.text())
             .then(
@@ -83,6 +93,53 @@ class Client {
     static doJsonGet(endpoint, successFunc, errorFunc) {
         Client.doJsonFetch("GET", endpoint, null, successFunc, errorFunc);
     }
+
+    static getIsLoggedIn() {
+        return Client.isLoggedIn;
+    }
+
+    static registerForProfileUpdate(key, func) {
+        Client.profileRegistry[key] = func;
+    }
+
+    static requestProfileDataFromServer() {
+        // noinspection JSUnusedLocalSymbols
+        Client.doJsonGet("/user/self/info", (httpCode, data) => {
+            Client.setCurrentProfileData(data);
+        }, error => {})
+    }
+
+    // noinspection JSUnusedGlobalSymbols
+    static unregisterForProfileUpdate(key) {
+        delete Client.profileRegistry[key];
+    }
+
+    static getCurrentProfileData() {
+        return Client.currentProfileData || {};
+    }
+
+    static setCurrentProfileData(data) {
+        Client.currentProfileData = data;
+        const {userProfileData} = data;
+        if (userProfileData) {
+            const {publicName} = userProfileData;
+            if (publicName) {
+                data.username = publicName;
+            }
+        }
+        const {username} = data;
+        Client.isLoggedIn = !!username;
+
+        // This is to support background refreshes of profile data (a future problem, not relevant yet).
+        Client.notifyAll(Client.profileRegistry, data);
+    }
+
+    static notifyAll(registry, data) {
+        for (const func of Object.values(registry)) {
+            func(data);
+        }
+    }
+
 
 }
 

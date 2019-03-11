@@ -576,7 +576,7 @@ public class DnRequestHandler implements DnServletHandler {
             cookieVals.add("Expires=" + expireStr);
         }
         cookieVals.add("Path=/");
-        if (forwardedFor != null) {
+        if (forwardedFor != null && !forwardedFor.equals("127.0.0.1")) {
             cookieVals.add("secure");
         }
         cookieVals.add("HttpOnly");
