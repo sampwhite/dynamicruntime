@@ -106,7 +106,7 @@ class Login extends Component {
         newState = {progress: "Invalid activity.", isError: true}
       }
     } else if (httpCode === 404) {
-      newState = {progress: (<span>User <i>{username}</i> is not available for doing a login.</span>),
+      newState = {progress: (<span>User <i>{username}</i> is not available for a login.</span>),
         isError: true};
     } else if (httpCode === 403) {
       if (activity === "loginByPassword") {

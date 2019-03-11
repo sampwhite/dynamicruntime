@@ -143,6 +143,8 @@ public class UserConstants {
     public static final String LS_VERIFY_EXPIRATION = "verifyExpiration";
     /** Captured IP address. */
     public static final String LS_IP_ADDRESS = "ipAddress";
+    /** GEO location information (see {@link org.dynamicruntime.util.IpLocationUtil#getLocation}) */
+    public static final String LS_GEO_LOCATION = "geoLocation";
     /** Capture date of an IP address. */
     public static final String LS_CAPTURE_DATE = "captureDate";
     /** List of user agents in encoded form. */

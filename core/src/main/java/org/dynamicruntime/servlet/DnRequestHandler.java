@@ -11,10 +11,7 @@ import org.dynamicruntime.startup.InstanceRegistry;
 import org.dynamicruntime.user.UserAuthCookie;
 import org.dynamicruntime.user.UserAuthData;
 import org.dynamicruntime.user.UserSourceId;
-import org.dynamicruntime.util.DnDateUtil;
-import org.dynamicruntime.util.EncodeUtil;
-import org.dynamicruntime.util.ParsingUtil;
-import org.dynamicruntime.util.StrUtil;
+import org.dynamicruntime.util.*;
 
 import static org.dynamicruntime.schemadata.CoreConstants.*;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
@@ -342,7 +339,14 @@ public class DnRequestHandler implements DnServletHandler {
                     }
                     headers.put("Cookies", cookieVals);
                     String remoteAddr = request.getRemoteAddr();
-                    logRequestData = remoteAddr + " " + logRequestData + " " + headers.toString();
+                    String ipLocation = "";
+                    if (forwardedFor != null) {
+                        var loc = IpLocationUtil.getLocation(forwardedFor);
+                        if (loc != null) {
+                            ipLocation = " " + loc.toString();
+                        }
+                    }
+                    logRequestData = remoteAddr + ipLocation + " " + logRequestData + " " + headers.toString();
                 } else {
                     if (forwardedFor != null) {
                         logRequestData = forwardedFor + " " + logRequestData;

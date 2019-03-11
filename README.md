@@ -23,3 +23,21 @@ See [Dynamic Schema](core/src/main/resources/content/md/DynamicType.md) for info
 are defined.
 
 For a web site that demos running the latest version of the code, see [dynamicruntime.org](https://dynamicruntime.org).
+
+# Third Party Inputs
+
+This product includes GeoLite2 data created by MaxMind, available from
+[https://www.maxmind.com](https://www.maxmind.com). We use this to find the locations of IP addresses.
+
+We use [mailgun](https://www.mailgun.com/) to send email.
+
+We encrypt data following the recommendations of 
+[Security Best Practices](https://proandroiddev.com/security-best-practices-symmetric-encryption-with-aes-in-java-7616beaaade9). 
+As a mathematician I find it interesting because the block encoding uses
+[Finite Fields](https://en.wikipedia.org/wiki/Finite_field).
+
+We do password hashing following the recommendations of [Hashing Security](https://crackstation.net/hashing-security.htm). 
+The new wrinkle these days is the concept of making hash functions deliberately inefficient or slow.
+
+We use [Apache FreeMarker](https://freemarker.apache.org/) for templating pages and email and we use
+[CommonMark](https://commonmark.org/) for converting markdown to HTML on the server side.

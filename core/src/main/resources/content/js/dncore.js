@@ -1016,7 +1016,7 @@ class UserProfile extends Component {
         const {capturedIps} = sources;
         const srcList = [];
         for (const cIp of capturedIps) {
-            const {ipAddress, captureDate} = cIp;
+            const {ipAddress, geoLocation, captureDate} = cIp;
             const {userAgents} = cIp;
             const uaList = [];
             for (const ua of userAgents) {
@@ -1031,17 +1031,27 @@ class UserProfile extends Component {
                 uaList.push({uaDes, on, last});
             }
             const formattedCaptureDate = UserProfile.formatDate(Date.parse(captureDate));
-            srcList.push({ip: ipAddress, captureDate: formattedCaptureDate, uaList: uaList});
+            const gl = geoLocation ? UserProfile.formatGeoLocation(geoLocation) : "Undetermined location";
+            srcList.push({ip: ipAddress, geoLocation: gl, captureDate: formattedCaptureDate, uaList: uaList});
         }
         return srcList;
+    }
+
+    static formatGeoLocation(geoLocation) {
+        // 0 = Country
+        // 1 = State
+        // 2 = City
+        // 3 = Postal Code
+        return geoLocation[2] + ", " + geoLocation[1] + " " + geoLocation[3] + ", " + geoLocation[0];
     }
 
     static formatDate(dateVal) {
         return moment(dateVal).format('MMM Do YYYY, h:mm:ss a');
     }
 
-    // Mimics similar code in UserSourceId.java.
-    static MACHINE_TERMINATORS = ["OS", "NT", "nux", "ome"];
+    // Simplify machine and OS string into something simpler for user.
+    static MACHINE_DETECTIONS = {windows: "Windows", mac: "Mac", iphone: "iPhone",
+        droid: "Android", linux: "Linux", cros: "Chrome OS"};
 
     static extractRelevantUaInfo(userAgent) {
         let browserType = "Unknown Browser";
@@ -1060,10 +1070,10 @@ class UserProfile extends Component {
             const index2 = userAgent.indexOf(")", index1);
             if (index2 > 0) {
                 machineDes = userAgent.substring(index1 + 1, index2);
-                for (const term of UserProfile.MACHINE_TERMINATORS) {
-                    const index3 = machineDes.indexOf(term);
-                    if (index3 > 0) {
-                        machineDes = machineDes.substring(0, index3 + term.length);
+                const md = machineDes.toLowerCase();
+                for (const mKey of Object.keys(UserProfile.MACHINE_DETECTIONS)) {
+                    if (md.includes(mKey)) {
+                        machineDes = UserProfile.MACHINE_DETECTIONS[mKey];
                         break;
                     }
                 }
@@ -1115,7 +1125,7 @@ class UserProfile extends Component {
         );
 
         const sourcesRows = sourcesInfo.map(info => {
-            const {ip, captureDate, uaList} = info;
+            const {ip, geoLocation, captureDate, uaList} = info;
             const uaRows = uaList.map(ua => {
                 const {uaDes, on, last} = ua;
                 return <tr key={uaDes}><td>{uaDes}
@@ -1123,8 +1133,10 @@ class UserProfile extends Component {
             });
             return (
                 <tr key={ip}>
-                    <td key="ip" className="border cellLabel"><span className="formLabel">{ip}</span></td>
-                    <td key="captureDate" className="border">{captureDate}</td>
+                    <td key="ip" className="border cellLabel"><span className="formLabel">
+                        {ip}</span> <span className="loginDates">(originated at {captureDate})</span><br/>
+                        {geoLocation}
+                    </td>
                     <td key="uaList" className="border"><table><tbody>{uaRows}</tbody></table></td>
                 </tr>
             );
@@ -1168,12 +1180,11 @@ class UserProfile extends Component {
                     {links}
                 </div>
                 <div className="profileBox">
-                <h3>IP Addresses and Times of Login</h3>
+                <h3>Login Locations and Times</h3>
                     <table className="loginSourcesTable">
                         <thead>
                         <tr>
-                            <th key="ip">IP Address</th>
-                            <th key="captureDate">Capture Date</th>
+                            <th key="locations">Locations</th>
                             <th key="uaList">Browsers and Dates</th>
                         </tr>
                         </thead>

@@ -98,6 +98,12 @@ dependencies {
     // Bring in *markdown* conversion to HTML support.
     compile 'com.atlassian.commonmark:commonmark:0.12.1'
 
+    // We demo usage of using IP address to find Geo Location.
+    // See https://dev.maxmind.com/geoip/geoip2/geolite2/ for more. For those who are copying
+    // this code, you may wish to investigate the licensing terms of the database.
+    compile 'com.maxmind.geoip2:geoip2:2.12.0'
+
+
     // We use Groovy to do tests. Using a dynamic (not static compiled) language on top of 
     // Java makes test writing easier and produces better presentations in results. 
     // Spock expands on that approach and adds additional language features specific to testing.

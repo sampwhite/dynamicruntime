@@ -456,8 +456,6 @@ public class AuthFormHandler {
         userService.loadProfileRecord(cxt, tranName, allData, true);
     }
 
-
-
     /** Updates the sourceId information in the login sources table.
      * Should only be called in a database transaction and with *authRow* in AuthAllUserData already loaded. */
     public void updateSourceId(DnCxt cxt, AuthAllUserData allData, AuthQueryHolder aqh) throws DnException {

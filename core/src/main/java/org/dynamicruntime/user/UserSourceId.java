@@ -4,6 +4,7 @@ import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.util.DnDateUtil;
 import org.dynamicruntime.util.EncodeUtil;
+import org.dynamicruntime.util.IpLocationUtil;
 import org.dynamicruntime.util.StrUtil;
 
 import static org.dynamicruntime.util.DnCollectionUtil.*;
@@ -63,6 +64,8 @@ public class UserSourceId {
 
     public static class IpAddress {
         public final String ipAddress;
+        /** Filled in with GEO location call. */
+        public List<String> ipLocation;
         public Date earliestCookieDate;
         public final Map<String,UserAgent> userAgents;
 
@@ -84,7 +87,9 @@ public class UserSourceId {
                     userAgents.put(key, ua);
                 }
             }
-            return new IpAddress(ip, cd, userAgents);
+            var retVal = new IpAddress(ip, cd, userAgents);
+            retVal.ipLocation = IpLocationUtil.getLocation(ip);
+            return retVal;
         }
 
         public void addUserAgent(DnCxt cxt, String userAgent) {
@@ -122,8 +127,14 @@ public class UserSourceId {
         }
 
         public Map<String,Object> toMap() {
+            // See if we can add geo location info as well.
+            try {
+                if (ipLocation == null) {
+                    ipLocation = IpLocationUtil.getLocation(ipAddress);
+                }
+            } catch (DnException ignore) { }
             List<String> encodedUserAgents = nMapSimple(userAgents.values(), UserAgent::toString);
-            return mMap(LS_IP_ADDRESS, ipAddress, LS_CAPTURE_DATE, earliestCookieDate,
+            return mMap(LS_IP_ADDRESS, ipAddress, LS_GEO_LOCATION, ipLocation, LS_CAPTURE_DATE, earliestCookieDate,
                     LS_USER_AGENTS, encodedUserAgents);
         }
     }

@@ -2,6 +2,7 @@ package org.dynamicruntime.servlet;
 
 import org.dynamicruntime.content.DnContentData;
 import org.dynamicruntime.content.DnContentService;
+import org.dynamicruntime.context.DnConfigUtil;
 import org.dynamicruntime.context.DnCxt;
 import org.dynamicruntime.exception.DnException;
 import org.dynamicruntime.node.DnCoreNodeService;
@@ -16,6 +17,7 @@ import org.dynamicruntime.user.UserAuthCookie;
 import org.dynamicruntime.user.UserAuthData;
 import org.dynamicruntime.user.UserAuthHook;
 import org.dynamicruntime.util.DnDateUtil;
+import org.dynamicruntime.util.IpLocationUtil;
 
 import static org.dynamicruntime.user.UserConstants.*;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
@@ -35,6 +37,7 @@ import java.util.Objects;
 @SuppressWarnings("WeakerAccess")
 public class DnRequestService implements ServiceInitializer {
     public static final String DN_REQUEST_SERVICE = DnRequestService.class.getSimpleName();
+    public static final String IP_ADDRESS_DB_KEY = "util.ipAddressDb";
     public static final String CONTENT_ROOT = "content";
     public static final String PORTAL_ROOT = "portal";
     public static final String SITE_ROOT = "site";
@@ -60,12 +63,22 @@ public class DnRequestService implements ServiceInitializer {
     }
 
     @Override
-    public void checkInit(DnCxt cxt) {
+    public void checkInit(DnCxt cxt) throws DnException {
         if (isInit) {
             return;
         }
         // We are node state aware.
         coreNode = Objects.requireNonNull(DnCoreNodeService.get(cxt));
+
+        // Initialize IP address lookup database. This initialization code should eventually
+        // move to a boot initializer class.
+       String ipDbPath = DnConfigUtil.getConfigString(cxt, IP_ADDRESS_DB_KEY,
+                null,
+                "Location of GEO database for IP address lookup provided by MAXMIND.");
+       if (ipDbPath != null) {
+           IpLocationUtil.init(ipDbPath);
+       }
+
 
         // Eventually we will look at our configuration and make decisions about how
         // various context roots should be handled. This will allow deployment and instance
