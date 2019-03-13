@@ -209,6 +209,37 @@ Nav username display.
   border-radius: 10px 10px 10px 10px; */
 }
 
+.loginSourcesTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+/**
+Login Info
+ */
+.leftSourcesCell {
+  width: 68%;
+  padding: 8px;
+  border-width: 1px;
+  border-color: gray;
+  border-style: solid;
+}
+
+.rightSourcesCell {
+  width: 32%;
+  padding: 8px;
+  border-width: 1px;
+  border-color: gray;
+  border-style: solid;
+}
+
+.machineName {
+  font-size: smaller;
+}
+
+.sourceTime {
+  color: #BBBBBB;
+}
+
 
 
 

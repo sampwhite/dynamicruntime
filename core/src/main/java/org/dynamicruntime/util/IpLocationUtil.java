@@ -25,7 +25,7 @@ public class IpLocationUtil {
             dbReader = new DatabaseReader.Builder(new File(dbLocation)).build();
         }
         catch (IOException e) {
-            throw new DnException("Could open GEO database at " + dbLocation + ".", e);
+            throw new DnException("Could not open GEO database at " + dbLocation + ".", e);
         }
     }
 
@@ -51,6 +51,7 @@ public class IpLocationUtil {
             String state = cr.getLeastSpecificSubdivision().getName();
             String cityName = cr.getCity().getName();
             String postal = cr.getPostal().getCode();
+
             return mList(countryName, state, cityName, postal);
         } catch (GeoIp2Exception ge) {
             return null;

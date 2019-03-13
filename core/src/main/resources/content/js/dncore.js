@@ -1050,8 +1050,8 @@ class UserProfile extends Component {
     }
 
     // Simplify machine and OS string into something simpler for user.
-    static MACHINE_DETECTIONS = {windows: "Windows", mac: "Mac", iphone: "iPhone",
-        droid: "Android", linux: "Linux", cros: "Chrome OS"};
+    static MACHINE_DETECTIONS = {windows: "Windows",  iphone: "iPhone",
+        droid: "Android", linux: "Linux", cros: "Chrome OS", mac: "Mac"};
 
     static extractRelevantUaInfo(userAgent) {
         let browserType = "Unknown Browser";

@@ -11,6 +11,7 @@ td {
 .title {
     font-size: larger;
 }
+
 .description {
     font-size: smaller;
 }
@@ -20,7 +21,7 @@ td {
 }
 
 .formBox {
-    width: 540px;
+    width: 550px;
     display: inline-block;
 }
 

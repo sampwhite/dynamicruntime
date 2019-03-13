@@ -2,6 +2,7 @@ import React, {Component} from 'react';
 import {Redirect} from "react-router-dom";
 
 import UserRegistrationInfo from 'dncore/views/UserRegistrationInfo'
+import UserLoginSources from 'dncore/views/UserLoginSources'
 import Client from 'dncore/api/Client'
 import {dnl} from 'dncore/api/Functions';
 
@@ -13,6 +14,7 @@ class UserInfoPage extends Component {
     return (
       <div className="presentBox">
         <UserRegistrationInfo/>
+        <UserLoginSources/>
       </div>
     )
   }
