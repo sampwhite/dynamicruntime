@@ -217,16 +217,16 @@ Nav username display.
 Login Info
  */
 .leftSourcesCell {
-  width: 68%;
-  padding: 8px;
+  width: 67%;
+  padding: 7px;
   border-width: 1px;
   border-color: gray;
   border-style: solid;
 }
 
 .rightSourcesCell {
-  width: 32%;
-  padding: 8px;
+  width: 33%;
+  padding: 7px;
   border-width: 1px;
   border-color: gray;
   border-style: solid;
