@@ -30,4 +30,4 @@ UPLOAD_COMMAND_LINE="$PATH_TO_EXEC_SCRIPT/execScript.sh script.AwsUploadWebapp $
 # Create a shell script file that performs the upload and put into the build directory.
 echo -e "#!/usr/bin/env bash\n$UPLOAD_COMMAND_LINE" > ${PATH_TO_DIR}/build/awsUpload.sh
 chmod a+x ${PATH_TO_DIR}/build/awsUpload.sh
-echo -e "***\nExecute 'build/awsUpload.sh' to publish the site with siteId' ${SITE_ID}' to AWS S3\n***"
+echo -e "***\nExecute 'build/awsUpload.sh' to publish the site with siteId '${SITE_ID}' to AWS S3\n***"
