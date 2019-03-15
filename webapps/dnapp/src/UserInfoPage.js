@@ -14,6 +14,7 @@ class UserInfoPage extends Component {
     return (
       <div className="presentBox">
         <UserRegistrationInfo/>
+        <br/>
         <UserLoginSources/>
       </div>
     )
