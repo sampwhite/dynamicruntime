@@ -10,7 +10,6 @@ import java.util.Map;
  * fields are necessary to implement functionality, which may mean some fields are focused on very different
  * purposes. It is this class request filter hooks that do authentication/authorization. Documentation
  * on these fields can be found in other classes. */
-@SuppressWarnings("WeakerAccess")
 public class UserAuthData {
     /** User who switched to being current user. */
     public long grantingUserId = 0;

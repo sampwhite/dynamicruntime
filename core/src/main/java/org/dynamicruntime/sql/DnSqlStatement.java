@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/** Wrappers the data to generate a parameterized query.
+ * @see SqlBoundStatement for the actual parameterized query and all its associated schema infrastructure. */
 @SuppressWarnings("WeakerAccess")
 public class DnSqlStatement {
     /** Shard */
@@ -14,7 +16,7 @@ public class DnSqlStatement {
     public final String topic;
     /** Unique name within topic. */
     public final String name;
-    /** Session key, combines shard, topic and name. */
+    /** Session key, combines shard, topic and name. Used to find SqlBoundStatement objects and reuse them. */
     public final String sessionKey;
     /** The original SQL before entity substitutions. */
     public final String originalSql;

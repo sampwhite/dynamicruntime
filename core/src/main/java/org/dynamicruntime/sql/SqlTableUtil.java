@@ -31,6 +31,10 @@ public class SqlTableUtil {
         }
     }
 
+    /** Checks to see if table needs to be created or updated.
+     * Returns false if we already have asked to create this table in this Java process. Caller can
+     * use return value to determine if row provisioning logic needs to be run. This allows
+     * table initialization code to be idempotent. */
     public static boolean checkCreateTable(SqlCxt sqlCxt, DnTable tableDef) throws DnException {
         if (sqlCxt.sqlDb.hasCreatedTable(sqlCxt, tableDef.tableName)) {
             return false;
@@ -40,8 +44,7 @@ public class SqlTableUtil {
     }
 
     /** Creates a table and adds columns and/or indexes, if they are missing. This call should be done
-     * inside a SqlSession. Returns false if we already have asked to create this table. Caller can
-     * use return value to determine if row provisioning logic needs to be run. */
+     * inside a SqlSession. */
     public static void createTable(SqlCxt sqlCxt, DnTable tableDef) throws DnException {
         var cxt = sqlCxt.cxt;
         SqlDatabase sqlDb = sqlCxt.sqlDb;

@@ -11,7 +11,12 @@ import java.util.UUID;
 import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 
 /**
- * Implements the details of a typical top level SQL topic transaction.
+ * Implements the details of a typical top level SQL topic transaction. This transaction performs
+ * an insert on retry logic if it fails to gain a lock on its first pass. This insert is done outside
+ * of a transaction (Some database, such as MySQL, do badly when performing inserts inside a transaction
+ * when the tables has uniqueness constraints on some of its columns in addition to the primary key).
+ * This class also handles some of the typical protocol fields such as createdDate and modifiedDate
+ * and also supplies default behavior for userId and group.
  */
 @SuppressWarnings("WeakerAccess")
 public class SqlTopicTranProvider implements SqlTranExecProvider {
@@ -107,8 +112,8 @@ public class SqlTopicTranProvider implements SqlTranExecProvider {
 
     public static void executeTopicTran(SqlCxt sqlCxt, String tranName, String tranId, Map<String,Object> tranData,
             SqlFunction tranExecute) throws DnException {
-        // We are going to mutate, the *sqlCxt.tranData*. We do not want to surprise caller that the tranData they
-        // passed in got changed. If they need the changed version, they can always get it from sqlCxt.
+        // We are going to mutate, the *sqlCxt.tranData*. We do not want to surprise caller by having their
+        // tranData parameter mutated. If they need the changed version, they can always get it from sqlCxt.
         sqlCxt.tranData = DnCollectionUtil.cloneMap(tranData);
         var provider = new SqlTopicTranProvider(sqlCxt, tranName, tranId, tranExecute);
         SqlTranUtil.doTran(sqlCxt, tranName, provider);

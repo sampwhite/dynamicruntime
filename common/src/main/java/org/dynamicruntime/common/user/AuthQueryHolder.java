@@ -231,6 +231,10 @@ public class AuthQueryHolder extends SqlQueryHolderBase {
         return (row != null) ? AuthUserRow.extract(row) : null;
     }
 
+    //
+    // Login Sources queries.
+    //
+
     public UserSourceId queryLoginSourceId(DnCxt cxt, long userId, String sourceCode) throws DnException {
         var params = mMap(USER_ID, userId, LS_SOURCE_GUID, sourceCode);
         var row = sqlDb.queryOneDnStatement(cxt, qSource, params);

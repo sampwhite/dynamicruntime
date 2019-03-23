@@ -88,7 +88,7 @@ public class SqlTopic {
         // Create the table.
         sqlDb.withSession(cxt, () -> SqlTableUtil.checkCreateTable(sqlCxt, table));
 
-        // Create the queries.
+        // Create the queries. Note how we do this without any explicit knowledge of the actual tables themselves.
         iTranLockQuery = SqlTopicUtil.mkTableInsertStmt(sqlCxt, table);
         qTranLockQuery = SqlTopicUtil.mkTableSelectStmt(sqlCxt, table);
         uTranLockQuery = SqlTopicUtil.mkTableUpdateStmt(sqlCxt, table);

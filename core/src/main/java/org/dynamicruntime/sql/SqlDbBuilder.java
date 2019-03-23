@@ -16,6 +16,8 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Properties;
 
+/** Builds up the configuration necessary to create an {@link SqlDatabase} instance. In particular, it
+ * implements scoped configuration where configuration can be scoped under a particular database name. */
 @SuppressWarnings("WeakerAccess")
 public class SqlDbBuilder {
     public static final String H2_IN_MEMORY_URL =  "jdbc:h2:mem:";

@@ -29,7 +29,9 @@ public class SqlCxt {
     /** Set to true if current transaction did an insert. */
     public boolean didInsert;
 
-    /** Set to true, if transaction already done. */
+    /** Set to true, if the code that implements the transaction detects that it has already been done. The idea is
+     * that transactions should be idempotent.
+     * @see org.dynamicruntime.sql.topic.SqlTopicTranProvider#execute() */
     public boolean tranAlreadyDone;
 
     public SqlCxt(DnCxt cxt, SqlDatabase sqlDb, String topic) {

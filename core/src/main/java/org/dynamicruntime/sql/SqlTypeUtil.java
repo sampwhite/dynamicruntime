@@ -56,7 +56,7 @@ public class SqlTypeUtil {
         // support at a later time, maybe).
         if (field.isList) {
             // Lists get encoded as strings.
-            return DNT_STRING;
+            return "varchar";
         }
 
         String coreType = field.coreType;
@@ -95,6 +95,7 @@ public class SqlTypeUtil {
          return "varchar";
     }
 
+    /** Converts and binds a parameter to a field in a prepared statement. */
     public static void setStmtParameter(DnCxt cxt, int index, String stmtName, PreparedStatement pStmt,
             DnField fld, Object obj) throws DnException {
         try {
@@ -192,6 +193,8 @@ public class SqlTypeUtil {
         return convertDbObject(cxt, fld, obj, false);
     }
 
+    /** Uses the schema definition to help in decoding the value stored in a database into the value
+     * used in code. */
     public static Object convertDbObject(DnCxt cxt, DnField fld, Object obj, boolean insideList) {
         if (obj == null) {
             return null;
@@ -269,6 +272,8 @@ public class SqlTypeUtil {
         return retVal;
     }
 
+    /** Determines, based on schema, whether an individual entity in a list of entities could
+     * have a comma. */
     public static boolean entitiesCanHaveCommas(DnCxt cxt, DnField fld) {
         boolean entitiesHaveCommas = true;
         switch (fld.coreType) {

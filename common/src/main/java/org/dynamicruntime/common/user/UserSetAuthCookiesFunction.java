@@ -14,6 +14,7 @@ import static org.dynamicruntime.user.UserConstants.*;
 
 import java.util.Date;
 
+/** Applied to {@link org.dynamicruntime.user.UserAuthHook#prepAuthCookies}. */
 @SuppressWarnings("WeakerAccess")
 public class UserSetAuthCookiesFunction implements DnHookFunction<DnRequestService, DnRequestHandler> {
     public final UserService userService;
@@ -57,13 +58,19 @@ public class UserSetAuthCookiesFunction implements DnHookFunction<DnRequestServi
         }
 
         if (!setIt) {
+            // See if cookie should be refreshed.
             Date modifiedDate = oldCookie.modifiedDate;
             long dur = now.getTime() - modifiedDate.getTime();
             long totalTime = oldCookie.expireDate.getTime() - modifiedDate.getTime();
+            // Using hardwired numbers. If this needs to be configured, we can
+            // change the code as needed.
             if (dur < totalTime && dur > -2000 && (dur > 3600*1000 || dur > totalTime/2)) {
                 setIt = true;
             }
         }
+
+        // See if the auth cookie has evidence that the user profile has changed since the date
+        // we last refreshed our cached version of the user profile data.
         Date profileModifiedDate = userProfile.modifiedDate;
         if (oldCookie != null && oldCookie.profileModifiedDate.after(profileModifiedDate) &&
             !userProfile.didForceRefresh) {

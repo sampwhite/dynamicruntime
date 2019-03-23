@@ -37,6 +37,7 @@ public class UserSourceId {
             this.modifiedDate = modifiedDate;
         }
 
+        /** Parses the string produced by the *toString* method of this class. */
         public static UserAgent extract(String str) throws DnException {
             int index = str.indexOf("@");
             if (index < 0) {
@@ -56,12 +57,14 @@ public class UserSourceId {
             return new UserAgent(agentStr, captured, modified);
         }
 
+        /** The string representation is what is persisted. It creates a compact encoding of the data. */
         public String toString() {
             return DnDateUtil.formatDate(dateCaptured) + "#" + DnDateUtil.formatDate(modifiedDate)
                     + "@" + userAgent;
         }
     }
 
+    /** Holds the user agents and bound to a particular IP address. */
     public static class IpAddress {
         public final String ipAddress;
         /** Filled in with GEO location call. */
@@ -138,9 +141,10 @@ public class UserSourceId {
                     LS_USER_AGENTS, encodedUserAgents);
         }
     }
+
     // Indicates whether this object was initially created from a cookie.
     public final boolean fromCookie;
-    // First two parts are from cookie.
+    // The code used to identify the originating browser or device.
     public final String sourceCode;
 
     // This is not part of the serialized data into the database. It is a placeholder for cookie
@@ -160,7 +164,7 @@ public class UserSourceId {
     public boolean isNew;
 
     // Whether we made a change significant enough for us to save back to login source records.
-    // Some of the changes can get captured in profile or special tracking storage, but
+    // Even if not true, some of the changes can get still get captured in profile or special tracking storage, but
     // they will focus on more lightweight concerns not directly relevant to authentication.
     public boolean isModified;
 
@@ -171,7 +175,8 @@ public class UserSourceId {
     public List<IpAddress> ipAddresses;
 
     public Map<String,Object> sourceData;
-    // Row data.
+
+    // Raw row data.
     public Map<String,Object> data;
 
     public UserSourceId(boolean fromCookie, String sourceCode, Date cookieCreateDate) {
@@ -207,6 +212,7 @@ public class UserSourceId {
         return source;
     }
 
+    /** Fills out data for a login source record. */
     public void fillOutData(Map<String,Object> data) throws DnException {
         userId = getReqLong(data, USER_ID);
         Map<String,Object> lsSourceData = getMapDefaultEmpty(data, LS_SOURCE_DATA);
@@ -238,7 +244,8 @@ public class UserSourceId {
         if (ipAddresses == null) {
             ipAddresses = mList();
         }
-        // Look for a match.
+
+        // Look for a match and remember the index location. Do brute force because the list is small.
         int index = -1;
         for (int i = 0; i < ipAddresses.size(); i++) {
             var ip = ipAddresses.get(i);
@@ -253,6 +260,7 @@ public class UserSourceId {
                 newCookieCreateDate = cxt.now();
             }
             while (ipAddresses.size() >= 10) {
+                // Remove the ipAddress that has the oldest access time.
                 ipAddresses.remove(0);
             }
             curIpAddr = new IpAddress(ipAddress, newCookieCreateDate, mMapT());
@@ -302,6 +310,10 @@ public class UserSourceId {
         return DnDateUtil.formatDate(newCookieCreateDate) + "@" + sourceCode;
     }
 
+    /** Creates a key that we use to aggregate user agents. This way we can collapse user agents that
+     * we guess are really from the same source. The user agents are mostly present for informational purposes,
+     * not because of their actual use in logical calculations. This is because they are very easy to spoof and
+     * some browsers have settings where they can emulate the user agents of another browser. */
     public static String computeUserAgentKey(String userAgent) {
         String browserType = "unknown";
         if (userAgent.contains("Edge")) {

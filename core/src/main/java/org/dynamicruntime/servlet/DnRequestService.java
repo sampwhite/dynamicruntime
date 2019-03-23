@@ -278,7 +278,7 @@ public class DnRequestService implements ServiceInitializer {
         }
     }
 
-    void extractAuth(DnCxt cxt, DnRequestHandler handler) throws DnException {
+    public void extractAuth(DnCxt cxt, DnRequestHandler handler) throws DnException {
         // Check for auth cookie.
         Map<String,String> cookies = handler.getRequestCookies();
         String encryptedCookie = cookies.get(AUTH_COOKIE_NAME);
@@ -304,7 +304,7 @@ public class DnRequestService implements ServiceInitializer {
         }
     }
 
-    void loadProfile(DnCxt cxt, DnRequestHandler handler) throws DnException {
+    public void loadProfile(DnCxt cxt, DnRequestHandler handler) throws DnException {
         // In a mature implementation, the data for the profile will be pulled most of the time from
         // cache.
         if (cxt.userProfile != null) {

@@ -25,6 +25,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+/** Holds data for a request and provides access and convenience methods. */
 @SuppressWarnings("WeakerAccess")
 public class DnRequestHandler implements DnServletHandler {
     public static final String ETAG_NEVER_CHANGES = "NeverChanges";
@@ -41,7 +42,7 @@ public class DnRequestHandler implements DnServletHandler {
     public String logRequestUri;
     public Map<String,Object> queryParams;
     public Map<String,Object> postData;
-    private Map<String,String> cookies;
+    private Map<String,String> cookies; // Note usage of private, allows access methods to play tricks.
     public String userAgent;
     public boolean isFromLoadBalancer;
     public String forwardedFor;
@@ -71,7 +72,9 @@ public class DnRequestHandler implements DnServletHandler {
     public UserAuthData userAuthData;
     public UserSourceId userSourceId;
     public UserAuthCookie userAuthCookie;
+    /** If this is set to true, then auth cookie will be generated and set. */
     public boolean setAuthCookie;
+    /** If set, then auth cookie will be cleared. */
     public boolean isLogout;
 
     public DnRequestHandler(String target, HttpServletRequest request, HttpServletResponse response) {
@@ -554,7 +557,7 @@ public class DnRequestHandler implements DnServletHandler {
     }
 
     @Override
-   public Map<String,String> getRequestCookies() {
+    public Map<String,String> getRequestCookies() {
         if (cookies == null) {
             cookies = mMapT();
             if (request != null) {

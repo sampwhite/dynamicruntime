@@ -15,6 +15,9 @@ import java.util.concurrent.TimeUnit;
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 
+/** Object used to access a traditional SQL database. It also has logic to keep track of the current
+ * database connections. Generally connections are assigned using the {@link #withSession(DnCxt, SqlFunction)}
+ * method. */
 @SuppressWarnings("WeakerAccess")
 public class SqlDatabase {
     /** The name of the database. Each database has a unique name within a running instance. */
@@ -173,6 +176,7 @@ public class SqlDatabase {
         }
     }
 
+    @SuppressWarnings("unused")
     public void withTranAndSession(DnCxt cxt, SqlSession session, SqlFunction function) throws DnException {
         if (session.inTran) {
             function.execute();
@@ -200,7 +204,8 @@ public class SqlDatabase {
     }
 
     //
-    // Raw query execution.
+    // Methods that do raw query execution. Not recommended, but provided for use case scenarios
+    // where talking directly to the database makes sense.
     //
 
     public void executeSchemaChangeSql(DnCxt cxt, String sql) throws DnException {

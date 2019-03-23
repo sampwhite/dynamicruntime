@@ -7,6 +7,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static org.dynamicruntime.util.DnCollectionUtil.*;
 
+/** Used to alias Java variable names to column names in the database. This class is primarily used when
+ * doing conversion from bouncy cap Java names to lower case underscore separated names. But it can
+ * be used for any type of aliasing. */
 @SuppressWarnings("WeakerAccess")
 public class SqlColumnAliases {
     /** Convert column names to lower case. */

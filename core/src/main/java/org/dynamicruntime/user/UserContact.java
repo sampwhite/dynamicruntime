@@ -9,7 +9,8 @@ import static org.dynamicruntime.user.UserConstants.*;
 
 import java.util.Map;
 
-/** A simple class for holding contact info. */
+/** A simple class for holding contact info. This is extracted from Map data of a database column that holds JSON
+ * string rendered data. */
 @SuppressWarnings("WeakerAccess")
 public class UserContact {
     public String address;
@@ -38,11 +39,13 @@ public class UserContact {
         String contactType = getReqStr(data, CT_CONTACT_TYPE);
         String baseAddress = getReqStr(data, CT_CONTACT_ADDRESS);
         String contactAddress = baseAddress;
-        normalizeAddress(contactType, baseAddress);
         String displayAddress = getOptStr(data, CT_CONTACT_DISPLAY_ADDR);
         if (displayAddress == null) {
             contactAddress = normalizeAddress(contactType, baseAddress);
             displayAddress = baseAddress;
+        } else {
+            // Call the normalization just for the validation.
+            normalizeAddress(contactType, baseAddress);
         }
         String contactUsage = getOptStr(data, CT_CONTACT_USAGE);
         return new UserContact(contactAddress, displayAddress, contactType, contactUsage, data);
@@ -61,6 +64,8 @@ public class UserContact {
                 address = address.substring(index + 1).trim();
             }
         }
+
+        // Keep only meaningful (or legal) characters in the contact type.
         StringBuilder sb = new StringBuilder(address.length());
         for (int i = 0; i < address.length(); i++) {
             char ch = address.charAt(i);

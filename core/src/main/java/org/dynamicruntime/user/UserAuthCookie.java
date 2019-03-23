@@ -39,7 +39,7 @@ public class UserAuthCookie {
     public final String account;
     public final List<String> roles;
     public final String authId;
-    public String publicName;
+    public String publicName; // Typically the *username*, but sometimes it is useful for it to be something else.
     public String groupName;
     public String shard;
     // Eventually will be set. This will use some type of custom encoding.
@@ -80,6 +80,8 @@ public class UserAuthCookie {
         return "" + mins + "m";
     }
 
+    /** Used to more compactly store dates with later dates being stored as an offset from a base date.
+     * Also, in debug output, an offset from the base date can have more meaning to a reader of the logs. */
     public static Date getDateWithDiff(Date base, String diff) throws DnException {
         if (diff == null || diff.length() < 2) {
             return base;

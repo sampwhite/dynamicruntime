@@ -33,7 +33,7 @@ it as an event to an event monitor.
 implementations with code modules focusing on different areas of concern.
 
 * In my personal experience, reflection solutions have been buggy (and slow) and particularly prone to multi-thread
-race conditions. And when reflection solutions are buggy they compound the problem by being hard to debug.
+race conditions at startup. And when reflection solutions are buggy they compound the problem by being hard to debug.
 
 * During active development when you hot reload parts of your application, reflection based solutions for 
 wiring components together usually deal poorly with parts of your application re-initializing. Again
@@ -64,10 +64,10 @@ which sub-interface it implements.
 
 ## Exceptions
 
-For this project, we have created a universal exception class called *DnException*. It is based on a general
-fact that we have seen over the years that the logic for error handling tends to have a lot of similarities
-and if you start creating different exception classes, you lose your ability to leverage that commonality. And for
-Java with enforced exception signatures on methods, using different exception classes forces the creation of
+For this project, we have created a universal exception class called *DnException*. In my many years of
+experience writing error handlers in code I have seen that the logic for error handling tends to have a lot of
+similarities. If you start creating different exception classes, you lose your ability to leverage that commonality.
+And for Java with enforced exception signatures on methods, using different exception classes forces the creation of
 code layers that rethrow one type of exception as another type of exception and many times losing useful
 information in the process. One of the advantages of having a universal exception class is that a lot
 of the code can ignore the issue of exception handling all together. Again this speaks to the issue of breaking
@@ -89,7 +89,8 @@ code to worker threads.
 
 ## Enums
 
-This is a particular pain point. If Java had implemented enums as a restriction on possible values of a type but
+This is a particular pain point and a controversial decision even to the developers of this project. 
+If Java had implemented enums as a restriction on possible values of a type but
 did not change the underlying type, then using enums in Java would be quite useful. But using an Enumeration
 forces the creation of a completely different type signature and it is difficult to write simple code that can
 access the underlying *real* type of the value. It is particularly painful to use Java enumerations when 
@@ -97,6 +98,43 @@ you want to read values from a database or a file. Because of these problems we 
 our code, but it comes with a fairly heavy price. To alleviate this we do try to do tricks such as using common
 prefixes for the names of static string constants to give some help to the coder. To put it another way,
 many of our string and numeric constants are "wanna-be" enumeration values.
+
+## Public vs Private
+
+In general, attributes and methods in this project are public unless there is a good case for doing otherwise.
+This goes against the general advice that you can find on this topic in various popular Java blogs. I followed 
+the recommended approach myself for many years until I wrote too many lines of code in other languages which did
+not follow this meme. I then asked myself, over my last twenty years of coding, how many times have I seen
+problems from methods or attributes being inappropriately accessed versus the number of times
+I have seen problems where attributes and or methods could not be accessed and that forced
+unnecessary duplication in the code. And from my personal memory, the second has occurred way more often.
+
+The issue is that there are two different agendas when incorporating existing code into your own code.
+The first, which is the most typical, is when you just call the methods. In that case, it does make sense
+to restrict access to attributes and methods, mostly to help guide the programmer to correct usage. 
+But in more sophisticated solutions, the code they are incorporating may actively support extension models, such
+as plugins or invasive registered callbacks. It is this second case that gives a code library real punch and value.
+But this is also when restricting access to methods and attributes can cause real harm by limiting the scope
+of extensibility. If I had control of Java, I would allow Java code to access private and protected methods, but
+it would cause a compile warning that could be suppressed. Then in IntelliJ you could get a list of all the privilege
+escalation lines in your code.
+
+I will say one more thing. This is not the only meme about Java that I disagree with and I think these memes
+are part of the reason why Java is increasingly having a bad reputation when compared to other languages. 
+As a case example, Python is an awesome language partly because it has thrown away all the bad ideas that have
+accreted around other languages. Just compare a standard Python program to a Java implementation that meets
+the approval of current Java thinking (in particular J2EE, Java Beans, and JMX) and ask yourself which you
+would prefer to work with as a programmer.
+
+## Thread Dumps and Logging
+
+Unlike in other projects, thread dumps and logging are first class citizens. The code is written with an awareness
+of what the stack dump might look like when a programmatic thread dump is performed. 
+Likewise, care is taken in producing logging output. It is a real art to log not too little and not too much
+and have the content of the logging tell you exactly what is happening in the application. I believe that
+thread dumps and logging are artifacts that deserve as much attention as the actual features the application
+implements. This is also an argument for not using invasive frameworks for writing your important scalable
+applications. I have found it can be quite difficult to get good stack dumps and logging out of those frameworks.
 
 ## Import Static
 

@@ -17,6 +17,7 @@ import static org.dynamicruntime.schemadef.DnSchemaDefConstants.*;
 import static org.dynamicruntime.util.ConvertUtil.*;
 import static org.dynamicruntime.user.UserConstants.*;
 
+/** Applied to {@link org.dynamicruntime.user.UserAuthHook#extractAuth}. */
 @SuppressWarnings("WeakerAccess")
 public class UserExtractAuthFunction implements DnHookFunction<DnRequestService, DnRequestHandler> {
     // Using short cache since it is easier to test during development.
@@ -35,7 +36,9 @@ public class UserExtractAuthFunction implements DnHookFunction<DnRequestService,
         // We assume there is at most one token.
         String token = (tokens != null && tokens.size() > 0) ? tokens.get(0) : null;
         if (token != null) {
-            // We can do token based authentication.
+            // We can do simple token based authentication provided by a header. Token will bind to a particular
+            // user, but we do not forget the name of the token that provided this binding. The token name
+            // will show up in the logging.
             int index = token.indexOf('#');
             if (index < 0) {
                 throw DnException.mkConv("Authentication token is incorrectly formatted.");
@@ -46,6 +49,8 @@ public class UserExtractAuthFunction implements DnHookFunction<DnRequestService,
             return;
         }
 
+        // Get cookie that tracks which browser or device originated the request. Used for determining
+        // if the source of the request is *familiar* or not.
         Map<String,String> cookies = workData.getRequestCookies();
         String sourceCookie = cookies.get(LS_SOURCE_COOKIE_NAME);
         UserSourceId sourceId = null;

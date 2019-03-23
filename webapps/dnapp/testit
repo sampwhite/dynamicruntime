@@ -1,2 +1,0 @@
-dir=`pwd`
-eval "cd $dir;pwd;cd - > /dev/null"
