@@ -196,6 +196,18 @@ Nav username display.
   height: 16px;
 }
 
+.loginMiddleColumns {
+  white-space: nowrap;
+}
+
+.loginPrefixColumn {
+  width: 20%;
+}
+
+.loginSuffixColumn {
+  width: 20%
+}
+
 .usernameHeader {
   padding: 8px;
   text-align: center;

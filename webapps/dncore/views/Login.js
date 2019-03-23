@@ -415,7 +415,7 @@ class Login extends Component {
   static mkLoginField(inputName, label, curValue, handleInputChange, inputType, extraClassName, helpLink) {
     const iType = inputType || "input";
     const inputContent =
-      <input name={inputName} type={iType} value={curValue} size="40" onChange={handleInputChange}/>;
+      <input name={inputName} type={iType} value={curValue} size="30" onChange={handleInputChange}/>;
     return Login.mkLabeledContent(inputName + "Row", label, inputContent, extraClassName, helpLink);
   }
 
@@ -424,13 +424,13 @@ class Login extends Component {
     const hLink = helpLink || "";
     return (
       <tr key={rowName}>
-        <td width="20%"/>
-        <td colSpan="2">
+        <td className="loginPrefixColumn"/>
+        <td colSpan="2" className="loginMiddleColumns">
           <label><span className={"headerLabel" + cName}>{label}</span><br/>
             {content}
           </label>
         </td>
-        <td width="20%">{hLink}</td>
+        <td className="loginSuffixColumn">{hLink}</td>
       </tr>
     )
   }
@@ -438,10 +438,10 @@ class Login extends Component {
   static mkNameValueRow(inputName, label, curValue) {
     return (
       <tr key={inputName + "Row"}>
-        <td width="20%"/>
+        <td className="loginPrefixColumn"/>
         <td key={inputName + "Label"}><span className="label">{label}:</span></td>
         <td key={inputName + "Value"}>{curValue}</td>
-        <td width="20%"/>
+        <td className="loginSuffixColumn"/>
       </tr>
     )
   }
