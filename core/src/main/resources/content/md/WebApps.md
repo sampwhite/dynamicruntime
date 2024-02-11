@@ -1,6 +1,7 @@
 ### Overview
 
-This is a document describing the Dynamic Runtime project's approach to delivering react applications.
+This is a document describing the Dynamic Runtime project's approach to delivering react applications. Note,
+the build process below is based on NPM and React from 2019. It is most likely obsolete now.
 
 ### Main Idea
 

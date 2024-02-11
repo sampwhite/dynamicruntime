@@ -27,7 +27,9 @@
     <p>See list of <a href="/content/html/endpoints.html">endpoints</a>.</p>
     <p>See the <a href="/content/md/Home.md">Home</a> page for more information about this application.</p>
     <#--noinspection HtmlUnknownTarget-->
+    <#-- Portal based on obsolete Javascript libraries, not currently supported for this app.
     <p>See the <a href="/portal">Portal</a> to view a simple published React web application.</p>
+    -->
     <#if !username??>
         To login (or register as a new user) go to <a href="/content/html/login.html">Login</a>.
     </#if>
