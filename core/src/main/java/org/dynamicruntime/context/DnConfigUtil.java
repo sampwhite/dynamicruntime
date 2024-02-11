@@ -76,4 +76,9 @@ public class DnConfigUtil {
         throwExceptionIfNull(str, key);
         return str;
     }
+
+    public static String getPrivateStr(DnCxt cxt, String key) throws DnException {
+        return toOptStr(cxt.instanceConfig.get(key));
+    }
+
 }

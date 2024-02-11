@@ -66,7 +66,7 @@ public class SqlDbBuilder {
                         password = pswd;
                     }
                 }
-                connStr = "jdbc:h2:~/" + dbName;
+                connStr = "jdbc:h2:file:~/h2dbData/" + dbName;
             } else {
                 if (!dbType.equals(POSTGRESQL)) {
                     throw new DnException("Database type " + dbType + " is not supported.");

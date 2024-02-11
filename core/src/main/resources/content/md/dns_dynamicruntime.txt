@@ -1,0 +1,28 @@
+TXT
+smtp._domainkey.mg.dynamicruntime.org
+"k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDLBPOvEIrpgZE/T2tDAhRRfkZ1wz5aH6yiF6/XgrMSqBU8xUx6McAmoiNbFf4WyLGTfd+oshI12f0KPhVUFUedYH+XZAMMLpCU0yhooPKNxTCzvC9NxrWlH3L12kRCsv+re4kq00l+mS6w4RCxi3YncyGvceM2fB01hfmuI69DZQIDAQAB"
+
+
+TXT
+mg.dynamicruntime.org
+"v=spf1 include:mailgun.org ~all"
+
+
+_dmarc.dynamicruntime.org
+"v=DMARC1;p=none;sp=quarantine;pct=100;rua=mailto:dmarcreports@mg.dynamicruntime.org;"
+
+CNAME
+_6bbab70960cf4f057fe8bdd3069bc2cb.dynamicruntime.org
+_ae041c0d40c0785b126ed28d357dcef3.hkvuiqjoua.acm-validations.aws.
+
+
+SOA
+dynamicruntime.org
+ns-1557.awsdns-02.co.uk. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400
+
+NS
+dynamicruntime.org
+ns-1557.awsdns-02.co.uk
+ns-1398.awsdns-46.org
+ns-266.awsdns-33.com
+ns-956.awsdns-55.net
