@@ -68,6 +68,4 @@ when code is contributed to the git repository.
 
 # Near Future
 
-The current focus is on publishing React websites to the application. The idea is for all the javascript, css,
-and image assets to be served by AWS Cloudfront. The React websites can use any of the endpoints made available
-by the application.
+This project is currently on hiatus. It may be revived in the future.
